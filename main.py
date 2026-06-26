@@ -17,9 +17,12 @@ class ClepshydraBotte(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        for filename in os.listdir('./cogs'):
-            if filename.endswith('.py'):
-                await self.load_extension(f'cogs.{filename[:-3]}')
+        for entry in os.listdir('./cogs'):
+            path = os.path.join('./cogs', entry)
+            if entry.endswith('.py') and entry != '__init__.py':
+                await self.load_extension(f'cogs.{entry[:-3]}')
+            elif os.path.isdir(path) and os.path.exists(os.path.join(path, '__init__.py')):
+                await self.load_extension(f'cogs.{entry}')
         self.loop.create_task(periodic_save_loop())
 
         guild = discord.Object(id=GUILD_ID)
