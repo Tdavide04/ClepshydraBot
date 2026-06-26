@@ -1,0 +1,220 @@
+A-Baleful Beholder
+A-Blessed Hippogriff // A-Tyr's Blessing
+A-Carnelian Orb of Dragonkind
+A-Circle of the Land Druid
+A-Dawnbringer Cleric
+A-Dragonborn Looter
+A-Druidic Ritual
+A-Earthquake Dragon
+A-Emerald Dragon // A-Dissonant Wave
+A-Eyes of the Beholder
+A-Goggles of Night
+A-Guildsworn Prowler
+A-Jade Orb of Dragonkind
+A-Kenku Artificer
+A-Krydle of Baldur's Gate
+A-Lantern of Revealing
+A-Lapis Orb of Dragonkind
+Alora, Cheerful Assassin
+Alora, Cheerful Mastermind
+Alora, Cheerful Scout
+Alora, Cheerful Swashbuckler
+Alora, Cheerful Thief
+Alora, Rogue Companion
+A-Manticore
+Ambergris, Agent of Balance
+Ambergris, Agent of Destruction
+Ambergris, Agent of Law
+Ambergris, Agent of Progress
+Ambergris, Agent of Tyranny
+Ambergris, Citadel Agent
+A-Minsc & Boo, Timeless Heroes
+A-Navigation Orb
+A-Pseudodragon Familiar
+Arcane Archery
+A-Sepulcher Ghoul
+A-Sigil of Myrkul
+A-Split the Spoils
+A-Steadfast Unicorn
+A-You Come to a River
+A-Young Blue Dragon // A-Sand Augury
+A-Young Red Dragon // A-Bathe in Gold
+Boareskyr Tollkeeper
+Calim, Djinn Emperor
+Champions of Tyr
+Chaos Balor
+Craving of Yeenoghu
+Dragonborn Immolator
+Favored Enemy
+Flames of Moradin
+Flaming Fist Duskguard
+Follow the Tracks
+Gale, Abyssal Conduit
+Gale, Conduit of the Arcane
+Gale, Holy Conduit
+Gale, Primeval Conduit
+Gale, Storm Conduit
+Gale, Temporal Conduit
+Gate of the Black Dragon
+Gate to Manorborn
+Gate to Seatower
+Gate to the Citadel
+Gate to Tumbledown
+Genasi Rabble-Rouser
+Giant Fire Beetles
+Gnoll Hunting Party
+Goblin Trapfinder
+Grave Choice
+Gut, Bestial Fanatic
+Gut, Brutal Fanatic
+Gut, Devious Fanatic
+Gut, Fanatical Priestess
+Gut, Furious Fanatic
+Gut, Zealous Fanatic
+Hag of Ceaseless Torment
+Hag of Dark Duress
+Hag of Death's Legion
+Hag of Inner Weakness
+Hag of Mage's Doom
+Hag of Noxious Nightmares
+Hag of Scoured Thoughts
+Hag of Syphoned Breath
+Hag of Twisted Visions
+Hook Horror
+Hypnotic Pattern
+Imoen, Chaotic Trickster
+Imoen, Honorable Trickster
+Imoen, Occult Trickster
+Imoen, Trickster Friend
+Imoen, Wily Trickster
+Imoen, Wise Trickster
+Incessant Provocation
+Jaheira, Harper Emissary
+Jaheira, Heroic Harper
+Jaheira, Insightful Harper
+Jaheira, Merciful Harper
+Jaheira, Ruthless Harper
+Jaheira, Stirring Harper
+Jon Irenicus, the Exile
+Kardum, Patron of Flames
+Karlach, Raging Tiefling
+Karlach, Tiefling Berserker
+Karlach, Tiefling Guardian
+Karlach, Tiefling Punisher
+Karlach, Tiefling Spellrager
+Karlach, Tiefling Zealot
+Klement, Death Acolyte
+Klement, Knowledge Acolyte
+Klement, Life Acolyte
+Klement, Nature Acolyte
+Klement, Novice Acolyte
+Klement, Tempest Acolyte
+Kobold Warcaller
+Lae'zel, Blessed Warrior
+Lae'zel, Callous Warrior
+Lae'zel, Githyanki Warrior
+Lae'zel, Illithid Thrall
+Lae'zel, Primal Warrior
+Lae'zel, Wrathful Warrior
+Liara of the Flaming Fist
+Lizardfolk Librarians
+Lukamina, Bear Form
+Lukamina, Crocodile Form
+Lukamina, Hawk Form
+Lukamina, Moon Druid
+Lukamina, Scorpion Form
+Lukamina, Wolf Form
+Lulu, Curious Hollyphant
+Lulu, Forgetful Hollyphant
+Lulu, Helpful Hollyphant
+Lulu, Inspiring Hollyphant
+Lulu, Vengeful Hollyphant
+Lulu, Wild Hollyphant
+Mace of Disruption
+Mephit's Enthusiasm
+Mind Spike
+Minthara of the Absolute
+Moradin's Disciples
+Oyaminartok, Polar Werebear
+Patriar's Humiliation
+Ranger Squadron
+Rasaad, Dragon Monk
+Rasaad, Monk of Selûne
+Rasaad, Radiant Monk
+Rasaad, Shadow Monk
+Rasaad, Sylvan Monk
+Rasaad, Warrior Monk
+Sarevok, Deadly Usurper
+Sarevok, Deceitful Usurper
+Sarevok, Divine Usurper
+Sarevok, Ferocious Usurper
+Sarevok, Mighty Usurper
+Sarevok the Usurper
+Seatower Imprisonment
+Seek New Knowledge
+Sewer Plague
+Shadowheart, Cleric of Graves
+Shadowheart, Cleric of Order
+Shadowheart, Cleric of Trickery
+Shadowheart, Cleric of Twilight
+Shadowheart, Cleric of War
+Shadowheart, Sharran Cleric
+Signature Spells
+Skanos, Black Dragon Vassal
+Skanos, Blue Dragon Vassal
+Skanos, Dragon Vassal
+Skanos, Green Dragon Vassal
+Skanos, Red Dragon Vassal
+Skanos, White Dragon Vassal
+Snowborn Simulacra
+Soldiers of the Watch
+Stroke of Luck
+Sune's Intervention
+Sworn to the Legion
+Tasha, Unholy Archmage
+Thayan Evokers
+The Hourglass Coven
+Tiefling Outcasts
+Ulder Ravengard, Marshal
+Undersimplify
+Unexpected Allies
+Uthgardt Fury
+Valiant Farewell
+Verdant Rejuvenation
+Vhal, Eager Scholar
+Vhal, Scholar of Creation
+Vhal, Scholar of Elements
+Vhal, Scholar of Mortality
+Vhal, Scholar of Prophecy
+Vhal, Scholar of Tactics
+Viconia, Disciple of Arcana
+Viconia, Disciple of Blood
+Viconia, Disciple of Rebirth
+Viconia, Disciple of Strength
+Viconia, Disciple of Violence
+Viconia, Nightsinger's Disciple
+Vladimir and Godfrey
+Warriors of Tiamat
+Water Weird
+Wilson, Ardent Bear
+Wilson, Bear Comrade
+Wilson, Fearsome Bear
+Wilson, Majestic Bear
+Wilson, Subtle Bear
+Wilson, Urbane Bear
+Wizened Githzerai
+Wyll of the Blade Pact
+Wyll of the Celestial Pact
+Wyll of the Elder Pact
+Wyll of the Fey Pact
+Wyll of the Fiend Pact
+Wyll, Pact-Bound Duelist
+You Line Up the Shot
+Yuan-Ti Scaleshield
+
+Abiding Grace
+Cauldron Familiar
+Mishra's Bauble
+Oni-Cult Anvil
+Veil of Summer
+Wilderness Reclamation 

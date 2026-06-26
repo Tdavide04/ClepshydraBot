@@ -1,0 +1,41 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Python
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
+
+# SQLite
+*.db
+
+# Coverage
+.coverage
+htmlcov/
+
+# Distribution
+build/
+dist/
+*.egg-info/
+
+# Assets
+assets/
