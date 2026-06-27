@@ -9,14 +9,11 @@ from discord.ext import commands
 from datetime import datetime
 from dotenv import load_dotenv
 
+from config.config import LOG_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 from utils.arena_overrides import get_override_rarity
 from utils.deck_image_generator import DeckImageGenerator
 from utils.card_cache import load_cache, get_cached_card, set_cached_card, save_cache
 
-load_dotenv()
-
-LOG_GUILD_ID = int(os.getenv("LOG_GUILD_ID"))
-PUBLIC_DECK_CHANNEL_ID = int(os.getenv("PUBLIC_DECK_CHANNEL_ID"))
 
 # ============================================================
 # Strategia richieste Scryfall
@@ -441,7 +438,7 @@ class ArtisanDeckCheckModal(
 
         try:
             channels_ids = [
-                LOG_GUILD_ID,
+                LOG_CHANNEL_ID,
                 PUBLIC_DECK_CHANNEL_ID
             ]
 

@@ -1,13 +1,8 @@
 from datetime import datetime
 import discord, os
 from discord.ext import commands
-from dotenv import load_dotenv
+from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from utils.card_cache import periodic_save_loop
-
-load_dotenv()
-
-TOKEN = os.getenv("DISCORD_TOKEN_TEST")
-GUILD_ID = int(os.getenv("GUILD_ID_TEST"))
 
 class ClepshydraBotte(commands.Bot):
     def __init__(self):
@@ -36,7 +31,7 @@ class ClepshydraBotte(commands.Bot):
                 event="SYSTEM_STARTUP",
                 info=(
                     f"**Nome:** ClepshydraBotte\n"
-                    f"**Versione:** 1.0.0\n"
+                    f"**Versione:** {VERSION}\n"
                     f"**Stato:** Online e Operativo\n"
                     f"**Comandi Sync:** {len(synced)}\n"
                     f"**Versione Library:** {discord.__version__}"
@@ -44,4 +39,4 @@ class ClepshydraBotte(commands.Bot):
             )
 
 bot = ClepshydraBotte()
-bot.run(TOKEN)
+bot.run(DISCORD_TOKEN)

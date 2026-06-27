@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import Tuple
 
 VALIDI_colori = {
     "bianco", "nero", "rosso", "blu", "verde", "incolore",
@@ -80,7 +81,7 @@ def valida_anno_nascita(anno: str) -> bool:
 
 
 def valida_anno_cartaceo(anno: str) -> bool:
-    if anno in ("mai", "no", "nessuno", "n/a"):
+    if anno.lower() in ("mai", "n/a"):
         return True
     if not re.fullmatch(r"\d{4}", anno):
         return False
@@ -89,7 +90,7 @@ def valida_anno_cartaceo(anno: str) -> bool:
 
 
 def valida_anno_arena(anno: str) -> bool:
-    if anno in ("mai", "no", "nessuno", "n/a"):
+    if anno.lower() in ("mai", "n/a"):
         return True
     if not re.fullmatch(r"\d{4}", anno):
         return False
@@ -101,14 +102,16 @@ def valida_colori(colori: list[str]) -> bool:
     if not colori:
         return True
     normalizzati = [normalizza_colore(c) for c in colori]
-    return all(c in VALIDI_colori for c in normalizzati)
+    # Confronta in minuscolo per matching case-insensitive
+    return all(c.lower() in VALIDI_colori for c in normalizzati)
 
 
 def valida_gilde(gilde: list[str]) -> bool:
     if not gilde:
         return True
     normalizzate = [normalizza_gilda(g) for g in gilde]
-    return all(g in VALIDI_gilde for g in normalizzate)
+    # Confronta in minuscolo per matching case-insensitive
+    return all(g.lower() in VALIDI_gilde for g in normalizzate)
 
 
 def valida_formati(formati: list[str]) -> bool:

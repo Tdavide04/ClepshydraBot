@@ -1,10 +1,7 @@
 import discord
 from discord.ext import commands
 
-PRESENTATION_CHANNEL = "presentazioni"
-INITIAL_ROLE = "Viandante"
-FINAL_ROLE = "Planeswalker"
-
+from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
 
 class PresentationCog(commands.Cog):
     def __init__(self, bot):
@@ -35,7 +32,7 @@ class PresentationCog(commands.Cog):
                     info="Il bot non ha permessi per gestire il ruolo Viandante."
                 )
 
-        channel = discord.utils.get(member.guild.text_channels, name=PRESENTATION_CHANNEL)
+        channel = discord.utils.get(member.guild.text_channels, name=PRESENTATION_CHANNEL_ID)
         if channel:
             await channel.send(
                 f"Benvenuto {member.mention}! Attualmente hai una visione limitata dei canali del server. "
@@ -70,7 +67,7 @@ class PresentationCog(commands.Cog):
             return
 
         channel_name = getattr(message.channel, "name", None)
-        if channel_name != PRESENTATION_CHANNEL:
+        if channel_name != PRESENTATION_CHANNEL_ID:
             return
 
         logger = self.bot.get_cog('Logger')

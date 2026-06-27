@@ -1,13 +1,8 @@
-import discord
+import discord, os
 from cogs.presentation.models import PresentationData
-from cogs.presentation.embeds import build_published_embed, build_message_content
+from cogs.presentation.embeds import build_published_embed
 from cogs.presentation.validators import valida_presentazione
-
-
-PRESENTATION_CHANNEL = "presentazioni"
-INITIAL_ROLE = "Viandante"
-FINAL_ROLE = "Planeswalker"
-
+from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
 
 class PresentationService:
     def __init__(self, bot):
@@ -58,15 +53,26 @@ class PresentationService:
             return
 
         guild = member.guild
-        channel = discord.utils.get(guild.text_channels, name=PRESENTATION_CHANNEL)
 
-        presentation_msg = None
-        if channel:
-            content = build_message_content(data)
-            embed = build_published_embed(member, data)
-            presentation_msg = await channel.send(content=content, embed=embed)
+        channel = guild.get_channel(PRESENTATION_CHANNEL_ID)
 
-        await self._assign_final_role(member)
+        if channel is None:
+            if logger:
+                await logger.send_log(
+                    level="ERROR",
+                    event="PRESENTATION_CHANNEL_MISSING",
+                    user=member,
+                    info=f"Canale presentazioni con ID {PRESENTATION_CHANNEL_ID} non trovato."
+                )
+            return
+
+        embed = build_published_embed(member, data)
+
+        presentation_msg = await channel.send(
+            embed=embed
+        )
+
+        await self._assign_final_role(member, data)
 
         if logger:
             info = f"Utente promosso a {FINAL_ROLE}"
@@ -94,7 +100,7 @@ class PresentationService:
                         info="Il bot non ha permessi per assegnare il ruolo Viandante."
                     )
 
-    async def _assign_final_role(self, member):
+    async def _assign_final_role(self, member, data: PresentationData):
         initial_role = discord.utils.get(member.guild.roles, name=INITIAL_ROLE)
         final_role = discord.utils.get(member.guild.roles, name=FINAL_ROLE)
 

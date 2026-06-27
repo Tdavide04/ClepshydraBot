@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python -m compileall main.py cogs/presentation)",
       "Bash(python -c \"import cogs.presentation; print\\(''Import OK''\\)\")",
-      "Bash(python -m compileall main.py cogs utils)"
+      "Bash(python -m compileall main.py cogs utils)",
+      "Bash(python -m py_compile cogs/presentation/validators.py)"
     ]
   }
 }
