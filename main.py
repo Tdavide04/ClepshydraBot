@@ -6,8 +6,8 @@ from utils.card_cache import periodic_save_loop
 
 load_dotenv()
 
-TOKEN = os.getenv("DISCORD_TOKEN")
-GUILD_ID = int(os.getenv("GUILD_ID"))
+TOKEN = os.getenv("DISCORD_TOKEN_TEST")
+GUILD_ID = int(os.getenv("GUILD_ID_TEST"))
 
 class ClepshydraBotte(commands.Bot):
     def __init__(self):
