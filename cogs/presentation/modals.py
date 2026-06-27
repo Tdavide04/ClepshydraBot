@@ -1,6 +1,32 @@
 import discord
 from cogs.presentation.models import PresentationData
 
+# Storage temporaneo per i dati di presentazione tra le interazioni
+PRESENTATION_DATA_STORE: dict[int, PresentationData] = {}
+
+
+def get_presentation_data(user_id: int) -> PresentationData | None:
+    return PRESENTATION_DATA_STORE.get(user_id)
+
+
+def store_presentation_data(user_id: int, data: PresentationData) -> None:
+    PRESENTATION_DATA_STORE[user_id] = data
+
+
+async def get_or_create_presentation_data(user_id: int) -> PresentationData:
+    if user_id not in PRESENTATION_DATA_STORE:
+        PRESENTATION_DATA_STORE[user_id] = PresentationData(
+            user_id=user_id,
+            nome="",
+            nickname_arena="",
+            anno_nascita="",
+            professione="",
+            provenienza="",
+            anno_cartaceo="",
+            anno_arena=""
+        )
+    return PRESENTATION_DATA_STORE[user_id]
+
 
 class BasicPresentationModal(discord.ui.Modal, title="Presentazione Clepshydra"):
     def __init__(self, user_id: int, service=None):
@@ -53,16 +79,15 @@ class BasicPresentationModal(discord.ui.Modal, title="Presentazione Clepshydra")
         self.add_item(self.provenienza)
 
     async def on_submit(self, interaction: discord.Interaction):
-        self.presentation_data = PresentationData(
-            user_id=self.user_id,
-            nome=self.nome.value,
-            nickname_arena=self.nickname_arena.value,
-            anno_nascita=self.anno_nascita.value,
-            professione=self.professione.value,
-            provenienza=self.provenienza.value,
-            anno_cartaceo="",
-            anno_arena=""
-        )
+        # Usa lo storage condiviso
+        self.presentation_data = await get_or_create_presentation_data(self.user_id)
+        self.presentation_data.nome = self.nome.value
+        self.presentation_data.nickname_arena = self.nickname_arena.value
+        self.presentation_data.anno_nascita = self.anno_nascita.value
+        self.presentation_data.professione = self.professione.value
+        self.presentation_data.provenienza = self.provenienza.value
+        self.presentation_data.anno_cartaceo = ""
+        self.presentation_data.anno_arena = ""
 
         await interaction.response.defer(ephemeral=True)
 
@@ -124,11 +149,16 @@ class OptionalPresentationModal(discord.ui.Modal, title="Dettagli Opzionali"):
         await interaction.response.defer(ephemeral=True)
 
         from cogs.presentation.views import PreviewView
-        self.view = PreviewView(self.presentation_data)
+        from cogs.presentation.embeds import build_preview_embed
+        member = interaction.user
+
+        preview_embed = build_preview_embed(member, self.presentation_data)
+
+        self.view = PreviewView(self.presentation_data, member)
 
         await interaction.followup.send(
             "Ecco l'anteprima della tua presentazione:",
-            embed=None,
+            embed=preview_embed,
             view=self.view,
             ephemeral=True
         )

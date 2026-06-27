@@ -5,7 +5,7 @@ from cogs.presentation.models import PresentationData
 
 def build_preview_embed(member: discord.Member, data: PresentationData) -> discord.Embed:
     embed = discord.Embed(
-        title=f"Nuova Presentazione: {member.display_name}",
+        title=f"🛡️ Nuova Presentazione: {member.display_name}",
         description=f"**Account originale:** `{member.name}`",
         color=discord.Color.green(),
         timestamp=datetime.now()
@@ -13,7 +13,7 @@ def build_preview_embed(member: discord.Member, data: PresentationData) -> disco
     embed.set_thumbnail(url=member.display_avatar.url)
 
     embed.add_field(
-        name="Dati Personali",
+        name="👤 Dati Personali",
         value=(
             f"**Nome:** {data.nome}\n"
             f"**Nick Arena:** {data.nickname_arena}\n"
@@ -25,7 +25,7 @@ def build_preview_embed(member: discord.Member, data: PresentationData) -> disco
     )
 
     embed.add_field(
-        name="Inizio Magic",
+        name="📅 Inizio Magic",
         value=(
             f"**Cartaceo:** {data.anno_cartaceo}\n"
             f"**Arena:** {data.anno_arena}"
@@ -34,7 +34,7 @@ def build_preview_embed(member: discord.Member, data: PresentationData) -> disco
     )
 
     embed.add_field(
-        name="Preferenze",
+        name="🃏 Preferenze",
         value=(
             f"**Formati:** {data.formati_preferiti_raw}\n"
             f"**Colori:** {data.colori_raw}\n"
@@ -45,14 +45,14 @@ def build_preview_embed(member: discord.Member, data: PresentationData) -> disco
 
     if data.risultati:
         embed.add_field(
-            name="Risultati",
+            name="🏆 Risultati",
             value=data.risultati,
             inline=False
         )
 
     if data.passioni:
         embed.add_field(
-            name="Altre Passioni",
+            name="🌟 Altre Passioni",
             value=data.passioni,
             inline=False
         )

@@ -223,16 +223,7 @@ class FormatiLimitedSelect(discord.ui.Select):
 class PreferencesView(discord.ui.View):
     def __init__(self, data: PresentationData = None, service=None):
         super().__init__(timeout=300)
-        self.data = data or PresentationData(
-            user_id=0,
-            nome="",
-            nickname_arena="",
-            anno_nascita="",
-            professione="",
-            provenienza="",
-            anno_cartaceo="",
-            anno_arena=""
-        )
+        self.data = data
         self.service = service
         self.message = None
         self._member = None

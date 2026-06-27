@@ -112,3 +112,8 @@ class PresentationService:
                     user=member,
                     info="Il bot non ha permessi per gestire i ruoli."
                 )
+
+        # Pulizia storage temporaneo
+        from cogs.presentation.modals import PRESENTATION_DATA_STORE
+        if data.user_id in PRESENTATION_DATA_STORE:
+            del PRESENTATION_DATA_STORE[data.user_id]
