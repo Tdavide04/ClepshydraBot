@@ -2,7 +2,9 @@ from datetime import datetime
 import discord, os
 from discord.ext import commands
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
+from database import init_db, close_db
 from utils.card_cache import periodic_save_loop
+
 
 class ClepshydraBotte(commands.Bot):
     def __init__(self):
@@ -12,6 +14,8 @@ class ClepshydraBotte(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
+        await init_db()
+
         for entry in os.listdir('./cogs'):
             path = os.path.join('./cogs', entry)
             if entry.endswith('.py') and entry != '__init__.py':
@@ -33,10 +37,14 @@ class ClepshydraBotte(commands.Bot):
                     f"**Nome:** ClepshydraBotte\n"
                     f"**Versione:** {VERSION}\n"
                     f"**Stato:** Online e Operativo\n"
+                    f"**Database:** Inizializzato\n"
                     f"**Comandi Sync:** {len(synced)}\n"
                     f"**Versione Library:** {discord.__version__}"
                 )
             )
 
+    async def close(self):
+        await close_db()
+        await super().close()
 bot = ClepshydraBotte()
 bot.run(DISCORD_TOKEN)

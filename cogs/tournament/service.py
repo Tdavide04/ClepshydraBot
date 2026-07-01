@@ -1,4 +1,5 @@
 import asyncio
+from io import BytesIO
 import discord
 import aiohttp
 import urllib.parse
@@ -7,7 +8,9 @@ from utils.arena_overrides import get_override_rarity
 from utils.card_cache import load_cache, get_cached_card, set_cached_card
 from utils.deck_image_generator import DeckImageGenerator
 from cogs.tournament.models import DeckEntry, DeckValidationResult, ArtisanCard
-from cogs.tournament.validators import load_banlist, check_banlist
+from cogs.tournament.validators import check_banlist
+from database import get_session
+from repositories.banlist_repository import BanlistRepository
 
 
 _COLLECTION_URL = "https://api.scryfall.com/cards/collection"
@@ -16,7 +19,6 @@ _MIN_REQUEST_INTERVAL = 0.11
 
 _SCRYFALL_SEMAPHORE = asyncio.Semaphore(1)
 _ARENA_LEGAL_CACHE: dict[str, bool] = {}
-_BANLIST: set[str] = load_banlist()
 
 
 class ArtisanService:
@@ -24,6 +26,7 @@ class ArtisanService:
     def __init__(self, bot=None):
         self.bot = bot
         self._logger = None
+        self._banlist: set[str] = set()
         load_cache()
 
     def _get_logger(self):
@@ -31,27 +34,35 @@ class ArtisanService:
             self._logger = self.bot.get_cog("Logger")
         return self._logger
 
-    async def validate_and_publish(
+    async def _load_banlist(self) -> set[str]:
+        session = get_session()
+        if session is None:
+            return set()
+        try:
+            repo = BanlistRepository(session)
+            self._banlist = await repo.get_all_for_format()
+            return self._banlist
+        finally:
+            await session.close()
+
+    async def validate_deck(
         self,
-        interaction,
         entries: list[DeckEntry],
         deck_name: str,
-        total_cards: int
-    ):
-        member = interaction.user
-        logger = self._get_logger()
+        total_cards: int,
+    ) -> DeckValidationResult:
+        if not self._banlist:
+            await self._load_banlist()
 
-        banned = check_banlist(entries, _BANLIST)
+        banned = check_banlist(entries, self._banlist)
         if banned:
-            result = DeckValidationResult(
+            return DeckValidationResult(
                 deck_name=deck_name,
                 total_cards=total_cards,
                 main_count=sum(e.quantity for e in entries if not e.is_sideboard),
                 side_count=sum(e.quantity for e in entries if e.is_sideboard),
                 banned_cards=banned,
             )
-            await self._publish_result(interaction, result, None, logger, member)
-            return result
 
         headers = {"User-Agent": "ClepshydraBot/2.0 (Discord Tournament Bot)"}
         timeout = aiohttp.ClientTimeout(total=120)
@@ -106,7 +117,7 @@ class ArtisanService:
             main_count = sum(e.quantity for e in entries if not e.is_sideboard)
             side_count = sum(e.quantity for e in entries if e.is_sideboard)
 
-            result = DeckValidationResult(
+            return DeckValidationResult(
                 deck_name=deck_name,
                 total_cards=total_cards,
                 main_count=main_count,
@@ -117,10 +128,23 @@ class ArtisanService:
                 sideboard=sideboard,
             )
 
-            deck_image = None
-            if result.is_valid:
-                mainboard_dicts = [c.to_dict() for c in mainboard]
-                sideboard_dicts = [c.to_dict() for c in sideboard]
+    async def validate_and_publish(
+        self,
+        interaction,
+        entries: list[DeckEntry],
+        deck_name: str,
+        total_cards: int
+    ):
+        member = interaction.user
+        logger = self._get_logger()
+
+        result = await self.validate_deck(entries, deck_name, total_cards)
+
+        deck_image = None
+        if result.is_valid:
+            mainboard_dicts = [c.to_dict() for c in result.mainboard]
+            sideboard_dicts = [c.to_dict() for c in result.sideboard]
+            async with aiohttp.ClientSession() as session:
                 deck_image = await DeckImageGenerator.create_deck_showcase(
                     session, mainboard_dicts, sideboard_dicts,
                     player_name=member.display_name,
@@ -129,6 +153,22 @@ class ArtisanService:
 
         await self._publish_result(interaction, result, deck_image, logger, member)
         return result
+
+    async def generate_deck_image(
+        self,
+        result: DeckValidationResult,
+        player_name: str,
+    ) -> BytesIO | None:
+        if not result.is_valid:
+            return None
+        async with aiohttp.ClientSession() as session:
+            return await DeckImageGenerator.create_deck_showcase(
+                session,
+                [c.to_dict() for c in result.mainboard],
+                [c.to_dict() for c in result.sideboard],
+                player_name=player_name,
+                deck_name=result.deck_name,
+            )
 
     async def _publish_result(
         self,
