@@ -37,5 +37,5 @@ build/
 dist/
 *.egg-info/
 
-# Assets
-assets/
+# Claude AI config (local)
+.claude/

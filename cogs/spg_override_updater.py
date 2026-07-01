@@ -8,6 +8,7 @@ from utils.arena_overrides import (
     update_spg_overrides,
     invalidate_override_cache
 )
+from utils.permissions import is_admin
 
 # ==========================================
 # COG
@@ -26,7 +27,7 @@ class SPGOverrideUpdater(commands.Cog):
         name="update_spg_overrides",
         description="Aggiorna automaticamente gli override SPG"
     )
-    @app_commands.default_permissions(administrator=True)
+    @is_admin()
     async def update_spg_overrides_command(
         self,
         interaction: discord.Interaction

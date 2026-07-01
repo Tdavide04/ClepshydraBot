@@ -1,183 +1,136 @@
 # ClepshydraBot
 
-A Discord bot developed for the **Clepshydra** Magic: The Gathering Arena community.
-
-The project aims to automate community management, simplify tournament organization, and provide useful tools for both players and staff members.
-
-> **Current Version:** V1 (Legacy Architecture)
->
-> A major architectural refactor (V2) is currently in development.
-
----
+Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automates user verification, Artisan format deck validation, and Swiss tournament management.
 
 ## Features
 
-### User Presentation System
+- **Presentation System** — Multi-step modal wizard (`/presentati`) with role assignment
+- **Artisan Deck Check** — Validate decks against banlist + Scryfall rarity check (`/artisan_check_deck`)
+- **Swiss Tournaments** — Full tournament lifecycle: registration, pairing, results, standings
+- **Deck Image Generator** — Dynamic PNG showcase with color-identity backgrounds
+- **Rarity Override System** — Automatic SPG card rarity correction via Scryfall
+- **Centralized Logging** — All events logged to a Discord channel with colored embeds
 
-- `/presentati` slash command
-- Interactive modal-based presentation
-- Automatic role assignment
-- Presentation logging
-- Custom embed generation
+## Commands
 
-### Artisan Deck Validation
-
-- Validate deck legality for the Artisan format
-- Integration with the Scryfall API
-- Automatic rarity verification
-- Override system for Arena-exclusive cards
-- Cached card data for improved performance
-
-### Tournament Utilities
-
-- Deck submission
-- Deck image generation
-- Automatic validation before submission
-- Tournament channel integration
-
-### Logging
-
-- Centralized logging system
-- Staff notifications
-- Error reporting
-- Administrative actions tracking
-
----
+| Command | Description | Access |
+|---|---|---|
+| `/presentati` | Open presentation wizard | All |
+| `/artisan_check_deck` | Validate Artisan deck | All |
+| `/torneo crea` | Create tournament | Admin |
+| `/torneo avvia` | Start tournament | Admin |
+| `/torneo prossimo_turno` | Generate next round | Admin |
+| `/iscriviti` | Register for tournament | All |
+| `/risultato` | Submit match result | All |
+| `/classifica` | View standings | All |
+| `/turni` | View current pairings | All |
+| `/update_spg_overrides` | Update rarity overrides | Admin |
 
 ## Tech Stack
 
-- Python 3
-- discord.py
-- aiohttp
-- Pillow
-- JSON persistence
-- Scryfall API
+- **Python 3.12+** — Core language
+- **discord.py** — Discord API (slash commands, modals, views)
+- **SQLAlchemy 2.0 + aiosqlite** — Async ORM + SQLite
+- **aiohttp** — Async HTTP client for Scryfall API
+- **Pillow** — Deck image generation
 
----
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Discord Gateway                       │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────┴───────────────────────────────────┐
+│                     Cogs (Discord layer)                 │
+│  presentation/    tournament/    tournament_system/      │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────┴───────────────────────────────────┐
+│                   Service Layer                          │
+│  PresentationService    TournamentService                │
+│  PairingEngine          StandingsCalculator              │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────┴───────────────────────────────────┐
+│                  Repository Layer                        │
+│  UserRepository    TournamentRepository    MatchRepository│
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────┴───────────────────────────────────┐
+│  SQLite              │         Scryfall API              │
+│  (data/clepsydra.db) │         (card data)               │
+└──────────────────────┘                                   │
+```
 
 ## Project Structure
 
 ```
-ClepshydraBot/
-
-├── assets/
+ClepsydraBot/
 ├── cogs/
-│   ├── logger.py
-│   ├── presentation.py
-│   ├── spg_override_updater.py
-│   └── tournament.py
-│
-├── data/
-│   ├── arena_rarity_data.json
-│   └── card_cache.json
-│
-├── legacy/
-│   ├── legacy_bot.py
-│   └── README.md
-│
-├── utils/
-│   ├── arena_overrides.py
+│   ├── presentation/        # User presentation wizard
+│   ├── tournament/          # Artisan deck validation
+│   ├── tournament_system/   # Swiss tournament management
+│   ├── logger.py            # Centralized logging
+│   └── spg_override_updater.py
+├── services/                # Business logic
+│   ├── tournament_service.py
+│   ├── pairing_engine.py
+│   └── standings.py
+├── repositories/            # Data access layer
+│   ├── base.py
+│   ├── user_repository.py
+│   └── tournament_repository.py
+├── database/                # SQLAlchemy ORM
+│   ├── engine.py
+│   └── models.py
+├── utils/                   # Utilities
 │   ├── card_cache.py
+│   ├── arena_overrides.py
 │   └── deck_image_generator.py
-│
+├── config/
+│   └── config.py
+├── assets/backgrounds/      # MTG color-themed backgrounds
+├── data/                    # Runtime data (cache, db)
 ├── main.py
-├── requirements.txt
-└── .env.example
+└── requirements.txt
 ```
 
----
-
-## Installation
-
-Clone the repository:
+## Quick Start
 
 ```bash
-git clone https://github.com/your_username/ClepshydraBot.git
+git clone https://github.com/Tdavide04/ClepshydraBot.git
 cd ClepshydraBot
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
-```
-
-Create a `.env` file based on `.env.example`.
-
-Run the bot:
-
-```bash
+cp .env.example .env
+# Edit .env with your Discord token and channel IDs
 python main.py
 ```
 
----
+### Prerequisites
 
-## Environment Variables
+- Python 3.12+
+- Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
+- Discord server with appropriate intents enabled (Member, Message Content)
 
-Example:
+## Development
 
-```env
-TOKEN=
-GUILD_ID=
-LOG_GUILD_ID=
-PUBLIC_DECK_CHANNEL_ID=
+```bash
+# Test mode (uses separate channels and test database)
+TEST_MODE=True python main.py
 ```
 
----
+The bot auto-creates `data/clepsydra.db` on first run. View it with:
 
-## Current Architecture (V1)
-
-The current version follows a Cog-based architecture where most of the business logic resides inside Discord Cogs.
-
-While fully functional, this version has some known limitations:
-
-- Large Cog files
-- Business logic mixed with Discord UI
-- JSON-based persistence
-- Limited modularity
-- Minimal automated testing
-
-These issues will be addressed in Version 2.
-
----
-
-## Roadmap
-
-### Version 2
-
-Planned improvements:
-
-- Layered architecture
-- Service layer
-- Repository pattern
-- SQLite + SQLAlchemy
-- Tournament engine
-- Multi-step presentation wizard
-- Docker support
-- GitHub Actions
-- Automated testing
-- Improved documentation
-
----
-
-## Legacy
-
-The `legacy/` directory contains the very first implementation of ClepshydraBot.
-
-It is preserved for historical purposes only and is no longer maintained.
-
----
+```bash
+pip install sqlitebrowser
+sqlitebrowser data/clepsydra.db
+```
 
 ## License
 
-This project is currently distributed for educational and personal use.
-
-A license will be added once the V2 architecture is completed.
-
----
+MIT License — see [LICENSE](LICENSE).
 
 ## Author
 
-Developed by **Davide Trischitta**
-
-Project created for the Clepshydra Discord community.
+**Davide Trischitta** — [Tdavide04](https://github.com/Tdavide04)
