@@ -233,7 +233,9 @@ class ArtisanService:
 
         for name in names:
             cached = get_cached_card(name)
-            if cached is not None:
+            if cached is not None and "image_uris" in cached:
+                result[name] = cached
+            elif cached is not None and "card_faces" in cached and any("image_uris" in f for f in cached.get("card_faces", [])):
                 result[name] = cached
             else:
                 to_fetch.append(name)
@@ -375,7 +377,14 @@ class ArtisanService:
             return card_data["image_uris"].get("small")
         elif "card_faces" in card_data:
             for face in card_data["card_faces"]:
-                url = face.get("image_uris", {}).get("small")
+                if "image_uris" in face:
+                    url = face["image_uris"].get("small")
+                    if url:
+                        return url
+                url = face.get("image_url")
                 if url:
                     return url
+        url = card_data.get("image_url")
+        if url:
+            return url
         return None

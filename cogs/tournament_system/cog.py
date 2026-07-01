@@ -4,7 +4,7 @@ from datetime import datetime
 
 from services.tournament_service import TournamentService
 from utils.permissions import is_admin
-from database.models import TournamentStatus, TournamentPlayer
+from database.models import TournamentStatus, TournamentPlayer, MatchResult
 from database import get_session
 from cogs.tournament.service import ArtisanService
 from cogs.tournament.validators import parse_decklist, validate_counts
@@ -240,6 +240,124 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
             )
 
 
+class RisultatoView(discord.ui.View):
+    def __init__(
+        self, match, tournament, service,
+        my_tp, opponent_tp, bot,
+    ):
+        super().__init__()
+        self.match = match
+        self.tournament = tournament
+        self.service = service
+        self.my_tp = my_tp
+        self.opponent_tp = opponent_tp
+        self.bot = bot
+        self.selected = None
+
+    @discord.ui.select(
+        placeholder="Seleziona risultato...",
+        options=[
+            discord.SelectOption(
+                label="Vittoria", value="win",
+                emoji="\u2705", description="Hai vinto la partita (3 punti)",
+            ),
+            discord.SelectOption(
+                label="Pareggio", value="draw",
+                emoji="\U0001f91d", description="Avete pareggiato (1 punto)",
+            ),
+            discord.SelectOption(
+                label="Sconfitta", value="loss",
+                emoji="\u274c", description="Hai perso la partita (0 punti)",
+            ),
+        ],
+    )
+    async def result_select(
+        self, interaction: discord.Interaction,
+        select: discord.ui.Select,
+    ):
+        self.selected = select.values[0]
+
+        labels = {"win": "\u2705 Vittoria", "draw": "\U0001f91d Pareggio", "loss": "\u274c Sconfitta"}
+        await interaction.response.edit_message(
+            content=f"Risultato selezionato: **{labels.get(self.selected, self.selected)}**",
+            view=self,
+        )
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.green)
+    async def confirm(
+        self, interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        if self.selected is None:
+            return await interaction.response.send_message(
+                "Seleziona prima un risultato.", ephemeral=True
+            )
+
+        if self.selected == "win":
+            winner_id = self.my_tp.id if self.my_tp else None
+            result = "win"
+        elif self.selected == "loss":
+            winner_id = self.opponent_tp.id if self.opponent_tp else None
+            result = "win"
+        else:
+            winner_id = None
+            result = "draw"
+
+        msg = await self.service.submit_result(
+            self.match.id, winner_id, result
+        )
+
+        labels = {"win": "\u2705 Vittoria", "draw": "\U0001f91d Pareggio", "loss": "\u274c Sconfitta"}
+        embed = discord.Embed(
+            title="\U0001f4dd Risultato Partita",
+            description=(
+                f"{interaction.user.mention} ha registrato il risultato del "
+                f"**Tavolo {self.match.table_number}** "
+                f"(Round {self.match.round_number})"
+            ),
+            color=discord.Color.green() if "Registrato" in msg else discord.Color.orange(),
+            timestamp=datetime.now(),
+        )
+        embed.add_field(name="Risultato", value=labels.get(self.selected, self.selected), inline=True)
+        embed.add_field(name="Torneo", value=self.tournament.name, inline=True)
+        embed.set_footer(text=f"Match ID: {self.match.id}")
+
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(
+            content=None, embed=embed, view=self,
+        )
+
+        await interaction.followup.send(
+            f"\U0001f4dd Risultato **Tavolo {self.match.table_number}**: "
+            f"{labels.get(self.selected, self.selected)}",
+            ephemeral=False,
+        )
+
+        logger = self.bot.get_cog("Logger")
+        if logger:
+            await logger.send_log(
+                level="INFO" if "Registrato" in msg else "WARN",
+                event="MATCH_RESULT",
+                user=interaction.user,
+                info=f"Match {self.match.id}: {msg}",
+            )
+
+        self.stop()
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.grey)
+    async def cancel(
+        self, interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(
+            content="Inserimento annullato.", view=self,
+        )
+        self.stop()
+
+
 class TournamentSystemCog(commands.Cog):
 
     def __init__(self, bot):
@@ -308,25 +426,148 @@ class TournamentSystemCog(commands.Cog):
         if "non trovato" in msg or "non e attivo" in msg or "Servono almeno" in msg:
             return await interaction.followup.send(msg, ephemeral=True)
 
-        embed = discord.Embed(
-            title="\U0001f680 Torneo Iniziato!",
-            description=msg,
-            color=discord.Color.green(),
-            timestamp=datetime.now(),
-        )
         players = await self.service.get_registered_players(tournament.id)
         player_list = "\n".join(
             f"{i+1}. {self._player_display(p)}"
             for i, p in enumerate(players)
         )
+
+        progress = f"{len(players)} giocatori"
+        if tournament.round_count:
+            progress += f", {tournament.round_count} round"
+
+        embed_players = discord.Embed(
+            title="\U0001f680 Torneo Iniziato!",
+            description=f"**{tournament.name}** \u2014 {progress}",
+            color=discord.Color.green(),
+            timestamp=datetime.now(),
+        )
         if player_list:
-            embed.add_field(name="Partecipanti", value=player_list, inline=False)
-        embed.set_footer(text=f"Torneo ID: {tournament.id}")
-        await interaction.followup.send(embed=embed)
+            embed_players.add_field(name="Partecipanti", value=player_list, inline=False)
+        embed_players.set_footer(text=f"Torneo ID: {tournament.id}")
+        await interaction.followup.send(embed=embed_players)
+
+        matches = await self.service.get_matches(tournament.id)
+        round1 = [m for m in matches if m.round_number == 1]
+        if round1:
+            lines = []
+            for m in round1:
+                p1 = self._player_display(m.player1)
+                table = f"`Tavolo {m.table_number:<2}`"
+                if m.player2_id is not None and m.player2 is None:
+                    p2 = f"**Giocatore #{m.player2_id}**"
+                elif m.player2 is not None:
+                    p2 = self._player_display(m.player2)
+                else:
+                    p2 = None
+
+                if p2 is not None:
+                    lines.append(f"{table} {p1} vs {p2}")
+                else:
+                    lines.append(f"{table} {p1} \u2014 **BYE** \U0001f50a")
+
+            embed_pairings = discord.Embed(
+                title=f"\U0001f3af Round 1 \u2014 Accoppiamenti",
+                description="\n".join(lines),
+                color=discord.Color.teal(),
+                timestamp=datetime.now(),
+            )
+            embed_pairings.set_footer(text=f"Torneo ID: {tournament.id}")
+            await interaction.followup.send(embed=embed_pairings)
 
         await self._log(
             "INFO", "TOURNAMENT_STARTED", user=interaction.user,
             info=msg
+        )
+
+    @discord.app_commands.command(
+        name="drop_giocatore",
+        description="Rimuovi forzatamente un giocatore dal torneo attivo"
+    )
+    @is_admin()
+    @discord.app_commands.describe(
+        torneo="ID o nome del torneo",
+        giocatore="Giocatore da rimuovere",
+    )
+    async def drop_giocatore(
+        self,
+        interaction: discord.Interaction,
+        torneo: str,
+        giocatore: discord.User,
+    ):
+        await interaction.response.defer(ephemeral=False)
+
+        tournament = await self.service.find_tournament(torneo)
+        if tournament is None:
+            return await interaction.followup.send(
+                f"Torneo `{torneo}` non trovato.", ephemeral=True
+            )
+
+        msg = await self.service.force_drop_player(
+            tournament.id, giocatore.id
+        )
+
+        if "non trovato" in msg or "non e attivo" in msg or "non iscritto" in msg:
+            return await interaction.followup.send(msg, ephemeral=True)
+
+        embed = discord.Embed(
+            title="\u274c Giocatore Rimosso",
+            description=msg,
+            color=discord.Color.red(),
+            timestamp=datetime.now(),
+        )
+        embed.set_footer(text=f"Torneo ID: {tournament.id}")
+        await interaction.followup.send(embed=embed)
+
+        await self._log(
+            "INFO", "PLAYER_DROPPED", user=interaction.user,
+            info=(
+                f"Giocatore {giocatore.mention} rimosso dal torneo "
+                f"**{tournament.name}** (ID: {tournament.id})."
+            ),
+        )
+
+    @discord.app_commands.command(
+        name="concludi_torneo",
+        description="Concludi forzatamente un torneo attivo"
+    )
+    @is_admin()
+    @discord.app_commands.describe(
+        torneo="ID o nome del torneo da concludere",
+    )
+    async def concludi_torneo(
+        self,
+        interaction: discord.Interaction,
+        torneo: str,
+    ):
+        await interaction.response.defer(ephemeral=False)
+
+        tournament = await self.service.find_tournament(torneo)
+        if tournament is None:
+            return await interaction.followup.send(
+                f"Torneo `{torneo}` non trovato.", ephemeral=True
+            )
+
+        msg = await self.service.force_conclude_tournament(tournament.id)
+
+        if "non trovato" in msg or "non e attivo" in msg:
+            return await interaction.followup.send(msg, ephemeral=True)
+
+        embed = discord.Embed(
+            title="\U0001f3f4 Torneo Concluso",
+            description=msg,
+            color=discord.Color.dark_red(),
+            timestamp=datetime.now(),
+        )
+        embed.set_footer(text=f"Torneo ID: {tournament.id}")
+        await interaction.followup.send(embed=embed)
+
+        await self._log(
+            "INFO", "TOURNAMENT_CONCLUDED", user=interaction.user,
+            info=(
+                f"Torneo **{tournament.name}** (ID: {tournament.id}) "
+                f"concluso forzatamente."
+            ),
         )
 
     @discord.app_commands.command(
@@ -482,40 +723,79 @@ class TournamentSystemCog(commands.Cog):
         description="Inserisci il risultato di una partita"
     )
     @discord.app_commands.describe(
-        match_id="ID della partita",
-        vincitore_id="ID del giocatore vincitore",
-        risultato="win / loss / draw",
+        torneo="ID o nome del torneo (opzionale se uno solo attivo)",
     )
     async def risultato(
         self,
         interaction: discord.Interaction,
-        match_id: int,
-        vincitore_id: int | None = None,
-        risultato: str | None = None,
+        torneo: str | None = None,
     ):
-        await interaction.response.defer(ephemeral=False)
-        msg = await self.service.submit_result(
-            match_id, vincitore_id, risultato
-        )
+        await interaction.response.defer(ephemeral=True)
+
+        tournaments = await self.service.list_tournaments()
+        active = [
+            t for t in tournaments if t.status == TournamentStatus.ACTIVE
+        ]
+        if not active:
+            return await interaction.followup.send("Nessun torneo attivo.", ephemeral=True)
+
+        if torneo:
+            tournament = await self.service.find_tournament(torneo)
+            if tournament is None or tournament.status != TournamentStatus.ACTIVE:
+                return await interaction.followup.send(
+                    f"Torneo `{torneo}` non trovato o non attivo.", ephemeral=True
+                )
+            candidates = [tournament]
+        else:
+            candidates = active
+
+        match = None
+        chosen_tournament = None
+        for t in candidates:
+            m = await self.service.find_pending_match_for_user(
+                t.id, interaction.user.id
+            )
+            if m is not None:
+                match = m
+                chosen_tournament = t
+                break
+
+        if match is None:
+            return await interaction.followup.send(
+                "Nessuna partita in sospeso trovata per te.", ephemeral=True
+            )
 
         embed = discord.Embed(
-            title="\U0001f4dd Risultato Partita",
-            description=msg,
-            color=discord.Color.blue() if "Registrato" in msg else discord.Color.orange(),
+            title=f"\U0001f3b2 Risultato \u2014 {chosen_tournament.name}",
+            color=discord.Color.blue(),
             timestamp=datetime.now(),
         )
-        embed.add_field(name="Match ID", value=f"`{match_id}`", inline=True)
-        if risultato:
-            embed.add_field(name="Risultato", value=risultato.upper(), inline=True)
-        embed.set_footer(text=f"Inserito da {interaction.user.display_name}")
-        await interaction.followup.send(embed=embed)
 
-        await self._log(
-            "INFO" if "Registrato" in msg else "WARN",
-            "MATCH_RESULT",
-            user=interaction.user,
-            info=f"Match {match_id}: {msg}"
+        tp1 = match.player1
+        tp2 = match.player2
+        p1 = self._player_display(tp1)
+        p2 = self._player_display(tp2) if tp2 else "BYE"
+        embed.add_field(
+            name=f"Tavolo {match.table_number} \u2014 Round {match.round_number}",
+            value=f"{p1} vs {p2}",
+            inline=False,
         )
+
+        def find_my_tp(tp1, tp2, discord_id):
+            if tp1 and tp1.user and tp1.user.discord_id == discord_id:
+                return tp1
+            if tp2 and tp2.user and tp2.user.discord_id == discord_id:
+                return tp2
+            return None
+
+        my_tp = find_my_tp(tp1, tp2, interaction.user.id)
+        opponent_tp = tp2 if my_tp is tp1 else tp1
+
+        view = RisultatoView(
+            match, chosen_tournament, self.service,
+            my_tp, opponent_tp, self.bot,
+        )
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     @discord.app_commands.command(
         name="classifica",

@@ -219,6 +219,106 @@ class TournamentService:
         finally:
             await session.close()
 
+    async def force_drop_player(
+        self, tournament_id: int, discord_id: int
+    ) -> str:
+        session, trepo, tprepo, mrepo, urepo = self._get_repos()
+        try:
+            tournament = await trepo.get_by_id(tournament_id)
+            if tournament is None:
+                return "Torneo non trovato."
+            if tournament.status != TournamentStatus.ACTIVE:
+                return "Il torneo non e attivo."
+
+            user = await urepo.get_by_discord_id(discord_id)
+            if user is None:
+                return "Giocatore non trovato."
+
+            tp = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
+            if tp is None or tp.dropped:
+                return "Giocatore non iscritto o gia rimosso."
+
+            current_round = await mrepo.get_current_round(tournament_id)
+            matches = await mrepo.get_by_tournament(tournament_id)
+
+            pending = [
+                m for m in matches
+                if m.round_number == current_round
+                and m.result is None
+                and (m.player1_id == tp.id or m.player2_id == tp.id)
+            ]
+
+            for match in pending:
+                if match.player2_id is None:
+                    continue
+                opponent_id = (
+                    match.player1_id
+                    if match.player2_id == tp.id
+                    else match.player2_id
+                )
+                match.winner_id = opponent_id
+                match.result = MatchResult.WIN
+                session.add(match)
+
+            tp.dropped = True
+            session.add(tp)
+            await session.commit()
+
+            player_name = self._resolve_name(tp)
+            return (
+                f"Giocatore **{player_name}** rimosso dal torneo "
+                f"**{tournament.name}**."
+            )
+        finally:
+            await session.close()
+
+    async def force_conclude_tournament(self, tournament_id: int) -> str:
+        session, trepo, _, _, _ = self._get_repos()
+        try:
+            tournament = await trepo.get_by_id(tournament_id)
+            if tournament is None:
+                return "Torneo non trovato."
+            if tournament.status != TournamentStatus.ACTIVE:
+                return "Il torneo non e attivo."
+
+            tournament.status = TournamentStatus.COMPLETED
+            tournament.ended_at = datetime.now()
+            session.add(tournament)
+            await session.commit()
+
+            return f"Torneo **{tournament.name}** concluso forzatamente."
+        finally:
+            await session.close()
+
+    async def find_pending_match_for_user(
+        self, tournament_id: int, discord_id: int
+    ) -> Match | None:
+        session, _, tprepo, mrepo, urepo = self._get_repos()
+        try:
+            user = await urepo.get_by_discord_id(discord_id)
+            if user is None:
+                return None
+
+            tp = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
+            if tp is None or tp.dropped:
+                return None
+
+            current_round = await mrepo.get_current_round(tournament_id)
+            if current_round == 0:
+                return None
+
+            matches = await mrepo.get_by_tournament(tournament_id)
+            for m in matches:
+                if (
+                    m.round_number == current_round
+                    and m.result is None
+                    and (m.player1_id == tp.id or m.player2_id == tp.id)
+                ):
+                    return m
+            return None
+        finally:
+            await session.close()
+
     async def submit_result(
         self,
         match_id: int,

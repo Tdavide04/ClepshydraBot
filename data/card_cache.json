@@ -1,83 +1,153 @@
 {
   "goblin bushwhacker": {
     "name": "Goblin Bushwhacker",
-    "type_line": "Creature — Goblin Warrior",
+    "type_line": "Creature â€” Goblin Warrior",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A878b6808-48af-4047-ac35-bfc58bf92e7d&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
+      "normal": "https://cards.scryfall.io/normal/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
+      "large": "https://cards.scryfall.io/large/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
+      "png": "https://cards.scryfall.io/png/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/4/0/4085a5bf-a71b-4c73-9b39-0dcc328fe11b.jpg?1562611583"
+    }
   },
   "monstrous rage": {
     "name": "Monstrous Rage",
     "type_line": "Instant",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A646a2371-54c0-4492-ac2f-20f109d6108c&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
+      "normal": "https://cards.scryfall.io/normal/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
+      "large": "https://cards.scryfall.io/large/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
+      "png": "https://cards.scryfall.io/png/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/e/e/eef5a0ae-5907-42c9-a097-3f973737e392.jpg?1752091348"
+    }
   },
   "relic of progenitus": {
     "name": "Relic of Progenitus",
     "type_line": "Artifact",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A6a9c3401-570c-41cb-a605-75dfa57d6ab7&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
+      "normal": "https://cards.scryfall.io/normal/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
+      "large": "https://cards.scryfall.io/large/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
+      "png": "https://cards.scryfall.io/png/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/4/3/436cd66c-0622-43cd-8748-af4d21a2db3f.jpg?1580015265"
+    }
   },
   "voldaren epicure": {
     "name": "Voldaren Epicure",
-    "type_line": "Creature — Vampire",
+    "type_line": "Creature â€” Vampire",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Acef82674-1f61-407b-801b-a76a3803e598&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
+      "normal": "https://cards.scryfall.io/normal/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
+      "large": "https://cards.scryfall.io/large/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
+      "png": "https://cards.scryfall.io/png/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/e/8/e8fe855c-fe94-4de7-a033-9892a9d6ee0e.jpg?1736468269"
+    }
   },
   "cunning coyote": {
     "name": "Cunning Coyote",
-    "type_line": "Creature — Coyote",
+    "type_line": "Creature â€” Coyote",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Aa38eba6a-db90-48ac-bb49-889a7fd90ce9&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
+      "normal": "https://cards.scryfall.io/normal/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
+      "large": "https://cards.scryfall.io/large/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
+      "png": "https://cards.scryfall.io/png/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/5/b/5b4ac6ea-c67b-4f90-be4f-aa25882f5794.jpg?1712355730"
+    }
   },
   "smash to smithereens": {
     "name": "Smash to Smithereens",
     "type_line": "Instant",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Ae0583f29-c344-4b56-b0dc-bef1089a95c7&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
+      "normal": "https://cards.scryfall.io/normal/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
+      "large": "https://cards.scryfall.io/large/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
+      "png": "https://cards.scryfall.io/png/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/6/5/655c489f-bffb-45a4-8e7c-2d1a35220197.jpg?1562023107"
+    }
   },
   "end the festivities": {
     "name": "End the Festivities",
     "type_line": "Sorcery",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A09618da4-6e2d-4047-96d7-0576c0754e7d&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
+      "normal": "https://cards.scryfall.io/normal/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
+      "large": "https://cards.scryfall.io/large/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
+      "png": "https://cards.scryfall.io/png/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/b/e/bec748e6-7245-4a71-aeee-cefed8346948.jpg?1643591154"
+    }
   },
   "ramunap ruins": {
     "name": "Ramunap Ruins",
-    "type_line": "Land — Desert",
+    "type_line": "Land â€” Desert",
     "cmc": 0.0,
-    "image_url": "https://cards.scryfall.io/small/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Ad0d35864-1edc-4af1-9b89-3d7e94908011&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
+      "normal": "https://cards.scryfall.io/normal/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
+      "large": "https://cards.scryfall.io/large/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
+      "png": "https://cards.scryfall.io/png/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/7/2/727beb1f-1445-4398-970c-e31819d54bc6.jpg?1712355094"
+    }
   },
   "lightning bolt": {
     "name": "Lightning Bolt",
     "type_line": "Instant",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A4457ed35-7c10-48c8-9776-456485fdf070&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
+      "normal": "https://cards.scryfall.io/normal/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
+      "large": "https://cards.scryfall.io/large/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
+      "png": "https://cards.scryfall.io/png/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1706239968"
+    }
   },
   "monastery swiftspear": {
     "name": "Monastery Swiftspear",
-    "type_line": "Creature — Human Monk",
+    "type_line": "Creature â€” Human Monk",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Adafd2713-d1bc-474b-b390-d2ff20b5375e&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
+      "normal": "https://cards.scryfall.io/normal/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
+      "large": "https://cards.scryfall.io/large/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
+      "png": "https://cards.scryfall.io/png/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/d/6/d6bfa227-4309-40ed-952c-279595eab17e.jpg?1701690543"
+    }
   },
   "kumano faces kakkazan // etching of kumano": {
     "object": "card",
@@ -100,7 +170,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 1.0,
-    "type_line": "Enchantment — Saga // Enchantment Creature — Human Shaman",
+    "type_line": "Enchantment â€” Saga // Enchantment Creature â€” Human Shaman",
     "color_identity": [
       "R"
     ],
@@ -113,8 +183,8 @@
         "object": "card_face",
         "name": "Kumano Faces Kakkazan",
         "mana_cost": "{R}",
-        "type_line": "Enchantment — Saga",
-        "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — This Saga deals 1 damage to each opponent and each planeswalker they control.\nII — When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+        "type_line": "Enchantment â€” Saga",
+        "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI â€” This Saga deals 1 damage to each opponent and each planeswalker they control.\nII â€” When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII â€” Exile this Saga, then return it to the battlefield transformed under your control.",
         "colors": [
           "R"
         ],
@@ -134,7 +204,7 @@
         "object": "card_face",
         "name": "Etching of Kumano",
         "mana_cost": "",
-        "type_line": "Enchantment Creature — Human Shaman",
+        "type_line": "Enchantment Creature â€” Human Shaman",
         "oracle_text": "Haste\nIf a creature dealt damage this turn by a source you controlled would die, exile it instead.",
         "colors": [
           "R"
@@ -255,67 +325,123 @@
   },
   "heartfire hero": {
     "name": "Heartfire Hero",
-    "type_line": "Creature — Mouse Soldier",
+    "type_line": "Creature â€” Mouse Soldier",
     "cmc": 1.0,
-    "image_url": "https://cards.scryfall.io/small/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A49e1e202-37bf-46ed-93d1-1adb13726039&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
+      "normal": "https://cards.scryfall.io/normal/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
+      "large": "https://cards.scryfall.io/large/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
+      "png": "https://cards.scryfall.io/png/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/4/8/48ace959-66b2-40c8-9bff-fd7ed9c99a82.jpg?1762883283"
+    }
   },
   "magebane lizard": {
     "name": "Magebane Lizard",
-    "type_line": "Creature — Lizard",
+    "type_line": "Creature â€” Lizard",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A0c38f159-367b-4e4b-94cd-bf1b0721c3a8&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
+      "normal": "https://cards.scryfall.io/normal/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
+      "large": "https://cards.scryfall.io/large/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
+      "png": "https://cards.scryfall.io/png/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/6/2/62e12566-375f-4f31-aa91-1b13a96d9ece.jpg?1712355797"
+    }
   },
   "searing blood": {
     "name": "Searing Blood",
     "type_line": "Instant",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A902b82fd-bb18-4833-b427-af8c9751f870&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
+      "normal": "https://cards.scryfall.io/normal/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
+      "large": "https://cards.scryfall.io/large/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
+      "png": "https://cards.scryfall.io/png/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/b/b/bb43fd07-d281-447d-88bf-c53498c2cf20.jpg?1593092367"
+    }
   },
   "amped raptor": {
     "name": "Amped Raptor",
-    "type_line": "Creature — Dinosaur",
+    "type_line": "Creature â€” Dinosaur",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A3ed14ea7-ee62-4604-af3b-deafb00108c3&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
+      "normal": "https://cards.scryfall.io/normal/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
+      "large": "https://cards.scryfall.io/large/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
+      "png": "https://cards.scryfall.io/png/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1734350317"
+    }
   },
   "burning-tree emissary": {
     "name": "Burning-Tree Emissary",
-    "type_line": "Creature — Human Shaman",
+    "type_line": "Creature â€” Human Shaman",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A327d9679-0049-4401-8dab-e0fb362306bd&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
+      "normal": "https://cards.scryfall.io/normal/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
+      "large": "https://cards.scryfall.io/large/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
+      "png": "https://cards.scryfall.io/png/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/b/a/ba327a5e-bd57-4e24-b4b4-062202df30e1.jpg?1673148423"
+    }
   },
   "cast into the fire": {
     "name": "Cast into the Fire",
     "type_line": "Instant",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Ab24ed296-e17d-4e36-8a86-a370868b0136&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
+      "normal": "https://cards.scryfall.io/normal/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
+      "large": "https://cards.scryfall.io/large/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
+      "png": "https://cards.scryfall.io/png/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/2/e/2ef878cb-27b6-47d8-ad11-bd20529b0e7e.jpg?1686968832"
+    }
   },
   "mountain": {
     "name": "Mountain",
-    "type_line": "Basic Land — Mountain",
+    "type_line": "Basic Land â€” Mountain",
     "cmc": 0.0,
-    "image_url": "https://cards.scryfall.io/small/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Aa3fb7228-e76b-4e96-a40e-20b5fed75685&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
+      "normal": "https://cards.scryfall.io/normal/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
+      "large": "https://cards.scryfall.io/large/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
+      "png": "https://cards.scryfall.io/png/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/5/1/51acfb01-4b0b-48fc-9704-a9b4a1e43a23.jpg?1777658413"
+    }
   },
   "reckless pyrosurfer": {
     "name": "Reckless Pyrosurfer",
-    "type_line": "Creature — Human Scout",
+    "type_line": "Creature â€” Human Scout",
     "cmc": 2.0,
-    "image_url": "https://cards.scryfall.io/small/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A65c35934-796c-4495-a6b5-eea654dfcd55&unique=prints",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
+      "normal": "https://cards.scryfall.io/normal/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
+      "large": "https://cards.scryfall.io/large/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
+      "png": "https://cards.scryfall.io/png/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/2/d/2d1bb8ac-7125-4537-b2da-e23a8c28df79.jpg?1717012281"
+    }
   },
   "nowhere to run": {
     "object": "card",
@@ -479,8 +605,8 @@
     },
     "mana_cost": "{1}{U/B}{U/B}",
     "cmc": 3.0,
-    "type_line": "Legendary Planeswalker — Ashiok",
-    "oracle_text": "Spells and abilities your opponents control can't cause their controller to search their library.\n−1: Target player mills four cards. Then exile each opponent's graveyard.",
+    "type_line": "Legendary Planeswalker â€” Ashiok",
+    "oracle_text": "Spells and abilities your opponents control can't cause their controller to search their library.\nâˆ’1: Target player mills four cards. Then exile each opponent's graveyard.",
     "loyalty": "5",
     "colors": [
       "B",
@@ -614,7 +740,7 @@
     "mana_cost": "{B}",
     "cmc": 1.0,
     "type_line": "Instant",
-    "oracle_text": "Destroy target creature if it has mana value 2 or less.\nRevolt — Destroy that creature if it has mana value 4 or less instead if a permanent left the battlefield under your control this turn.",
+    "oracle_text": "Destroy target creature if it has mana value 2 or less.\nRevolt â€” Destroy that creature if it has mana value 4 or less instead if a permanent left the battlefield under your control this turn.",
     "colors": [
       "B"
     ],
@@ -739,7 +865,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Basic Land — Swamp",
+    "type_line": "Basic Land â€” Swamp",
     "oracle_text": "({T}: Add {B}.)",
     "colors": [],
     "color_identity": [
@@ -866,7 +992,7 @@
     },
     "mana_cost": "{1}",
     "cmc": 1.0,
-    "type_line": "Artifact — Food Clue",
+    "type_line": "Artifact â€” Food Clue",
     "oracle_text": "When this artifact enters, scry 2.\n{2}, {T}, Sacrifice this artifact: You gain 3 life and draw a card.",
     "colors": [],
     "color_identity": [],
@@ -926,7 +1052,7 @@
     "collector_number": "243",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Look! Another one! Who cares what Mother said? We'll be home before she gets back.\"\n—Daniela, Edgewall youth",
+    "flavor_text": "\"Look! Another one! Who cares what Mother said? We'll be home before she gets back.\"\nâ€”Daniela, Edgewall youth",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Alix Branwyn",
     "artist_ids": [
@@ -996,7 +1122,7 @@
     },
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Knight",
+    "type_line": "Creature â€” Human Knight",
     "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nYour opponents can't gain life.\n{1}{B}: This creature gets +1/+1 until end of turn.",
     "power": "2",
     "toughness": "2",
@@ -1126,7 +1252,7 @@
     },
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
-    "type_line": "Creature — Bat",
+    "type_line": "Creature â€” Bat",
     "oracle_text": "Flying, lifelink\nWhen this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield.",
     "power": "1",
     "toughness": "1",
@@ -1257,7 +1383,7 @@
     },
     "mana_cost": "{3}{B}{B}",
     "cmc": 5.0,
-    "type_line": "Creature — Zombie",
+    "type_line": "Creature â€” Zombie",
     "oracle_text": "When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way. (Each {B} in the mana costs of permanents you control counts toward your devotion to black.)",
     "power": "2",
     "toughness": "4",
@@ -1441,7 +1567,7 @@
     "collector_number": "119",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"We simply cannot tolerate a petty thief among the servants. I'm afraid I'll have to let you go.\"\n—Rog, steward of House Rillyn",
+    "flavor_text": "\"We simply cannot tolerate a petty thief among the servants. I'm afraid I'll have to let you go.\"\nâ€”Rog, steward of House Rillyn",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Tyler Walpole",
     "artist_ids": [
@@ -1533,7 +1659,7 @@
         "id": "9c8f66e1-4eab-4d51-b10e-9cedd607d709",
         "component": "token",
         "name": "Treasure",
-        "type_line": "Token Artifact — Treasure",
+        "type_line": "Token Artifact â€” Treasure",
         "uri": "https://api.scryfall.com/cards/9c8f66e1-4eab-4d51-b10e-9cedd607d709"
       },
       {
@@ -1660,7 +1786,7 @@
     },
     "mana_cost": "{2}{B}{B}",
     "cmc": 4.0,
-    "type_line": "Creature — Beast Horror",
+    "type_line": "Creature â€” Beast Horror",
     "oracle_text": "When this creature enters, destroy target creature an opponent controls.",
     "power": "2",
     "toughness": "2",
@@ -1787,7 +1913,7 @@
     },
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
-    "type_line": "Enchantment — Class",
+    "type_line": "Enchantment â€” Class",
     "oracle_text": "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, each opponent discards two cards unless they discard a nonland card.\n{B}: Level 2\nAt the beginning of each opponent's upkeep, if that player has one or fewer cards in hand, they lose 2 life.\n{3}{B}: Level 3\nAt the beginning of your draw step, draw an additional card for each opponent who has one or fewer cards in hand.",
     "colors": [
       "B"
@@ -1850,7 +1976,7 @@
     "digital": false,
     "rarity": "uncommon",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Volkan Baǵa",
+    "artist": "Volkan BaÇµa",
     "artist_ids": [
       "93bec3c0-0260-4d31-8064-5d01efb4153f"
     ],
@@ -1928,7 +2054,7 @@
         "colors": [
           "B"
         ],
-        "flavor_text": "\"Those who fail to escape Malakir become part of the city's defense.\"\n—Doros, expedition guide",
+        "flavor_text": "\"Those who fail to escape Malakir become part of the city's defense.\"\nâ€”Doros, expedition guide",
         "artist": "Marta Nael",
         "artist_id": "266ab861-ed64-4ba5-865c-f18758421cc3",
         "illustration_id": "ae64131f-9f7c-4a01-b60b-1831e6ff753a",
@@ -1948,7 +2074,7 @@
         "type_line": "Land",
         "oracle_text": "This land enters tapped.\n{T}: Add {B}.",
         "colors": [],
-        "flavor_text": "\"Getting into Malakir isn't difficult. It's getting out that's the hard part.\"\n—Doros, expedition guide",
+        "flavor_text": "\"Getting into Malakir isn't difficult. It's getting out that's the hard part.\"\nâ€”Doros, expedition guide",
         "artist": "Marta Nael",
         "artist_id": "266ab861-ed64-4ba5-865c-f18758421cc3",
         "illustration_id": "2da93ccb-71e9-4143-a72c-61d02b7a4fa9",
@@ -2092,7 +2218,7 @@
         "colors": [
           "B"
         ],
-        "flavor_text": "\"Those who fail to escape Malakir become part of the city's defense.\"\n—Doros, expedition guide",
+        "flavor_text": "\"Those who fail to escape Malakir become part of the city's defense.\"\nâ€”Doros, expedition guide",
         "artist": "Marta Nael",
         "artist_id": "266ab861-ed64-4ba5-865c-f18758421cc3",
         "illustration_id": "ae64131f-9f7c-4a01-b60b-1831e6ff753a",
@@ -2112,7 +2238,7 @@
         "type_line": "Land",
         "oracle_text": "This land enters tapped.\n{T}: Add {B}.",
         "colors": [],
-        "flavor_text": "\"Getting into Malakir isn't difficult. It's getting out that's the hard part.\"\n—Doros, expedition guide",
+        "flavor_text": "\"Getting into Malakir isn't difficult. It's getting out that's the hard part.\"\nâ€”Doros, expedition guide",
         "artist": "Marta Nael",
         "artist_id": "266ab861-ed64-4ba5-865c-f18758421cc3",
         "illustration_id": "2da93ccb-71e9-4143-a72c-61d02b7a4fa9",
@@ -2280,7 +2406,7 @@
         "color_indicator": [
           "B"
         ],
-        "flavor_text": "\"Slake my thirst so that we both may be free.\"\n—Faded inscription",
+        "flavor_text": "\"Slake my thirst so that we both may be free.\"\nâ€”Faded inscription",
         "artist": "Michael Walsh",
         "artist_id": "6a86bcd5-4829-4bc6-ad82-a4448b28d089",
         "illustration_id": "bc67ead6-11da-4190-a48e-495401cc5e79",
@@ -2443,7 +2569,7 @@
         "color_indicator": [
           "B"
         ],
-        "flavor_text": "\"Slake my thirst so that we both may be free.\"\n—Faded inscription",
+        "flavor_text": "\"Slake my thirst so that we both may be free.\"\nâ€”Faded inscription",
         "artist": "Michael Walsh",
         "artist_id": "6a86bcd5-4829-4bc6-ad82-a4448b28d089",
         "illustration_id": "bc67ead6-11da-4190-a48e-495401cc5e79",
@@ -2571,7 +2697,7 @@
     },
     "mana_cost": "{B}{B}",
     "cmc": 2.0,
-    "type_line": "Creature — Aetherborn Vampire",
+    "type_line": "Creature â€” Aetherborn Vampire",
     "oracle_text": "Deathtouch, lifelink",
     "power": "2",
     "toughness": "3",
@@ -2767,7 +2893,7 @@
     "collector_number": "110",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"That? A minor test, nothing more. Incompleat flesh is weak.\"\n—Jin-Gitaxias",
+    "flavor_text": "\"That? A minor test, nothing more. Incompleat flesh is weak.\"\nâ€”Jin-Gitaxias",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Deruchenko Alexander",
     "artist_ids": [
@@ -2808,7 +2934,7 @@
     },
     "artisan_legal": true
   },
-  "troll of khazad-dûm": {
+  "troll of khazad-dÃ»m": {
     "object": "card",
     "id": "a6539e26-b63b-4725-9407-caaf451de084",
     "oracle_id": "222fd9fc-7af4-4269-bbb9-cd7b8ac029bd",
@@ -2819,7 +2945,7 @@
     "arena_id": 84803,
     "tcgplayer_id": 498752,
     "cardmarket_id": 717000,
-    "name": "Troll of Khazad-dûm",
+    "name": "Troll of Khazad-dÃ»m",
     "lang": "en",
     "released_at": "2023-06-23",
     "uri": "https://api.scryfall.com/cards/a6539e26-b63b-4725-9407-caaf451de084",
@@ -2837,7 +2963,7 @@
     },
     "mana_cost": "{5}{B}",
     "cmc": 6.0,
-    "type_line": "Creature — Troll",
+    "type_line": "Creature â€” Troll",
     "oracle_text": "This creature can't be blocked except by three or more creatures.\nSwampcycling {1} ({1}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)",
     "power": "6",
     "toughness": "5",
@@ -2906,7 +3032,7 @@
     "collector_number": "111",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"A great cave-troll, I think. There is no hope of escape that way.\"\n—Gandalf",
+    "flavor_text": "\"A great cave-troll, I think. There is no hope of escape that way.\"\nâ€”Gandalf",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Simon Dominic",
     "artist_ids": [
@@ -3112,7 +3238,7 @@
     },
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
-    "type_line": "Enchantment — Aura Curse",
+    "type_line": "Enchantment â€” Aura Curse",
     "oracle_text": "Enchant player\nWhenever a creature enchanted player controls enters, that player loses 1 life and you gain 1 life.",
     "colors": [
       "B"
@@ -3238,7 +3364,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Swamp Forest",
+    "type_line": "Land â€” Swamp Forest",
     "oracle_text": "({T}: Add {B} or {G}.)\nThis land enters tapped.",
     "colors": [],
     "color_identity": [
@@ -3377,7 +3503,7 @@
           "B",
           "G"
         ],
-        "flavor_text": "\"Today, we feast! Tomorrow, we fight! Then, we feast again!\"\n—Harald, king of Skemfar",
+        "flavor_text": "\"Today, we feast! Tomorrow, we fight! Then, we feast again!\"\nâ€”Harald, king of Skemfar",
         "artist": "Raoul Vitale",
         "artist_id": "c7c15d49-f84b-4d98-9a34-e80e8347b756",
         "illustration_id": "ade72946-5b69-43f3-8412-24091884ab18",
@@ -3542,7 +3668,7 @@
           "B",
           "G"
         ],
-        "flavor_text": "\"Today, we feast! Tomorrow, we fight! Then, we feast again!\"\n—Harald, king of Skemfar",
+        "flavor_text": "\"Today, we feast! Tomorrow, we fight! Then, we feast again!\"\nâ€”Harald, king of Skemfar",
         "artist": "Raoul Vitale",
         "artist_id": "c7c15d49-f84b-4d98-9a34-e80e8347b756",
         "illustration_id": "ade72946-5b69-43f3-8412-24091884ab18",
@@ -3853,7 +3979,7 @@
         "id": "4a029bdc-92e3-4d85-8af5-e33429a5f017",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/4a029bdc-92e3-4d85-8af5-e33429a5f017"
       }
     ],
@@ -3910,7 +4036,7 @@
     "collector_number": "176",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"For you in all the lands of the West there will ever be a welcome, dearest friend.\"\n—Aragorn",
+    "flavor_text": "\"For you in all the lands of the West there will ever be a welcome, dearest friend.\"\nâ€”Aragorn",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Dmitry Burmak",
     "artist_ids": [
@@ -3979,7 +4105,7 @@
     },
     "mana_cost": "{2}{B}",
     "cmc": 3.0,
-    "type_line": "Creature — Elf Warrior",
+    "type_line": "Creature â€” Elf Warrior",
     "oracle_text": "Whenever a token you control leaves the battlefield, each opponent loses 1 life and you gain 1 life.",
     "power": "1",
     "toughness": "3",
@@ -4108,7 +4234,7 @@
     },
     "mana_cost": "{2}{G}",
     "cmc": 3.0,
-    "type_line": "Legendary Creature — Halfling Citizen",
+    "type_line": "Legendary Creature â€” Halfling Citizen",
     "oracle_text": "If one or more tokens would be created under your control, those tokens plus an additional Food token are created instead. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nSacrifice three Foods: Draw a card.",
     "power": "2",
     "toughness": "3",
@@ -4127,7 +4253,7 @@
         "id": "3c8b8eef-d150-4610-8428-d8ea75eeb80a",
         "component": "combo_piece",
         "name": "Peregrin Took",
-        "type_line": "Legendary Creature — Halfling Citizen",
+        "type_line": "Legendary Creature â€” Halfling Citizen",
         "uri": "https://api.scryfall.com/cards/3c8b8eef-d150-4610-8428-d8ea75eeb80a"
       },
       {
@@ -4135,7 +4261,7 @@
         "id": "4a029bdc-92e3-4d85-8af5-e33429a5f017",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/4a029bdc-92e3-4d85-8af5-e33429a5f017"
       }
     ],
@@ -4391,7 +4517,7 @@
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Exile target creature if it has mana value 3 or less.\nCorrupted — Exile that creature instead if its controller has three or more poison counters.",
+    "oracle_text": "Exile target creature if it has mana value 3 or less.\nCorrupted â€” Exile that creature instead if its controller has three or more poison counters.",
     "colors": [
       "B"
     ],
@@ -4523,7 +4649,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Forest",
+    "type_line": "Land â€” Forest",
     "oracle_text": "({T}: Add {G}.)\nThis land enters tapped unless you control three or more other Forests.\nWhen this land enters untapped, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
     "colors": [],
     "color_identity": [
@@ -4541,7 +4667,7 @@
         "id": "965bef73-eb93-4512-91b4-bf2ce7d27d42",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/965bef73-eb93-4512-91b4-bf2ce7d27d42"
       },
       {
@@ -4549,7 +4675,7 @@
         "id": "3b583cc8-95e6-4772-afe3-d405b65836e0",
         "component": "combo_piece",
         "name": "Gingerbread Cabin",
-        "type_line": "Land — Forest",
+        "type_line": "Land â€” Forest",
         "uri": "https://api.scryfall.com/cards/3b583cc8-95e6-4772-afe3-d405b65836e0"
       }
     ],
@@ -4798,7 +4924,7 @@
     },
     "mana_cost": "{B}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Squirrel Druid",
+    "type_line": "Creature â€” Squirrel Druid",
     "oracle_text": "When this creature enters or dies, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
     "power": "3",
     "toughness": "2",
@@ -4819,7 +4945,7 @@
         "id": "0dce2241-e58b-41d4-b57c-9794fc8ee004",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/0dce2241-e58b-41d4-b57c-9794fc8ee004"
       },
       {
@@ -4827,7 +4953,7 @@
         "id": "29b615ba-45c4-42a1-8525-1535f0b55300",
         "component": "combo_piece",
         "name": "Vinereap Mentor",
-        "type_line": "Creature — Squirrel Druid",
+        "type_line": "Creature â€” Squirrel Druid",
         "uri": "https://api.scryfall.com/cards/29b615ba-45c4-42a1-8525-1535f0b55300"
       }
     ],
@@ -4954,7 +5080,7 @@
     },
     "mana_cost": "{2}{B}",
     "cmc": 3.0,
-    "type_line": "Creature — Human Peasant",
+    "type_line": "Creature â€” Human Peasant",
     "oracle_text": "When this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you sacrifice a Food, create a 1/1 black Rat creature token with \"This token can't block.\"",
     "power": "2",
     "toughness": "3",
@@ -4973,7 +5099,7 @@
         "id": "49aaf5db-9418-4b97-97da-736c674905d4",
         "component": "combo_piece",
         "name": "Experimental Confectioner",
-        "type_line": "Creature — Human Peasant",
+        "type_line": "Creature â€” Human Peasant",
         "uri": "https://api.scryfall.com/cards/49aaf5db-9418-4b97-97da-736c674905d4"
       },
       {
@@ -4981,7 +5107,7 @@
         "id": "f67727b7-819c-4e96-aa8e-1e01ecaf9f33",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/f67727b7-819c-4e96-aa8e-1e01ecaf9f33"
       },
       {
@@ -4989,7 +5115,7 @@
         "id": "1e0205f2-25c1-403b-b408-56e3f2d63b4d",
         "component": "token",
         "name": "Rat",
-        "type_line": "Token Creature — Rat",
+        "type_line": "Token Creature â€” Rat",
         "uri": "https://api.scryfall.com/cards/1e0205f2-25c1-403b-b408-56e3f2d63b4d"
       }
     ],
@@ -5132,7 +5258,7 @@
         "id": "e32795e1-5548-43ef-8cd6-c605a19ef708",
         "component": "token",
         "name": "Eldrazi Spawn",
-        "type_line": "Token Creature — Eldrazi Spawn",
+        "type_line": "Token Creature â€” Eldrazi Spawn",
         "uri": "https://api.scryfall.com/cards/e32795e1-5548-43ef-8cd6-c605a19ef708"
       },
       {
@@ -5199,7 +5325,7 @@
     "rarity": "common",
     "flavor_text": "What emerged from Turntimber was even more twisted than the forest itself.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Néstor Ossandón Leal",
+    "artist": "NÃ©stor OssandÃ³n Leal",
     "artist_ids": [
       "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
     ],
@@ -5256,7 +5382,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Basic Land — Forest",
+    "type_line": "Basic Land â€” Forest",
     "oracle_text": "({T}: Add {G}.)",
     "colors": [],
     "color_identity": [
@@ -5272,7 +5398,7 @@
         "id": "5f533364-0f91-4e49-aaeb-83c4c1f6d316",
         "component": "combo_piece",
         "name": "Forest",
-        "type_line": "Basic Land — Forest",
+        "type_line": "Basic Land â€” Forest",
         "uri": "https://api.scryfall.com/cards/5f533364-0f91-4e49-aaeb-83c4c1f6d316"
       },
       {
@@ -5280,7 +5406,7 @@
         "id": "aed8ae06-ae54-4a16-8830-6547164ce6ae",
         "component": "combo_piece",
         "name": "Gilt-Leaf Alchemist",
-        "type_line": "Creature — Elf Druid",
+        "type_line": "Creature â€” Elf Druid",
         "uri": "https://api.scryfall.com/cards/aed8ae06-ae54-4a16-8830-6547164ce6ae"
       }
     ],
@@ -5402,7 +5528,7 @@
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Choose one —\n• Destroy target creature with flying.\n• Destroy target enchantment.\n• Draw a card. Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+    "oracle_text": "Choose one â€”\nâ€¢ Destroy target creature with flying.\nâ€¢ Destroy target enchantment.\nâ€¢ Draw a card. Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
     "colors": [
       "G"
     ],
@@ -5418,7 +5544,7 @@
         "id": "0dce2241-e58b-41d4-b57c-9794fc8ee004",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/0dce2241-e58b-41d4-b57c-9794fc8ee004"
       },
       {
@@ -5552,7 +5678,7 @@
     },
     "mana_cost": "{5}{G}",
     "cmc": 6.0,
-    "type_line": "Creature — Treefolk",
+    "type_line": "Creature â€” Treefolk",
     "oracle_text": "Reach\nWhen this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nForestcycling {1} ({1}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand, then shuffle.)",
     "power": "5",
     "toughness": "7",
@@ -5576,7 +5702,7 @@
         "id": "4a029bdc-92e3-4d85-8af5-e33429a5f017",
         "component": "token",
         "name": "Food",
-        "type_line": "Token Artifact — Food",
+        "type_line": "Token Artifact â€” Food",
         "uri": "https://api.scryfall.com/cards/4a029bdc-92e3-4d85-8af5-e33429a5f017"
       },
       {
@@ -5584,7 +5710,7 @@
         "id": "ffabb307-87f0-428b-a4dc-a147c6c926a8",
         "component": "combo_piece",
         "name": "Generous Ent",
-        "type_line": "Creature — Treefolk",
+        "type_line": "Creature â€” Treefolk",
         "uri": "https://api.scryfall.com/cards/ffabb307-87f0-428b-a4dc-a147c6c926a8"
       }
     ],
@@ -5708,7 +5834,7 @@
     },
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Artificer",
+    "type_line": "Creature â€” Human Artificer",
     "oracle_text": "Fabricate 1 (When this creature enters, put a +1/+1 counter on it or create a 1/1 colorless Servo artifact creature token.)\nWhenever another creature or artifact you control is put into a graveyard from the battlefield, each opponent loses 1 life.",
     "power": "1",
     "toughness": "2",
@@ -5727,7 +5853,7 @@
         "id": "22b5a3dd-0b5a-434e-afee-a83b0279fd15",
         "component": "combo_piece",
         "name": "Marionette Apprentice",
-        "type_line": "Creature — Human Artificer",
+        "type_line": "Creature â€” Human Artificer",
         "uri": "https://api.scryfall.com/cards/22b5a3dd-0b5a-434e-afee-a83b0279fd15"
       },
       {
@@ -5735,7 +5861,7 @@
         "id": "23165814-3eb8-4d94-b9c8-ecc798afe7a0",
         "component": "token",
         "name": "Servo",
-        "type_line": "Token Artifact Creature — Servo",
+        "type_line": "Token Artifact Creature â€” Servo",
         "uri": "https://api.scryfall.com/cards/23165814-3eb8-4d94-b9c8-ecc798afe7a0"
       }
     ],
@@ -6138,7 +6264,7 @@
         "id": "a6f374bc-cd29-469f-808a-6a6c004ee8aa",
         "component": "token",
         "name": "Blood",
-        "type_line": "Token Artifact — Blood",
+        "type_line": "Token Artifact â€” Blood",
         "uri": "https://api.scryfall.com/cards/a6f374bc-cd29-469f-808a-6a6c004ee8aa"
       },
       {
@@ -6396,7 +6522,7 @@
     },
     "mana_cost": "{B}{R}",
     "cmc": 2.0,
-    "type_line": "Artifact — Equipment",
+    "type_line": "Artifact â€” Equipment",
     "oracle_text": "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)\nEquipped creature gets +X/+1, where X is the number of artifacts you control.\nEquip {2}",
     "colors": [
       "B",
@@ -6416,7 +6542,7 @@
         "id": "5ec719dc-6b07-4b1d-a79c-84ebced33422",
         "component": "token",
         "name": "Phyrexian Germ",
-        "type_line": "Token Creature — Phyrexian Germ",
+        "type_line": "Token Creature â€” Phyrexian Germ",
         "uri": "https://api.scryfall.com/cards/5ec719dc-6b07-4b1d-a79c-84ebced33422"
       },
       {
@@ -6424,7 +6550,7 @@
         "id": "62993aa2-4804-43cc-910a-c51e794f8508",
         "component": "combo_piece",
         "name": "Cranial Ram",
-        "type_line": "Artifact — Equipment",
+        "type_line": "Artifact â€” Equipment",
         "uri": "https://api.scryfall.com/cards/62993aa2-4804-43cc-910a-c51e794f8508"
       }
     ],
@@ -6613,7 +6739,7 @@
     "collector_number": "120",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "Restricted auctions are held once a year at the Dragon's Lair—the sacred, neutral meeting ground of all Reckoner gangs.",
+    "flavor_text": "Restricted auctions are held once a year at the Dragon's Lairâ€”the sacred, neutral meeting ground of all Reckoner gangs.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Justine Cruz",
     "artist_ids": [
@@ -6874,7 +7000,7 @@
     "collector_number": "606",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Give of yourself, for *compleation* awaits the cleansed.\"\n—Nokar, priest of Sheoldred",
+    "flavor_text": "\"Give of yourself, for *compleation* awaits the cleansed.\"\nâ€”Nokar, priest of Sheoldred",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "PINDURSKI",
     "artist_ids": [
@@ -7003,7 +7129,7 @@
     "collector_number": "76",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"I said we should destroy the Eldrazi. Ugin wanted to return them to stasis. Ugin's arguments were . . . unconvincing.\"\n—Jace Beleren",
+    "flavor_text": "\"I said we should destroy the Eldrazi. Ugin wanted to return them to stasis. Ugin's arguments were . . . unconvincing.\"\nâ€”Jace Beleren",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Chase Stone",
     "artist_ids": [
@@ -7068,7 +7194,7 @@
     },
     "mana_cost": "{3}{B}",
     "cmc": 4.0,
-    "type_line": "Artifact Creature — Zombie Rat",
+    "type_line": "Artifact Creature â€” Zombie Rat",
     "oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nFlying\nWhen this creature enters, each opponent discards a card. For each opponent who can't, you draw a card.",
     "power": "2",
     "toughness": "1",
@@ -7191,7 +7317,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 2.0,
-    "type_line": "Artifact // Land — Cave",
+    "type_line": "Artifact // Land â€” Cave",
     "color_identity": [
       "R"
     ],
@@ -7211,7 +7337,7 @@
         "colors": [
           "R"
         ],
-        "flavor_text": "\"A little innovation can lead to a big score.\"\n—Admiral Beckett Brass",
+        "flavor_text": "\"A little innovation can lead to a big score.\"\nâ€”Admiral Beckett Brass",
         "artist": "Olena Richards",
         "artist_id": "fad4282c-49d1-4b5b-be1d-713369fc8bc8",
         "illustration_id": "120a82bc-0bff-458a-8b16-21dd798dd873",
@@ -7228,7 +7354,7 @@
         "object": "card_face",
         "name": "Geode Grotto",
         "mana_cost": "",
-        "type_line": "Land — Cave",
+        "type_line": "Land â€” Cave",
         "oracle_text": "(Transforms from Dowsing Device.)\n{T}: Add {R}.\n{2}{R}, {T}: Until end of turn, target creature gains haste and gets +X/+0, where X is the number of artifacts you control. Activate only as a sorcery.",
         "colors": [],
         "artist": "Olena Richards",
@@ -7356,7 +7482,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 2.0,
-    "type_line": "Artifact // Land — Cave",
+    "type_line": "Artifact // Land â€” Cave",
     "color_identity": [
       "R"
     ],
@@ -7376,7 +7502,7 @@
         "colors": [
           "R"
         ],
-        "flavor_text": "\"A little innovation can lead to a big score.\"\n—Admiral Beckett Brass",
+        "flavor_text": "\"A little innovation can lead to a big score.\"\nâ€”Admiral Beckett Brass",
         "artist": "Olena Richards",
         "artist_id": "fad4282c-49d1-4b5b-be1d-713369fc8bc8",
         "illustration_id": "120a82bc-0bff-458a-8b16-21dd798dd873",
@@ -7393,7 +7519,7 @@
         "object": "card_face",
         "name": "Geode Grotto",
         "mana_cost": "",
-        "type_line": "Land — Cave",
+        "type_line": "Land â€” Cave",
         "oracle_text": "(Transforms from Dowsing Device.)\n{T}: Add {R}.\n{2}{R}, {T}: Until end of turn, target creature gains haste and gets +X/+0, where X is the number of artifacts you control. Activate only as a sorcery.",
         "colors": [],
         "artist": "Olena Richards",
@@ -7529,7 +7655,7 @@
     "mana_cost": "{R}",
     "cmc": 1.0,
     "type_line": "Instant",
-    "oracle_text": "Galvanic Blast deals 2 damage to any target.\nMetalcraft — Galvanic Blast deals 4 damage instead if you control three or more artifacts.",
+    "oracle_text": "Galvanic Blast deals 2 damage to any target.\nMetalcraft â€” Galvanic Blast deals 4 damage instead if you control three or more artifacts.",
     "colors": [
       "R"
     ],
@@ -7659,7 +7785,7 @@
     },
     "mana_cost": "{1}{R}",
     "cmc": 2.0,
-    "type_line": "Creature — Gremlin",
+    "type_line": "Creature â€” Gremlin",
     "oracle_text": "Sacrifice an artifact: This creature gets +2/+2 until end of turn.",
     "power": "1",
     "toughness": "2",
@@ -7722,7 +7848,7 @@
     "collector_number": "141",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"I've made some fine acquisitions of late, so I'm planning to make commensurate improvements to my security systems. I have a consultant coming tomorrow.\"\n—Kurna Majan, Luminary League",
+    "flavor_text": "\"I've made some fine acquisitions of late, so I'm planning to make commensurate improvements to my security systems. I have a consultant coming tomorrow.\"\nâ€”Kurna Majan, Luminary League",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Mathias Kollros",
     "artist_ids": [
@@ -7847,7 +7973,7 @@
     "collector_number": "245",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Our glorious infection has taken hold.\"\n—Elesh Norn, Grand Cenobite",
+    "flavor_text": "\"Our glorious infection has taken hold.\"\nâ€”Elesh Norn, Grand Cenobite",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Steven Belledin",
     "artist_ids": [
@@ -7974,9 +8100,9 @@
     "collector_number": "149",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"In my younger days, I would meticulously catalog all the terrors I encountered. These days, I mostly just kill them with fire.\"\n—Rip, spawn hunter",
+    "flavor_text": "\"In my younger days, I would meticulously catalog all the terrors I encountered. These days, I mostly just kill them with fire.\"\nâ€”Rip, spawn hunter",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Néstor Ossandón Leal",
+    "artist": "NÃ©stor OssandÃ³n Leal",
     "artist_ids": [
       "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
     ],
@@ -8296,7 +8422,7 @@
     "mana_cost": "{1}{R}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Target creature gains double strike until end of turn.\nFerocious — That creature also gains trample until end of turn if you control a creature with power 4 or greater.",
+    "oracle_text": "Target creature gains double strike until end of turn.\nFerocious â€” That creature also gains trample until end of turn if you control a creature with power 4 or greater.",
     "colors": [
       "R"
     ],
@@ -8741,7 +8867,7 @@
     "collector_number": "59",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Too little, too late. The machine is in motion.\"\n—Tezzeret",
+    "flavor_text": "\"Too little, too late. The machine is in motion.\"\nâ€”Tezzeret",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Eric Deschamps",
     "artist_ids": [
@@ -8806,8 +8932,8 @@
     },
     "mana_cost": "{7}",
     "cmc": 7.0,
-    "type_line": "Artifact Creature — Frog Myr",
-    "oracle_text": "Prototype {3}{R} — 2/2 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nAffinity for artifacts (This spell costs {1} less to cast for each artifact you control.)",
+    "type_line": "Artifact Creature â€” Frog Myr",
+    "oracle_text": "Prototype {3}{R} â€” 2/2 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nAffinity for artifacts (This spell costs {1} less to cast for each artifact you control.)",
     "power": "4",
     "toughness": "4",
     "colors": [],
@@ -9067,7 +9193,7 @@
     },
     "mana_cost": "{3}",
     "cmc": 3.0,
-    "type_line": "Artifact Creature — Insect",
+    "type_line": "Artifact Creature â€” Insect",
     "oracle_text": "When this creature enters, you gain 2 life.\nWhen this creature leaves the battlefield, draw a card.",
     "power": "2",
     "toughness": "3",
@@ -9080,7 +9206,7 @@
         "id": "defaeb68-3f8a-4740-b13f-8c71c7e9c8b4",
         "component": "combo_piece",
         "name": "Circuit Mender",
-        "type_line": "Artifact Creature — Insect",
+        "type_line": "Artifact Creature â€” Insect",
         "uri": "https://api.scryfall.com/cards/defaeb68-3f8a-4740-b13f-8c71c7e9c8b4"
       },
       {
@@ -9088,7 +9214,7 @@
         "id": "6a93c43b-0604-47fa-ae4e-4f72d342acf9",
         "component": "combo_piece",
         "name": "A-Circuit Mender",
-        "type_line": "Artifact Creature — Insect",
+        "type_line": "Artifact Creature â€” Insect",
         "uri": "https://api.scryfall.com/cards/6a93c43b-0604-47fa-ae4e-4f72d342acf9"
       }
     ],
@@ -9215,7 +9341,7 @@
     },
     "mana_cost": "{U}{R}",
     "cmc": 2.0,
-    "type_line": "Artifact Creature — Drake",
+    "type_line": "Artifact Creature â€” Drake",
     "oracle_text": "Flying\nWhen this creature enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice an artifact, put a +1/+1 counter on this creature.",
     "power": "1",
     "toughness": "1",
@@ -9237,7 +9363,7 @@
         "id": "ef607895-d6d2-44ab-a6b4-84af55fce593",
         "component": "token",
         "name": "Clue",
-        "type_line": "Token Artifact — Clue",
+        "type_line": "Token Artifact â€” Clue",
         "uri": "https://api.scryfall.com/cards/ef607895-d6d2-44ab-a6b4-84af55fce593"
       },
       {
@@ -9245,7 +9371,7 @@
         "id": "00b6cd91-8178-4c5c-9cb1-f3d970fe3b03",
         "component": "combo_piece",
         "name": "Gleaming Geardrake",
-        "type_line": "Artifact Creature — Drake",
+        "type_line": "Artifact Creature â€” Drake",
         "uri": "https://api.scryfall.com/cards/00b6cd91-8178-4c5c-9cb1-f3d970fe3b03"
       }
     ],
@@ -9391,7 +9517,7 @@
         "id": "64839118-09d2-4645-9d3c-f80755ac781f",
         "component": "token",
         "name": "Map",
-        "type_line": "Token Artifact — Map",
+        "type_line": "Token Artifact â€” Map",
         "uri": "https://api.scryfall.com/cards/64839118-09d2-4645-9d3c-f80755ac781f"
       }
     ],
@@ -9513,8 +9639,8 @@
     },
     "mana_cost": "{2}{R}",
     "cmc": 3.0,
-    "type_line": "Creature — Ape",
-    "oracle_text": "Reach\nWhen this creature enters, choose one —\n• Destroy up to one target artifact.\n• Sacrifice an artifact. If you do, put two +1/+1 counters on this creature.",
+    "type_line": "Creature â€” Ape",
+    "oracle_text": "Reach\nWhen this creature enters, choose one â€”\nâ€¢ Destroy up to one target artifact.\nâ€¢ Sacrifice an artifact. If you do, put two +1/+1 counters on this creature.",
     "power": "2",
     "toughness": "2",
     "colors": [
@@ -9579,7 +9705,7 @@
     "collector_number": "129",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"In her defense, thopters are very fun to smash.\"\n—Udol of the Foundway Associates",
+    "flavor_text": "\"In her defense, thopters are very fun to smash.\"\nâ€”Udol of the Foundway Associates",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Svetlin Velinov",
     "artist_ids": [
@@ -9649,7 +9775,7 @@
     },
     "mana_cost": "{2}{U}",
     "cmc": 3.0,
-    "type_line": "Enchantment — Aura",
+    "type_line": "Enchantment â€” Aura",
     "oracle_text": "Enchant artifact\nEnchanted artifact is a Golem creature with base power and toughness 5/4 in addition to its other types.\nWhen this Aura is put into a graveyard from the battlefield, discover 3.",
     "colors": [
       "U"
@@ -9784,7 +9910,7 @@
     "mana_cost": "{2}{B}",
     "cmc": 3.0,
     "type_line": "Sorcery",
-    "oracle_text": "Choose one —\n• Exile target Zombie.\n• Target opponent exiles two cards from their hand.",
+    "oracle_text": "Choose one â€”\nâ€¢ Exile target Zombie.\nâ€¢ Target opponent exiles two cards from their hand.",
     "colors": [
       "B"
     ],
@@ -9845,7 +9971,7 @@
     "collector_number": "92",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Works every time.\"\n—Halana, Kessig ranger",
+    "flavor_text": "\"Works every time.\"\nâ€”Halana, Kessig ranger",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Zoltan Boros",
     "artist_ids": [
@@ -10054,7 +10180,7 @@
         "id": "2770f887-7e96-44d1-864a-8c0504a39785",
         "component": "token",
         "name": "Construct",
-        "type_line": "Token Artifact Creature — Construct",
+        "type_line": "Token Artifact Creature â€” Construct",
         "uri": "https://api.scryfall.com/cards/2770f887-7e96-44d1-864a-8c0504a39785"
       },
       {
@@ -10189,7 +10315,7 @@
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
     "type_line": "Sorcery",
-    "oracle_text": "Choose one —\n• Target opponent reveals their hand. You may choose a creature, enchantment, or planeswalker card from it. That player discards that card.\n• Target opponent sacrifices an enchantment of their choice.",
+    "oracle_text": "Choose one â€”\nâ€¢ Target opponent reveals their hand. You may choose a creature, enchantment, or planeswalker card from it. That player discards that card.\nâ€¢ Target opponent sacrifices an enchantment of their choice.",
     "colors": [
       "B"
     ],
@@ -10313,7 +10439,7 @@
     },
     "mana_cost": "{B}{R}",
     "cmc": 2.0,
-    "type_line": "Creature — Vampire",
+    "type_line": "Creature â€” Vampire",
     "oracle_text": "When this creature enters, create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")\n{T}, Sacrifice this creature: Target creature gets -X/-X until end of turn, where X is twice the number of Blood tokens you control. Activate only as a sorcery.",
     "power": "3",
     "toughness": "2",
@@ -10332,7 +10458,7 @@
         "id": "92a3afe7-bd9f-43f9-adc3-4819e60dc7a5",
         "component": "token",
         "name": "Blood",
-        "type_line": "Token Artifact — Blood",
+        "type_line": "Token Artifact â€” Blood",
         "uri": "https://api.scryfall.com/cards/92a3afe7-bd9f-43f9-adc3-4819e60dc7a5"
       },
       {
@@ -10340,7 +10466,7 @@
         "id": "5d0fb1bd-5020-45b7-8046-c586e3056058",
         "component": "combo_piece",
         "name": "Bloodtithe Harvester",
-        "type_line": "Creature — Vampire",
+        "type_line": "Creature â€” Vampire",
         "uri": "https://api.scryfall.com/cards/5d0fb1bd-5020-45b7-8046-c586e3056058"
       }
     ],
@@ -10460,7 +10586,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Basic Land — Island",
+    "type_line": "Basic Land â€” Island",
     "oracle_text": "({T}: Add {U}.)",
     "colors": [],
     "color_identity": [
@@ -10736,7 +10862,7 @@
         "id": "f68e5337-6e44-4f8f-a102-2f97b433beea",
         "component": "token",
         "name": "Samurai",
-        "type_line": "Token Creature — Samurai",
+        "type_line": "Token Creature â€” Samurai",
         "uri": "https://api.scryfall.com/cards/f68e5337-6e44-4f8f-a102-2f97b433beea"
       }
     ],
@@ -10988,7 +11114,7 @@
     },
     "mana_cost": "{U}",
     "cmc": 1.0,
-    "type_line": "Creature — Siren Pirate",
+    "type_line": "Creature â€” Siren Pirate",
     "oracle_text": "Flying\nWhen this creature enters, create a Map token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")",
     "power": "1",
     "toughness": "1",
@@ -11008,7 +11134,7 @@
         "id": "24643b00-9062-42bd-9ecd-f6990ddbca91",
         "component": "combo_piece",
         "name": "Spyglass Siren",
-        "type_line": "Creature — Siren Pirate",
+        "type_line": "Creature â€” Siren Pirate",
         "uri": "https://api.scryfall.com/cards/24643b00-9062-42bd-9ecd-f6990ddbca91"
       },
       {
@@ -11016,7 +11142,7 @@
         "id": "64839118-09d2-4645-9d3c-f80755ac781f",
         "component": "token",
         "name": "Map",
-        "type_line": "Token Artifact — Map",
+        "type_line": "Token Artifact â€” Map",
         "uri": "https://api.scryfall.com/cards/64839118-09d2-4645-9d3c-f80755ac781f"
       }
     ],
@@ -11204,7 +11330,7 @@
     "collector_number": "106",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"Now, where is that deputy?\"\n—Jana, Hellspur thunderslinger",
+    "flavor_text": "\"Now, where is that deputy?\"\nâ€”Jana, Hellspur thunderslinger",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Fariba Khamseh",
     "artist_ids": [
@@ -11463,7 +11589,7 @@
     "collector_number": "234",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Raw energy contains infinite possibility.\"\n—Urza",
+    "flavor_text": "\"Raw energy contains infinite possibility.\"\nâ€”Urza",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Maria Poliakova",
     "artist_ids": [
@@ -11550,7 +11676,7 @@
         "id": "84fcc620-a467-47ce-bbbe-387bad7619ab",
         "component": "token",
         "name": "Plant",
-        "type_line": "Token Creature — Plant",
+        "type_line": "Token Creature â€” Plant",
         "uri": "https://api.scryfall.com/cards/84fcc620-a467-47ce-bbbe-387bad7619ab"
       }
     ],
@@ -11666,7 +11792,7 @@
     },
     "mana_cost": "{B} // {1}{B}",
     "cmc": 1.0,
-    "type_line": "Artifact — Equipment // Instant — Adventure",
+    "type_line": "Artifact â€” Equipment // Instant â€” Adventure",
     "colors": [
       "B"
     ],
@@ -11681,7 +11807,7 @@
         "object": "card_face",
         "name": "Ghost Lantern",
         "mana_cost": "{B}",
-        "type_line": "Artifact — Equipment",
+        "type_line": "Artifact â€” Equipment",
         "oracle_text": "Whenever a creature you control dies, put a +1/+1 counter on equipped creature.\nEquip {1}",
         "artist": "Julian Kok Joon Wen",
         "artist_id": "7f1868e3-325f-4df9-8f27-a381fed4f0fc",
@@ -11691,7 +11817,7 @@
         "object": "card_face",
         "name": "Bind Spirit",
         "mana_cost": "{1}{B}",
-        "type_line": "Instant — Adventure",
+        "type_line": "Instant â€” Adventure",
         "oracle_text": "Return target creature card from your graveyard to your hand. (Then exile this card. You may cast the artifact later from exile.)",
         "artist": "Julian Kok Joon Wen",
         "artist_id": "7f1868e3-325f-4df9-8f27-a381fed4f0fc"
@@ -11703,7 +11829,7 @@
         "id": "f2bde2d6-7c2a-4566-a45a-ccdbbed039b7",
         "component": "combo_piece",
         "name": "Ghost Lantern // Bind Spirit",
-        "type_line": "Artifact — Equipment // Instant — Adventure",
+        "type_line": "Artifact â€” Equipment // Instant â€” Adventure",
         "uri": "https://api.scryfall.com/cards/f2bde2d6-7c2a-4566-a45a-ccdbbed039b7"
       },
       {
@@ -11833,7 +11959,7 @@
     },
     "mana_cost": "{B} // {1}{B}",
     "cmc": 1.0,
-    "type_line": "Artifact — Equipment // Instant — Adventure",
+    "type_line": "Artifact â€” Equipment // Instant â€” Adventure",
     "colors": [
       "B"
     ],
@@ -11848,7 +11974,7 @@
         "object": "card_face",
         "name": "Ghost Lantern",
         "mana_cost": "{B}",
-        "type_line": "Artifact — Equipment",
+        "type_line": "Artifact â€” Equipment",
         "oracle_text": "Whenever a creature you control dies, put a +1/+1 counter on equipped creature.\nEquip {1}",
         "artist": "Julian Kok Joon Wen",
         "artist_id": "7f1868e3-325f-4df9-8f27-a381fed4f0fc",
@@ -11858,7 +11984,7 @@
         "object": "card_face",
         "name": "Bind Spirit",
         "mana_cost": "{1}{B}",
-        "type_line": "Instant — Adventure",
+        "type_line": "Instant â€” Adventure",
         "oracle_text": "Return target creature card from your graveyard to your hand. (Then exile this card. You may cast the artifact later from exile.)",
         "artist": "Julian Kok Joon Wen",
         "artist_id": "7f1868e3-325f-4df9-8f27-a381fed4f0fc"
@@ -11870,7 +11996,7 @@
         "id": "f2bde2d6-7c2a-4566-a45a-ccdbbed039b7",
         "component": "combo_piece",
         "name": "Ghost Lantern // Bind Spirit",
-        "type_line": "Artifact — Equipment // Instant — Adventure",
+        "type_line": "Artifact â€” Equipment // Instant â€” Adventure",
         "uri": "https://api.scryfall.com/cards/f2bde2d6-7c2a-4566-a45a-ccdbbed039b7"
       },
       {
@@ -12002,7 +12128,7 @@
     },
     "mana_cost": "{X}{G}",
     "cmc": 1.0,
-    "type_line": "Enchantment Creature — Hydra",
+    "type_line": "Enchantment Creature â€” Hydra",
     "oracle_text": "Bestow {X}{G}{G} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nReach, trample\nThis permanent enters with X +1/+1 counters on it.\nEnchanted creature gets +1/+1 for each +1/+1 counter on this Aura and has reach and trample.",
     "power": "0",
     "toughness": "1",
@@ -12530,7 +12656,7 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Eldrazi Lizard",
+    "type_line": "Creature â€” Eldrazi Lizard",
     "oracle_text": "Devoid (This card has no color.)\n{1}{G}: Adapt 1. (If this creature has no +1/+1 counters on it, put a +1/+1 counter on it.)\nWhenever one or more +1/+1 counters are put on this creature, you may create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
     "power": "2",
     "toughness": "2",
@@ -12551,7 +12677,7 @@
         "id": "e32795e1-5548-43ef-8cd6-c605a19ef708",
         "component": "token",
         "name": "Eldrazi Spawn",
-        "type_line": "Token Creature — Eldrazi Spawn",
+        "type_line": "Token Creature â€” Eldrazi Spawn",
         "uri": "https://api.scryfall.com/cards/e32795e1-5548-43ef-8cd6-c605a19ef708"
       },
       {
@@ -12559,7 +12685,7 @@
         "id": "5feba5d6-99a6-4e9b-8a7d-90d955868fc3",
         "component": "combo_piece",
         "name": "Basking Broodscale",
-        "type_line": "Creature — Eldrazi Lizard",
+        "type_line": "Creature â€” Eldrazi Lizard",
         "uri": "https://api.scryfall.com/cards/5feba5d6-99a6-4e9b-8a7d-90d955868fc3"
       }
     ],
@@ -12687,7 +12813,7 @@
     },
     "mana_cost": "{2}{G}",
     "cmc": 3.0,
-    "type_line": "Creature — Elf Shaman Mutant",
+    "type_line": "Creature â€” Elf Shaman Mutant",
     "oracle_text": "{1}{G}: Adapt 2. (If this creature has no +1/+1 counters on it, put two +1/+1 counters on it.)\nWhenever one or more +1/+1 counters are put on this creature, return target permanent card from your graveyard to your hand.",
     "power": "2",
     "toughness": "1",
@@ -12817,7 +12943,7 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Ouphe",
+    "type_line": "Creature â€” Ouphe",
     "oracle_text": "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nWhen this creature enters, if it was bargained, exile target artifact or enchantment an opponent controls.",
     "power": "2",
     "toughness": "2",
@@ -13078,8 +13204,8 @@
     },
     "mana_cost": "{B}",
     "cmc": 1.0,
-    "type_line": "Creature — Zombie",
-    "oracle_text": "When this creature dies, choose one —\n• Target creature an opponent controls gets -1/-1 until end of turn.\n• Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+    "type_line": "Creature â€” Zombie",
+    "oracle_text": "When this creature dies, choose one â€”\nâ€¢ Target creature an opponent controls gets -1/-1 until end of turn.\nâ€¢ Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
     "power": "1",
     "toughness": "1",
     "colors": [
@@ -13104,7 +13230,7 @@
         "id": "a3a684b7-27e0-4d9e-a064-9e03c6e50c89",
         "component": "token",
         "name": "Treasure",
-        "type_line": "Token Artifact — Treasure",
+        "type_line": "Token Artifact â€” Treasure",
         "uri": "https://api.scryfall.com/cards/a3a684b7-27e0-4d9e-a064-9e03c6e50c89"
       },
       {
@@ -13112,7 +13238,7 @@
         "id": "d96198a7-dd19-4940-bf8f-23135011fc84",
         "component": "combo_piece",
         "name": "Shambling Ghast",
-        "type_line": "Creature — Zombie",
+        "type_line": "Creature â€” Zombie",
         "uri": "https://api.scryfall.com/cards/d96198a7-dd19-4940-bf8f-23135011fc84"
       }
     ],
@@ -13341,8 +13467,8 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Phyrexian Insect",
-    "oracle_text": "Toxic 1\nCorrupted — When Norn's Fetchling enters, conjure a card named Plains into your hand. If an opponent has three or more poison counters, you may seek a nonland card instead.",
+    "type_line": "Creature â€” Phyrexian Insect",
+    "oracle_text": "Toxic 1\nCorrupted â€” When Norn's Fetchling enters, conjure a card named Plains into your hand. If an opponent has three or more poison counters, you may seek a nonland card instead.",
     "power": "1",
     "toughness": "1",
     "colors": [
@@ -13371,7 +13497,7 @@
         "id": "b50b39e8-3dd6-40d9-bd75-177308409573",
         "component": "combo_piece",
         "name": "Norn's Fetchling",
-        "type_line": "Creature — Phyrexian Insect",
+        "type_line": "Creature â€” Phyrexian Insect",
         "uri": "https://api.scryfall.com/cards/b50b39e8-3dd6-40d9-bd75-177308409573"
       }
     ],
@@ -13747,7 +13873,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Phyrexian Bird",
+    "type_line": "Creature â€” Phyrexian Bird",
     "oracle_text": "Flying\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, another target creature you control with toxic gets +1/+1 and gains flying until end of turn.",
     "power": "2",
     "toughness": "2",
@@ -13767,7 +13893,7 @@
         "id": "134aecf0-dc48-4fb3-8c8b-4e5272077856",
         "component": "combo_piece",
         "name": "Flensing Raptor",
-        "type_line": "Creature — Phyrexian Bird",
+        "type_line": "Creature â€” Phyrexian Bird",
         "uri": "https://api.scryfall.com/cards/134aecf0-dc48-4fb3-8c8b-4e5272077856"
       },
       {
@@ -13913,7 +14039,7 @@
         "id": "cff8ef48-2988-4d21-837e-01f1459e07c5",
         "component": "token",
         "name": "Royal // Young Hero",
-        "type_line": "Token Enchantment — Aura Role // Token Enchantment — Aura Role",
+        "type_line": "Token Enchantment â€” Aura Role // Token Enchantment â€” Aura Role",
         "uri": "https://api.scryfall.com/cards/cff8ef48-2988-4d21-837e-01f1459e07c5"
       },
       {
@@ -14048,7 +14174,7 @@
     },
     "mana_cost": "{W}",
     "cmc": 1.0,
-    "type_line": "Creature — Phyrexian Horror",
+    "type_line": "Creature â€” Phyrexian Horror",
     "oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature dies, create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"",
     "power": "1",
     "toughness": "1",
@@ -14067,7 +14193,7 @@
         "id": "a0b4b9cc-b0a4-4383-881b-e843e5d8a8c1",
         "component": "token",
         "name": "Phyrexian Mite",
-        "type_line": "Token Artifact Creature — Phyrexian Mite",
+        "type_line": "Token Artifact Creature â€” Phyrexian Mite",
         "uri": "https://api.scryfall.com/cards/a0b4b9cc-b0a4-4383-881b-e843e5d8a8c1"
       },
       {
@@ -14083,7 +14209,7 @@
         "id": "aace4c44-7250-414b-aac4-df042a1e2e1d",
         "component": "combo_piece",
         "name": "Crawling Chorus",
-        "type_line": "Creature — Phyrexian Horror",
+        "type_line": "Creature â€” Phyrexian Horror",
         "uri": "https://api.scryfall.com/cards/aace4c44-7250-414b-aac4-df042a1e2e1d"
       }
     ],
@@ -14337,7 +14463,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Basic Land — Plains",
+    "type_line": "Basic Land â€” Plains",
     "oracle_text": "({T}: Add {W}.)",
     "colors": [],
     "color_identity": [
@@ -14722,7 +14848,7 @@
     },
     "mana_cost": "{G}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Phyrexian Cleric",
+    "type_line": "Creature â€” Phyrexian Cleric",
     "oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)\nWhenever another creature you control with toxic attacks, it gets +1/+1 until end of turn.",
     "power": "2",
     "toughness": "2",
@@ -14743,7 +14869,7 @@
         "id": "7a802def-efe2-4f65-9dff-a1c0d800b146",
         "component": "combo_piece",
         "name": "Slaughter Singer",
-        "type_line": "Creature — Phyrexian Cleric",
+        "type_line": "Creature â€” Phyrexian Cleric",
         "uri": "https://api.scryfall.com/cards/7a802def-efe2-4f65-9dff-a1c0d800b146"
       },
       {
@@ -14878,7 +15004,7 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Enchantment — Aura",
+    "type_line": "Enchantment â€” Aura",
     "oracle_text": "Enchant basic land you control\nWhen this Aura enters, exile target creature or planeswalker an opponent controls until this Aura leaves the battlefield.",
     "colors": [
       "W"
@@ -15012,7 +15138,7 @@
     },
     "mana_cost": "{G}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Dinosaur",
+    "type_line": "Creature â€” Dinosaur",
     "oracle_text": "Vigilance\nWhen this creature enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
     "power": "2",
     "toughness": "3",
@@ -15152,7 +15278,7 @@
     "mana_cost": "{G}",
     "cmc": 1.0,
     "type_line": "Sorcery",
-    "oracle_text": "Choose one —\n• Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+    "oracle_text": "Choose one â€”\nâ€¢ Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\nâ€¢ Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
     "colors": [
       "G"
     ],
@@ -15279,7 +15405,7 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Phyrexian Soldier",
+    "type_line": "Creature â€” Phyrexian Soldier",
     "oracle_text": "Double strike\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
     "power": "1",
     "toughness": "1",
@@ -15299,7 +15425,7 @@
         "id": "b00ea7bb-705b-4669-bb2a-560bed04b14a",
         "component": "combo_piece",
         "name": "Jawbone Duelist",
-        "type_line": "Creature — Phyrexian Soldier",
+        "type_line": "Creature â€” Phyrexian Soldier",
         "uri": "https://api.scryfall.com/cards/b00ea7bb-705b-4669-bb2a-560bed04b14a"
       },
       {
@@ -15434,7 +15560,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Artifact Creature — Phyrexian Cleric",
+    "type_line": "Artifact Creature â€” Phyrexian Cleric",
     "oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, exile target artifact or creature an opponent controls with mana value 3 or less until this creature leaves the battlefield.",
     "power": "1",
     "toughness": "4",
@@ -15461,7 +15587,7 @@
         "id": "04baad61-1b51-4602-9e33-0de4a9f34793",
         "component": "combo_piece",
         "name": "Annex Sentry",
-        "type_line": "Artifact Creature — Phyrexian Cleric",
+        "type_line": "Artifact Creature â€” Phyrexian Cleric",
         "uri": "https://api.scryfall.com/cards/04baad61-1b51-4602-9e33-0de4a9f34793"
       }
     ],
@@ -15844,7 +15970,7 @@
     },
     "mana_cost": "{R}",
     "cmc": 1.0,
-    "type_line": "Creature — Phyrexian Goblin Warrior",
+    "type_line": "Creature â€” Phyrexian Goblin Warrior",
     "oracle_text": "Whenever this creature deals combat damage to a player, you may sacrifice it. If you do, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nWhen this creature dies, it deals damage equal to its power to any target.",
     "power": "1",
     "toughness": "1",
@@ -15971,7 +16097,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 1.0,
-    "type_line": "Enchantment — Saga // Enchantment Creature — Human Shaman",
+    "type_line": "Enchantment â€” Saga // Enchantment Creature â€” Human Shaman",
     "color_identity": [
       "R"
     ],
@@ -15984,8 +16110,8 @@
         "object": "card_face",
         "name": "Kumano Faces Kakkazan",
         "mana_cost": "{R}",
-        "type_line": "Enchantment — Saga",
-        "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — This Saga deals 1 damage to each opponent and each planeswalker they control.\nII — When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+        "type_line": "Enchantment â€” Saga",
+        "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI â€” This Saga deals 1 damage to each opponent and each planeswalker they control.\nII â€” When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII â€” Exile this Saga, then return it to the battlefield transformed under your control.",
         "colors": [
           "R"
         ],
@@ -16005,7 +16131,7 @@
         "object": "card_face",
         "name": "Etching of Kumano",
         "mana_cost": "",
-        "type_line": "Enchantment Creature — Human Shaman",
+        "type_line": "Enchantment Creature â€” Human Shaman",
         "oracle_text": "Haste\nIf a creature dealt damage this turn by a source you controlled would die, exile it instead.",
         "colors": [
           "R"
@@ -16463,7 +16589,7 @@
     "collector_number": "167",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"I fear no army or beast, but only the morning fog. Our assault can survive everything else.\"\n—Lord Hilneth",
+    "flavor_text": "\"I fear no army or beast, but only the morning fog. Our assault can survive everything else.\"\nâ€”Lord Hilneth",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Jaime Jones",
     "artist_ids": [
@@ -16801,8 +16927,8 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Insect Druid",
-    "oracle_text": "Landfall — Whenever a land you control enters, you gain 1 life.",
+    "type_line": "Creature â€” Insect Druid",
+    "oracle_text": "Landfall â€” Whenever a land you control enters, you gain 1 life.",
     "power": "2",
     "toughness": "3",
     "colors": [
@@ -16867,9 +16993,9 @@
     "collector_number": "180",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "To plant the seeds of the other is to cultivate the self.\n—Eumidian aphorism",
+    "flavor_text": "To plant the seeds of the other is to cultivate the self.\nâ€”Eumidian aphorism",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Loïc Canavaggia",
+    "artist": "LoÃ¯c Canavaggia",
     "artist_ids": [
       "f1e2e10b-08be-4e92-8f50-95a72850a811"
     ],
@@ -17190,7 +17316,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Forest Island",
+    "type_line": "Land â€” Forest Island",
     "oracle_text": "({T}: Add {G} or {U}.)\nThis land enters tapped.",
     "colors": [],
     "color_identity": [
@@ -17339,7 +17465,7 @@
         "id": "9ce9c2e1-3e8a-4b9a-8da6-7b7fc5a897f6",
         "component": "combo_piece",
         "name": "Preponderant Pearl",
-        "type_line": "Kindred Artifact — Merfolk",
+        "type_line": "Kindred Artifact â€” Merfolk",
         "uri": "https://api.scryfall.com/cards/9ce9c2e1-3e8a-4b9a-8da6-7b7fc5a897f6"
       }
     ],
@@ -17430,7 +17556,7 @@
     },
     "artisan_legal": true
   },
-  "lórien revealed": {
+  "lÃ³rien revealed": {
     "object": "card",
     "id": "0ce44270-a684-4489-9077-521456e6dfaa",
     "oracle_id": "66f28905-c7fc-4ada-8fa0-199626d9bedb",
@@ -17441,7 +17567,7 @@
     "arena_id": 84752,
     "tcgplayer_id": 499960,
     "cardmarket_id": 717109,
-    "name": "Lórien Revealed",
+    "name": "LÃ³rien Revealed",
     "lang": "en",
     "released_at": "2023-06-23",
     "uri": "https://api.scryfall.com/cards/0ce44270-a684-4489-9077-521456e6dfaa",
@@ -17526,7 +17652,7 @@
     "collector_number": "60",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Look on us now with friendly eyes! Behold the trees of the Naith of Lórien and be glad!\"\n—Haldir",
+    "flavor_text": "\"Look on us now with friendly eyes! Behold the trees of the Naith of LÃ³rien and be glad!\"\nâ€”Haldir",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Randy Gallegos",
     "artist_ids": [
@@ -17595,7 +17721,7 @@
     "mana_cost": "{2}{U}",
     "cmc": 3.0,
     "type_line": "Sorcery",
-    "oracle_text": "Corrupted — This spell costs {2} less to cast if an opponent has three or more poison counters.\nDraw two cards.",
+    "oracle_text": "Corrupted â€” This spell costs {2} less to cast if an opponent has three or more poison counters.\nDraw two cards.",
     "colors": [
       "U"
     ],
@@ -17853,7 +17979,7 @@
     "mana_cost": "{1}{U}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Counter target spell unless its controller pays {2}.\nCorrupted — Counter that spell instead if its controller has three or more poison counters.",
+    "oracle_text": "Counter target spell unless its controller pays {2}.\nCorrupted â€” Counter that spell instead if its controller has three or more poison counters.",
     "colors": [
       "U"
     ],
@@ -17916,7 +18042,7 @@
     "collector_number": "44",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "Kaya watched in horror as the illusion vanished from her hands. Jace held the real Sylex—and had activated it before phyresis claimed his mind.",
+    "flavor_text": "Kaya watched in horror as the illusion vanished from her hands. Jace held the real Sylexâ€”and had activated it before phyresis claimed his mind.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "L.A. Draws",
     "artist_ids": [
@@ -18360,8 +18486,8 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Cleric",
-    "oracle_text": "When this creature enters, choose one —\n• Cure Wounds — You gain 2 life.\n• Dispel Magic — Destroy target enchantment.\n• Gentle Repose — Exile target card from a graveyard.",
+    "type_line": "Creature â€” Human Cleric",
+    "oracle_text": "When this creature enters, choose one â€”\nâ€¢ Cure Wounds â€” You gain 2 life.\nâ€¢ Dispel Magic â€” Destroy target enchantment.\nâ€¢ Gentle Repose â€” Exile target card from a graveyard.",
     "power": "1",
     "toughness": "3",
     "colors": [
@@ -18377,7 +18503,7 @@
         "id": "201f06ef-c180-4ce3-afaf-bec3b14c0222",
         "component": "combo_piece",
         "name": "Dawnbringer Cleric",
-        "type_line": "Creature — Human Cleric",
+        "type_line": "Creature â€” Human Cleric",
         "uri": "https://api.scryfall.com/cards/201f06ef-c180-4ce3-afaf-bec3b14c0222"
       },
       {
@@ -18385,7 +18511,7 @@
         "id": "af2fecd0-cb15-42d5-b652-5721bec421b2",
         "component": "combo_piece",
         "name": "A-Dawnbringer Cleric",
-        "type_line": "Creature — Human Cleric",
+        "type_line": "Creature â€” Human Cleric",
         "uri": "https://api.scryfall.com/cards/af2fecd0-cb15-42d5-b652-5721bec421b2"
       }
     ],
@@ -18838,7 +18964,7 @@
         "colors": [
           "U"
         ],
-        "flavor_text": "\"You worry too much.\"\n—Nys Dal, Sea Gate trapfinder",
+        "flavor_text": "\"You worry too much.\"\nâ€”Nys Dal, Sea Gate trapfinder",
         "artist": "Cliff Childs",
         "artist_id": "ed6f7e03-20ba-4c73-bdda-4a4928480721",
         "illustration_id": "9658aadf-bb95-4d45-8fe2-a0f7f2f7e262",
@@ -18858,7 +18984,7 @@
         "type_line": "Land",
         "oracle_text": "This land enters tapped.\n{T}: Add {U}.",
         "colors": [],
-        "flavor_text": "\"The Ondu Skyclave was a center for rebellion against the capital in Makindi. Of course they built in deadly traps.\"\n—Nys Dal, Sea Gate trapfinder",
+        "flavor_text": "\"The Ondu Skyclave was a center for rebellion against the capital in Makindi. Of course they built in deadly traps.\"\nâ€”Nys Dal, Sea Gate trapfinder",
         "artist": "Cliff Childs",
         "artist_id": "ed6f7e03-20ba-4c73-bdda-4a4928480721",
         "illustration_id": "af2c8d11-3179-48c7-aed3-8957c04220c2",
@@ -18997,7 +19123,7 @@
         "colors": [
           "U"
         ],
-        "flavor_text": "\"You worry too much.\"\n—Nys Dal, Sea Gate trapfinder",
+        "flavor_text": "\"You worry too much.\"\nâ€”Nys Dal, Sea Gate trapfinder",
         "artist": "Cliff Childs",
         "artist_id": "ed6f7e03-20ba-4c73-bdda-4a4928480721",
         "illustration_id": "9658aadf-bb95-4d45-8fe2-a0f7f2f7e262",
@@ -19017,7 +19143,7 @@
         "type_line": "Land",
         "oracle_text": "This land enters tapped.\n{T}: Add {U}.",
         "colors": [],
-        "flavor_text": "\"The Ondu Skyclave was a center for rebellion against the capital in Makindi. Of course they built in deadly traps.\"\n—Nys Dal, Sea Gate trapfinder",
+        "flavor_text": "\"The Ondu Skyclave was a center for rebellion against the capital in Makindi. Of course they built in deadly traps.\"\nâ€”Nys Dal, Sea Gate trapfinder",
         "artist": "Cliff Childs",
         "artist_id": "ed6f7e03-20ba-4c73-bdda-4a4928480721",
         "illustration_id": "af2c8d11-3179-48c7-aed3-8957c04220c2",
@@ -19205,7 +19331,7 @@
     "collector_number": "97",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Even storm clouds bow to worship Avacyn.\"\n—Elder Rimheit",
+    "flavor_text": "\"Even storm clouds bow to worship Avacyn.\"\nâ€”Elder Rimheit",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Howard Lyon",
     "artist_ids": [
@@ -19275,7 +19401,7 @@
     },
     "mana_cost": "{1}{U}",
     "cmc": 2.0,
-    "type_line": "Creature — Merfolk Wizard",
+    "type_line": "Creature â€” Merfolk Wizard",
     "oracle_text": "When this creature enters, look at the top three cards of your library. You may reveal an instant or sorcery card from among them and put it into your hand. Put the rest on the bottom of your library in any order.",
     "power": "1",
     "toughness": "3",
@@ -19666,7 +19792,7 @@
     },
     "mana_cost": "{1}{W}{U}",
     "cmc": 3.0,
-    "type_line": "Creature — Spirit",
+    "type_line": "Creature â€” Spirit",
     "oracle_text": "Whenever a creature is exiled from the battlefield, put a +1/+1 counter on this creature.\nAt the beginning of your end step, you may exile another target creature you control, then return that card to the battlefield under its owner's control.",
     "power": "1",
     "toughness": "1",
@@ -19919,7 +20045,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Plains Island",
+    "type_line": "Land â€” Plains Island",
     "oracle_text": "({T}: Add {W} or {U}.)\nThis land enters tapped.",
     "colors": [],
     "color_identity": [
@@ -20111,7 +20237,7 @@
     "collector_number": "26",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "As Faramir and Éowyn stood so, their hands met and clasped, though they did not know it.",
+    "flavor_text": "As Faramir and Ã‰owyn stood so, their hands met and clasped, though they did not know it.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Justyna Dura",
     "artist_ids": [
@@ -20184,8 +20310,8 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Enchantment — Saga",
-    "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Search your library for a basic Plains card, reveal it, put it into your hand, then shuffle.\nII — Create a 0/4 colorless Wall artifact creature token with defender.\nIII — You gain 2 life.",
+    "type_line": "Enchantment â€” Saga",
+    "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI â€” Search your library for a basic Plains card, reveal it, put it into your hand, then shuffle.\nII â€” Create a 0/4 colorless Wall artifact creature token with defender.\nIII â€” You gain 2 life.",
     "colors": [
       "W"
     ],
@@ -20199,7 +20325,7 @@
         "id": "d824f8bd-58f8-4796-80b5-5cd3033d35e8",
         "component": "combo_piece",
         "name": "The Birth of Meletis",
-        "type_line": "Enchantment — Saga",
+        "type_line": "Enchantment â€” Saga",
         "uri": "https://api.scryfall.com/cards/d824f8bd-58f8-4796-80b5-5cd3033d35e8"
       },
       {
@@ -20207,7 +20333,7 @@
         "id": "dbdd5d53-65e7-42c3-a325-791f11335e62",
         "component": "token",
         "name": "Wall",
-        "type_line": "Token Artifact Creature — Wall",
+        "type_line": "Token Artifact Creature â€” Wall",
         "uri": "https://api.scryfall.com/cards/dbdd5d53-65e7-42c3-a325-791f11335e62"
       }
     ],
@@ -20453,7 +20579,7 @@
     },
     "mana_cost": "{1}{W}{U}",
     "cmc": 3.0,
-    "type_line": "Creature — Human Wizard",
+    "type_line": "Creature â€” Human Wizard",
     "oracle_text": "When this creature enters, return target creature an opponent controls to its owner's hand. That creature's owner can't cast spells with the same name as that creature until your next turn.",
     "power": "2",
     "toughness": "3",
@@ -20709,7 +20835,7 @@
     },
     "mana_cost": "{2}{U}{U}",
     "cmc": 4.0,
-    "type_line": "Creature — Human Wizard",
+    "type_line": "Creature â€” Human Wizard",
     "oracle_text": "When this creature enters, return target instant or sorcery card from your graveyard to your hand.",
     "power": "1",
     "toughness": "2",
@@ -20898,7 +21024,7 @@
     "collector_number": "8",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"Strictly speaking, you can't kill what's already dead, but trapping and disintegrating it is pretty close.\"\n—Garden, survivor technologist",
+    "flavor_text": "\"Strictly speaking, you can't kill what's already dead, but trapping and disintegrating it is pretty close.\"\nâ€”Garden, survivor technologist",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Dominik Mayer",
     "artist_ids": [
@@ -21091,8 +21217,8 @@
     },
     "mana_cost": "{1}{U}{U}",
     "cmc": 3.0,
-    "type_line": "Legendary Planeswalker — Narset",
-    "oracle_text": "Each opponent can't draw more than one card each turn.\n−2: Look at the top four cards of your library. You may reveal a noncreature, nonland card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+    "type_line": "Legendary Planeswalker â€” Narset",
+    "oracle_text": "Each opponent can't draw more than one card each turn.\nâˆ’2: Look at the top four cards of your library. You may reveal a noncreature, nonland card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
     "loyalty": "5",
     "colors": [
       "U"
@@ -21216,7 +21342,7 @@
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Choose one —\n• Thraben Charm deals damage equal to twice the number of creatures you control to target creature.\n• Destroy target enchantment.\n• Exile any number of target players' graveyards.",
+    "oracle_text": "Choose one â€”\nâ€¢ Thraben Charm deals damage equal to twice the number of creatures you control to target creature.\nâ€¢ Destroy target enchantment.\nâ€¢ Exile any number of target players' graveyards.",
     "colors": [
       "W"
     ],
@@ -21336,7 +21462,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 4.0,
-    "type_line": "Creature — Human Warlock // Land",
+    "type_line": "Creature â€” Human Warlock // Land",
     "color_identity": [
       "W"
     ],
@@ -21349,7 +21475,7 @@
         "object": "card_face",
         "name": "Witch Enchanter",
         "mana_cost": "{3}{W}",
-        "type_line": "Creature — Human Warlock",
+        "type_line": "Creature â€” Human Warlock",
         "oracle_text": "When this creature enters, destroy target artifact or enchantment an opponent controls.",
         "colors": [
           "W"
@@ -21376,7 +21502,7 @@
         "type_line": "Land",
         "oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {W}.",
         "colors": [],
-        "flavor_text": "\"Ghrin-Danu will not let her people go hungry.\"\n—Katilda, Dawnhart Prime",
+        "flavor_text": "\"Ghrin-Danu will not let her people go hungry.\"\nâ€”Katilda, Dawnhart Prime",
         "artist": "Tyler Walpole",
         "artist_id": "70c4c8c7-61a8-44e7-8fb1-161b7f943e7e",
         "illustration_id": "7b12eacc-28ab-4891-9512-31a3ee5c44f2",
@@ -21495,7 +21621,7 @@
     "highres_image": true,
     "image_status": "highres_scan",
     "cmc": 4.0,
-    "type_line": "Creature — Human Warlock // Land",
+    "type_line": "Creature â€” Human Warlock // Land",
     "color_identity": [
       "W"
     ],
@@ -21508,7 +21634,7 @@
         "object": "card_face",
         "name": "Witch Enchanter",
         "mana_cost": "{3}{W}",
-        "type_line": "Creature — Human Warlock",
+        "type_line": "Creature â€” Human Warlock",
         "oracle_text": "When this creature enters, destroy target artifact or enchantment an opponent controls.",
         "colors": [
           "W"
@@ -21535,7 +21661,7 @@
         "type_line": "Land",
         "oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {W}.",
         "colors": [],
-        "flavor_text": "\"Ghrin-Danu will not let her people go hungry.\"\n—Katilda, Dawnhart Prime",
+        "flavor_text": "\"Ghrin-Danu will not let her people go hungry.\"\nâ€”Katilda, Dawnhart Prime",
         "artist": "Tyler Walpole",
         "artist_id": "70c4c8c7-61a8-44e7-8fb1-161b7f943e7e",
         "illustration_id": "7b12eacc-28ab-4891-9512-31a3ee5c44f2",
@@ -21634,7 +21760,7 @@
     },
     "artisan_legal": true
   },
-  "nazgûl": {
+  "nazgÃ»l": {
     "object": "card",
     "id": "833936c6-9381-4c0b-a81c-4a938be95040",
     "oracle_id": "48a62778-7c11-486f-a0e1-020c283a7ef9",
@@ -21645,7 +21771,7 @@
     "arena_id": 84792,
     "tcgplayer_id": 498363,
     "cardmarket_id": 715907,
-    "name": "Nazgûl",
+    "name": "NazgÃ»l",
     "lang": "en",
     "released_at": "2023-06-23",
     "uri": "https://api.scryfall.com/cards/833936c6-9381-4c0b-a81c-4a938be95040",
@@ -21663,8 +21789,8 @@
     },
     "mana_cost": "{2}{B}",
     "cmc": 3.0,
-    "type_line": "Creature — Wraith Knight",
-    "oracle_text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazgûl.",
+    "type_line": "Creature â€” Wraith Knight",
+    "oracle_text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named NazgÃ»l.",
     "power": "1",
     "toughness": "2",
     "colors": [
@@ -21681,8 +21807,8 @@
         "object": "related_card",
         "id": "b9b6ec63-7df4-450e-b849-920121fe245c",
         "component": "combo_piece",
-        "name": "Nazgûl",
-        "type_line": "Creature — Wraith Knight",
+        "name": "NazgÃ»l",
+        "type_line": "Creature â€” Wraith Knight",
         "uri": "https://api.scryfall.com/cards/b9b6ec63-7df4-450e-b849-920121fe245c"
       },
       {
@@ -21979,7 +22105,7 @@
         "id": "6943f966-fd21-427c-a13f-44727edcaa4b",
         "component": "token",
         "name": "Orc Army",
-        "type_line": "Token Creature — Orc Army",
+        "type_line": "Token Creature â€” Orc Army",
         "uri": "https://api.scryfall.com/cards/6943f966-fd21-427c-a13f-44727edcaa4b"
       },
       {
@@ -22195,7 +22321,7 @@
     "edhrec_rank": 18989,
     "penny_rank": 2710,
     "preview": {
-      "source": "André Manenti",
+      "source": "AndrÃ© Manenti",
       "source_uri": "https://twitter.com/andremanentii/status/1587130005414461447",
       "previewed_at": "2022-11-01"
     },
@@ -22308,7 +22434,7 @@
     "collector_number": "173",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "Though he wept at Inti's death, Caparocti's eyes were keen, and his spear pierced cleanly through Clavileño's tainted heart.",
+    "flavor_text": "Though he wept at Inti's death, Caparocti's eyes were keen, and his spear pierced cleanly through ClavileÃ±o's tainted heart.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Donato Giancola",
     "artist_ids": [
@@ -22372,7 +22498,7 @@
     },
     "mana_cost": "{1}{R/W}",
     "cmc": 2.0,
-    "type_line": "Creature — Shapeshifter",
+    "type_line": "Creature â€” Shapeshifter",
     "oracle_text": "Changeling (This card is every creature type.)\nDuring your turn, this creature has first strike.",
     "power": "2",
     "toughness": "1",
@@ -22629,7 +22755,7 @@
     },
     "mana_cost": "{1}",
     "cmc": 1.0,
-    "type_line": "Artifact Creature — Shapeshifter",
+    "type_line": "Artifact Creature â€” Shapeshifter",
     "oracle_text": "Changeling (This card is every creature type.)",
     "power": "1",
     "toughness": "1",
@@ -22690,7 +22816,7 @@
     "collector_number": "235",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Within minutes, the strange device was indistinguishable from the other upon my workbench.\"\n—Tocasia, journal entry",
+    "flavor_text": "\"Within minutes, the strange device was indistinguishable from the other upon my workbench.\"\nâ€”Tocasia, journal entry",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Ben Maier",
     "artist_ids": [
@@ -22759,7 +22885,7 @@
     },
     "mana_cost": "{1}{U/B}",
     "cmc": 2.0,
-    "type_line": "Creature — Shapeshifter",
+    "type_line": "Creature â€” Shapeshifter",
     "oracle_text": "Changeling (This card is every creature type.)\nFlash",
     "power": "2",
     "toughness": "2",
@@ -22891,7 +23017,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Shapeshifter",
+    "type_line": "Creature â€” Shapeshifter",
     "oracle_text": "Changeling (This card is every creature type.)\nFlash\nFlying\nWhen this creature enters, return up to one other target creature you control to its owner's hand.",
     "power": "2",
     "toughness": "2",
@@ -23272,7 +23398,7 @@
     },
     "mana_cost": "{B}",
     "cmc": 1.0,
-    "type_line": "Creature — Shapeshifter",
+    "type_line": "Creature â€” Shapeshifter",
     "oracle_text": "Changeling (This card is every creature type.)\nThis creature can't block and can't be blocked.",
     "power": "1",
     "toughness": "1",
@@ -23400,7 +23526,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Merfolk Scout",
+    "type_line": "Creature â€” Merfolk Scout",
     "oracle_text": "Whenever this creature attacks, you may tap another untapped Merfolk you control. When you do, return target creature card with mana value 3 or less from your graveyard to the battlefield.",
     "power": "3",
     "toughness": "2",
@@ -23645,7 +23771,7 @@
     },
     "mana_cost": "{G}",
     "cmc": 1.0,
-    "type_line": "Creature — Phyrexian Insect",
+    "type_line": "Creature â€” Phyrexian Insect",
     "oracle_text": "Toxic 1\nWhenever Phyresis Roach deals combat damage to a player, Insects you control and Insect cards in your graveyard, hand, and library perpetually gain toxic 1.",
     "power": "1",
     "toughness": "1",
@@ -23664,7 +23790,7 @@
         "id": "77032519-833d-4569-9f40-6886c7eb9f0e",
         "component": "combo_piece",
         "name": "Phyresis Roach",
-        "type_line": "Creature — Phyrexian Insect",
+        "type_line": "Creature â€” Phyrexian Insect",
         "uri": "https://api.scryfall.com/cards/77032519-833d-4569-9f40-6886c7eb9f0e"
       },
       {
@@ -23982,7 +24108,7 @@
     "collector_number": "157",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Hmm. Delectable tea, or deadly poison?\"\n—Iroh",
+    "flavor_text": "\"Hmm. Delectable tea, or deadly poison?\"\nâ€”Iroh",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Brian Yuen",
     "artist_ids": [
@@ -24116,7 +24242,7 @@
     "digital": false,
     "rarity": "rare",
     "watermark": "quandrix",
-    "flavor_text": "\"Nature is chaos governed by principle. In analyzing these patterns, I hope to protect Strixhaven's future from any more tragedy.\"\n—Adrix, dean of theory",
+    "flavor_text": "\"Nature is chaos governed by principle. In analyzing these patterns, I hope to protect Strixhaven's future from any more tragedy.\"\nâ€”Adrix, dean of theory",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Marco Gorlei",
     "artist_ids": [
@@ -24182,7 +24308,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Forest Island",
+    "type_line": "Land â€” Forest Island",
     "oracle_text": "({T}: Add {G} or {U}.)\nThis land enters tapped.\nWhen this land enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
     "colors": [],
     "color_identity": [
@@ -24315,8 +24441,8 @@
     },
     "mana_cost": "{2}{U}{U/P}",
     "cmc": 4.0,
-    "type_line": "Legendary Planeswalker — Jace",
-    "oracle_text": "Compleated ({U/P} can be paid with {U} or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Until your next turn, up to one target creature gets -3/-0.\n−2: Target player mills three cards. Then if a graveyard has twenty or more cards in it, you draw three cards. Otherwise, you draw a card.\n−X: Target player mills three times X cards.",
+    "type_line": "Legendary Planeswalker â€” Jace",
+    "oracle_text": "Compleated ({U/P} can be paid with {U} or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Until your next turn, up to one target creature gets -3/-0.\nâˆ’2: Target player mills three cards. Then if a graveyard has twenty or more cards in it, you draw three cards. Otherwise, you draw a card.\nâˆ’X: Target player mills three times X cards.",
     "loyalty": "5",
     "colors": [
       "U"
@@ -24507,9 +24633,9 @@
     "collector_number": "242",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"Well? You coming in or what?\"\n—The One Above All",
+    "flavor_text": "\"Well? You coming in or what?\"\nâ€”The One Above All",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Mintautas Šukys",
+    "artist": "Mintautas Å ukys",
     "artist_ids": [
       "33147af8-b09e-4cb3-8e21-5271314c3c1e"
     ],
@@ -24833,7 +24959,7 @@
     },
     "mana_cost": "{4}{U}{U}",
     "cmc": 0.0,
-    "type_line": "Land — Town // Sorcery — Adventure",
+    "type_line": "Land â€” Town // Sorcery â€” Adventure",
     "colors": [],
     "color_identity": [
       "U"
@@ -24849,9 +24975,9 @@
         "object": "card_face",
         "name": "Jidoor, Aristocratic Capital",
         "mana_cost": "",
-        "type_line": "Land — Town",
+        "type_line": "Land â€” Town",
         "oracle_text": "This land enters tapped.\n{T}: Add {U}.",
-        "flavor_text": "\"You're the spitting image of Maria!\"\n—Jidoor resident",
+        "flavor_text": "\"You're the spitting image of Maria!\"\nâ€”Jidoor resident",
         "artist": "Erikas Perl",
         "artist_id": "39cb50cf-0223-43c7-bd96-afb5f05c7e43",
         "illustration_id": "619cacc6-3593-4be8-9409-46df4bbc054e"
@@ -24860,7 +24986,7 @@
         "object": "card_face",
         "name": "Overture",
         "mana_cost": "{4}{U}{U}",
-        "type_line": "Sorcery — Adventure",
+        "type_line": "Sorcery â€” Adventure",
         "oracle_text": "Target opponent mills half their library, rounded down. (Then exile this card. You may play the land later from exile.)",
         "artist": "Erikas Perl",
         "artist_id": "39cb50cf-0223-43c7-bd96-afb5f05c7e43"
@@ -24880,7 +25006,7 @@
         "id": "72678d58-888e-4d3c-bc2c-78f5b7862e03",
         "component": "combo_piece",
         "name": "Jidoor, Aristocratic Capital // Overture",
-        "type_line": "Land — Town // Sorcery — Adventure",
+        "type_line": "Land â€” Town // Sorcery â€” Adventure",
         "uri": "https://api.scryfall.com/cards/72678d58-888e-4d3c-bc2c-78f5b7862e03"
       }
     ],
@@ -24938,7 +25064,7 @@
     "collector_number": "284",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"You're the spitting image of Maria!\"\n—Jidoor resident",
+    "flavor_text": "\"You're the spitting image of Maria!\"\nâ€”Jidoor resident",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Erikas Perl",
     "artist_ids": [
@@ -25007,7 +25133,7 @@
     },
     "mana_cost": "{4}{U}{U}",
     "cmc": 0.0,
-    "type_line": "Land — Town // Sorcery — Adventure",
+    "type_line": "Land â€” Town // Sorcery â€” Adventure",
     "colors": [],
     "color_identity": [
       "U"
@@ -25023,9 +25149,9 @@
         "object": "card_face",
         "name": "Jidoor, Aristocratic Capital",
         "mana_cost": "",
-        "type_line": "Land — Town",
+        "type_line": "Land â€” Town",
         "oracle_text": "This land enters tapped.\n{T}: Add {U}.",
-        "flavor_text": "\"You're the spitting image of Maria!\"\n—Jidoor resident",
+        "flavor_text": "\"You're the spitting image of Maria!\"\nâ€”Jidoor resident",
         "artist": "Erikas Perl",
         "artist_id": "39cb50cf-0223-43c7-bd96-afb5f05c7e43",
         "illustration_id": "619cacc6-3593-4be8-9409-46df4bbc054e"
@@ -25034,7 +25160,7 @@
         "object": "card_face",
         "name": "Overture",
         "mana_cost": "{4}{U}{U}",
-        "type_line": "Sorcery — Adventure",
+        "type_line": "Sorcery â€” Adventure",
         "oracle_text": "Target opponent mills half their library, rounded down. (Then exile this card. You may play the land later from exile.)",
         "artist": "Erikas Perl",
         "artist_id": "39cb50cf-0223-43c7-bd96-afb5f05c7e43"
@@ -25054,7 +25180,7 @@
         "id": "72678d58-888e-4d3c-bc2c-78f5b7862e03",
         "component": "combo_piece",
         "name": "Jidoor, Aristocratic Capital // Overture",
-        "type_line": "Land — Town // Sorcery — Adventure",
+        "type_line": "Land â€” Town // Sorcery â€” Adventure",
         "uri": "https://api.scryfall.com/cards/72678d58-888e-4d3c-bc2c-78f5b7862e03"
       }
     ],
@@ -25112,7 +25238,7 @@
     "collector_number": "284",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"You're the spitting image of Maria!\"\n—Jidoor resident",
+    "flavor_text": "\"You're the spitting image of Maria!\"\nâ€”Jidoor resident",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Erikas Perl",
     "artist_ids": [
@@ -25183,7 +25309,7 @@
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
     "type_line": "Sorcery",
-    "oracle_text": "Spree (Choose one or more additional costs.)\n+ {1} — Search your library for a basic land card or a Desert card, put it onto the battlefield, then shuffle.\n+ {3} — Create an X/X green Elemental creature token, where X is the number of lands you control.",
+    "oracle_text": "Spree (Choose one or more additional costs.)\n+ {1} â€” Search your library for a basic land card or a Desert card, put it onto the battlefield, then shuffle.\n+ {3} â€” Create an X/X green Elemental creature token, where X is the number of lands you control.",
     "colors": [
       "G"
     ],
@@ -25199,7 +25325,7 @@
         "id": "008695e6-6d6f-4c16-bf05-377e8cc5f5ff",
         "component": "token",
         "name": "Elemental",
-        "type_line": "Token Creature — Elemental",
+        "type_line": "Token Creature â€” Elemental",
         "uri": "https://api.scryfall.com/cards/008695e6-6d6f-4c16-bf05-377e8cc5f5ff"
       },
       {
@@ -25337,8 +25463,8 @@
     },
     "mana_cost": "{2}{G}{G}",
     "cmc": 4.0,
-    "type_line": "Creature — Insect Scout",
-    "oracle_text": "You may play an additional land on each of your turns.\nYou may play lands from your graveyard.\nLandfall — Whenever a land you control enters, mill a card.",
+    "type_line": "Creature â€” Insect Scout",
+    "oracle_text": "You may play an additional land on each of your turns.\nYou may play lands from your graveyard.\nLandfall â€” Whenever a land you control enters, mill a card.",
     "power": "2",
     "toughness": "4",
     "colors": [
@@ -25476,7 +25602,7 @@
     "mana_cost": "{1}{G}{U}",
     "cmc": 3.0,
     "type_line": "Enchantment",
-    "oracle_text": "As this enchantment enters, choose Temur or Sultai.\n• Temur — Whenever you cast an instant or sorcery spell, target player mills four cards.\n• Sultai — You may play lands from your graveyard.",
+    "oracle_text": "As this enchantment enters, choose Temur or Sultai.\nâ€¢ Temur â€” Whenever you cast an instant or sorcery spell, target player mills four cards.\nâ€¢ Sultai â€” You may play lands from your graveyard.",
     "colors": [
       "G",
       "U"
@@ -25689,7 +25815,7 @@
     "digital": true,
     "rarity": "mythic",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Veli Nyström",
+    "artist": "Veli NystrÃ¶m",
     "artist_ids": [
       "96cd183c-bfca-4e48-9a5b-a4acd82f8364"
     ],
@@ -25754,7 +25880,7 @@
     },
     "mana_cost": "{3}{U}{U}",
     "cmc": 5.0,
-    "type_line": "Instant — Trap",
+    "type_line": "Instant â€” Trap",
     "oracle_text": "If an opponent searched their library this turn, you may pay {0} rather than pay this spell's mana cost.\nTarget opponent mills thirteen cards.",
     "colors": [
       "U"
@@ -25880,7 +26006,7 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Elf Detective",
+    "type_line": "Creature â€” Elf Detective",
     "oracle_text": "When this creature enters, mill three cards. (Put the top three cards of your library into your graveyard.)\n{3}{G}, Sacrifice this creature: Return all land cards from your graveyard to the battlefield tapped.",
     "power": "1",
     "toughness": "3",
@@ -26141,8 +26267,8 @@
     },
     "mana_cost": "{1}{U}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Wizard",
-    "oracle_text": "When this creature enters, each opponent mills three cards.\nDelirium — At the beginning of each opponent's upkeep, if there are four or more card types among cards in your graveyard, that player mills three cards.",
+    "type_line": "Creature â€” Human Wizard",
+    "oracle_text": "When this creature enters, each opponent mills three cards.\nDelirium â€” At the beginning of each opponent's upkeep, if there are four or more card types among cards in your graveyard, that player mills three cards.",
     "power": "0",
     "toughness": "3",
     "colors": [
@@ -26272,7 +26398,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Forest Island",
+    "type_line": "Land â€” Forest Island",
     "oracle_text": "({T}: Add {G} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
     "colors": [],
     "color_identity": [
@@ -26338,7 +26464,7 @@
     "collector_number": "251",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"Log 1.4.778: Granove, a tropical moon teeming with endemic biota. A must see for any aspiring astrobiologist!\"\n—*Maisie's Edge Chronicles*",
+    "flavor_text": "\"Log 1.4.778: Granove, a tropical moon teeming with endemic biota. A must see for any aspiring astrobiologist!\"\nâ€”*Maisie's Edge Chronicles*",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Constantin Marin",
     "artist_ids": [
@@ -26410,7 +26536,7 @@
     "mana_cost": "{1}{U}",
     "cmc": 2.0,
     "type_line": "Artifact",
-    "oracle_text": "{1}, {T}: Any number of target players each mill two cards. (Each of them puts the top two cards of their library into their graveyard.)\nExhaust — {2}{U}{U}, {T}: Any number of target players each mill cards equal to the number of cards in their graveyard. (Activate each exhaust ability only once.)",
+    "oracle_text": "{1}, {T}: Any number of target players each mill two cards. (Each of them puts the top two cards of their library into their graveyard.)\nExhaust â€” {2}{U}{U}, {T}: Any number of target players each mill cards equal to the number of cards in their graveyard. (Activate each exhaust ability only once.)",
     "colors": [
       "U"
     ],
@@ -26546,8 +26672,8 @@
     },
     "mana_cost": "{U}",
     "cmc": 1.0,
-    "type_line": "Creature — Crab",
-    "oracle_text": "Landfall — Whenever a land you control enters, each opponent mills three cards. (To mill a card, a player puts the top card of their library into their graveyard.)",
+    "type_line": "Creature â€” Crab",
+    "oracle_text": "Landfall â€” Whenever a land you control enters, each opponent mills three cards. (To mill a card, a player puts the top card of their library into their graveyard.)",
     "power": "0",
     "toughness": "3",
     "colors": [
@@ -26708,7 +26834,7 @@
         "id": "3663e79b-2bf9-44af-a638-c0ad9067d8d4",
         "component": "token",
         "name": "Phyrexian Goblin",
-        "type_line": "Token Creature — Phyrexian Goblin",
+        "type_line": "Token Creature â€” Phyrexian Goblin",
         "uri": "https://api.scryfall.com/cards/3663e79b-2bf9-44af-a638-c0ad9067d8d4"
       }
     ],
@@ -26837,7 +26963,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Desert",
+    "type_line": "Land â€” Desert",
     "oracle_text": "This land enters tapped.\nWhen this land enters, it deals 1 damage to target opponent.\n{T}: Add {R} or {W}.",
     "colors": [],
     "color_identity": [
@@ -26903,7 +27029,7 @@
     "collector_number": "251",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"The wind passing through the grooves makes a strange sort of music here.\"\n—Pioneer journal of Big Ralph",
+    "flavor_text": "\"The wind passing through the grooves makes a strange sort of music here.\"\nâ€”Pioneer journal of Big Ralph",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Piotr Dura",
     "artist_ids": [
@@ -26969,7 +27095,7 @@
     },
     "mana_cost": "{W}",
     "cmc": 1.0,
-    "type_line": "Creature — Rabbit Warrior",
+    "type_line": "Creature â€” Rabbit Warrior",
     "oracle_text": "Whenever this creature attacks while you control a token, this creature gets +2/+0 until end of turn.",
     "power": "1",
     "toughness": "2",
@@ -27105,7 +27231,7 @@
     },
     "mana_cost": "{W}",
     "cmc": 1.0,
-    "type_line": "Creature — Human Detective",
+    "type_line": "Creature â€” Human Detective",
     "oracle_text": "When this creature enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
     "power": "1",
     "toughness": "2",
@@ -27124,7 +27250,7 @@
         "id": "ef607895-d6d2-44ab-a6b4-84af55fce593",
         "component": "token",
         "name": "Clue",
-        "type_line": "Token Artifact — Clue",
+        "type_line": "Token Artifact â€” Clue",
         "uri": "https://api.scryfall.com/cards/ef607895-d6d2-44ab-a6b4-84af55fce593"
       },
       {
@@ -27132,7 +27258,7 @@
         "id": "0ad38866-fc5f-4f62-89c1-afc0f50765aa",
         "component": "combo_piece",
         "name": "Novice Inspector",
-        "type_line": "Creature — Human Detective",
+        "type_line": "Creature â€” Human Detective",
         "uri": "https://api.scryfall.com/cards/0ad38866-fc5f-4f62-89c1-afc0f50765aa"
       }
     ],
@@ -27190,7 +27316,7 @@
     "collector_number": "29",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"If the perfect evidence appears at your feet, your first task is to rule out misdirection.\"\n—The Ravnican Agency of Magicological Investigations handbook",
+    "flavor_text": "\"If the perfect evidence appears at your feet, your first task is to rule out misdirection.\"\nâ€”The Ravnican Agency of Magicological Investigations handbook",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Fajareka Setiawan",
     "artist_ids": [
@@ -27256,7 +27382,7 @@
     },
     "mana_cost": "{3}",
     "cmc": 3.0,
-    "type_line": "Artifact Creature — Frog",
+    "type_line": "Artifact Creature â€” Frog",
     "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)",
     "power": "3",
     "toughness": "2",
@@ -27383,7 +27509,7 @@
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Choose one —\n• Destroy target creature with toughness 4 or greater.\n• Destroy target enchantment.",
+    "oracle_text": "Choose one â€”\nâ€¢ Destroy target creature with toughness 4 or greater.\nâ€¢ Destroy target enchantment.",
     "colors": [
       "W"
     ],
@@ -27444,7 +27570,7 @@
     "collector_number": "128",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"You're not the first two-bit tyrant I've punched in the face.\"\n—Captain America, Steve Rogers",
+    "flavor_text": "\"You're not the first two-bit tyrant I've punched in the face.\"\nâ€”Captain America, Steve Rogers",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "David Palumbo",
     "artist_ids": [
@@ -27513,8 +27639,8 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Enchantment — Case",
-    "oracle_text": "When this Case enters, choose target creature you don't control. Each creature you control deals 1 damage to that creature.\nTo solve — Three or more creatures attacked this turn. (If unsolved, solve at the beginning of your end step.)\nSolved — Creatures you control get +1/+0.",
+    "type_line": "Enchantment â€” Case",
+    "oracle_text": "When this Case enters, choose target creature you don't control. Each creature you control deals 1 damage to that creature.\nTo solve â€” Three or more creatures attacked this turn. (If unsolved, solve at the beginning of your end step.)\nSolved â€” Creatures you control get +1/+0.",
     "colors": [
       "W"
     ],
@@ -27579,7 +27705,7 @@
     "digital": false,
     "rarity": "uncommon",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Edgar Sánchez Hidalgo",
+    "artist": "Edgar SÃ¡nchez Hidalgo",
     "artist_ids": [
       "cd897b75-a7b0-4902-8dc4-b1fda5303ec8"
     ],
@@ -27671,7 +27797,7 @@
         "id": "81de52ef-7515-4958-abea-fb8ebdcef93c",
         "component": "token",
         "name": "Rabbit",
-        "type_line": "Token Creature — Rabbit",
+        "type_line": "Token Creature â€” Rabbit",
         "uri": "https://api.scryfall.com/cards/81de52ef-7515-4958-abea-fb8ebdcef93c"
       }
     ],
@@ -27729,7 +27855,7 @@
     "collector_number": "16",
     "digital": false,
     "rarity": "uncommon",
-    "flavor_text": "\"Finding a hidden patch of glowberries is almost as joyful as eating them. Almost.\"\n—Ms. Bumbleflower",
+    "flavor_text": "\"Finding a hidden patch of glowberries is almost as joyful as eating them. Almost.\"\nâ€”Ms. Bumbleflower",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Eelis Kyttanen",
     "artist_ids": [
@@ -27800,7 +27926,7 @@
     },
     "mana_cost": "{1}",
     "cmc": 1.0,
-    "type_line": "Artifact Creature — Soldier",
+    "type_line": "Artifact Creature â€” Soldier",
     "oracle_text": "Whenever this creature attacks, another target creature you control gets +1/+1 until end of turn.\nUnearth {W} ({W}: Return this card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. Unearth only as a sorcery.)",
     "power": "1",
     "toughness": "1",
@@ -27935,7 +28061,7 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Soldier",
+    "type_line": "Creature â€” Human Soldier",
     "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nWhen this creature enters, create a 1/1 white Soldier creature token.",
     "power": "1",
     "toughness": "1",
@@ -27954,7 +28080,7 @@
         "id": "940f3989-77cc-49a9-92e0-095a75d80f0f",
         "component": "combo_piece",
         "name": "Resolute Reinforcements",
-        "type_line": "Creature — Human Soldier",
+        "type_line": "Creature â€” Human Soldier",
         "uri": "https://api.scryfall.com/cards/940f3989-77cc-49a9-92e0-095a75d80f0f"
       },
       {
@@ -27962,7 +28088,7 @@
         "id": "d093322e-a717-4e2d-8199-fa560792bcf6",
         "component": "token",
         "name": "Soldier",
-        "type_line": "Token Creature — Soldier",
+        "type_line": "Token Creature â€” Soldier",
         "uri": "https://api.scryfall.com/cards/d093322e-a717-4e2d-8199-fa560792bcf6"
       }
     ],
@@ -28089,7 +28215,7 @@
     },
     "mana_cost": "{2}{R} // {4}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Human Knight // Sorcery — Adventure",
+    "type_line": "Creature â€” Human Knight // Sorcery â€” Adventure",
     "power": "2",
     "toughness": "2",
     "colors": [
@@ -28105,11 +28231,11 @@
         "object": "card_face",
         "name": "Imodane's Recruiter",
         "mana_cost": "{2}{R}",
-        "type_line": "Creature — Human Knight",
+        "type_line": "Creature â€” Human Knight",
         "oracle_text": "When this creature enters, creatures you control get +1/+0 and gain haste until end of turn.",
         "power": "2",
         "toughness": "2",
-        "artist": "Néstor Ossandón Leal",
+        "artist": "NÃ©stor OssandÃ³n Leal",
         "artist_id": "7a6f1667-a8ac-47f5-a302-f71cb54b2adf",
         "illustration_id": "b4917d96-22fa-46ed-a330-98a7ee72c116"
       },
@@ -28117,9 +28243,9 @@
         "object": "card_face",
         "name": "Train Troops",
         "mana_cost": "{4}{W}",
-        "type_line": "Sorcery — Adventure",
+        "type_line": "Sorcery â€” Adventure",
         "oracle_text": "Create two 2/2 white Knight creature tokens with vigilance. (Then exile this card. You may cast the creature later from exile.)",
-        "artist": "Néstor Ossandón Leal",
+        "artist": "NÃ©stor OssandÃ³n Leal",
         "artist_id": "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
       }
     ],
@@ -28129,7 +28255,7 @@
         "id": "f4035134-a162-4651-86c5-ae006b6e0e20",
         "component": "token",
         "name": "Knight",
-        "type_line": "Token Creature — Knight",
+        "type_line": "Token Creature â€” Knight",
         "uri": "https://api.scryfall.com/cards/f4035134-a162-4651-86c5-ae006b6e0e20"
       },
       {
@@ -28137,7 +28263,7 @@
         "id": "4dbaa855-3f8e-42e6-8ec8-5ffbc5c8acf0",
         "component": "combo_piece",
         "name": "Imodane's Recruiter // Train Troops",
-        "type_line": "Creature — Human Knight // Sorcery — Adventure",
+        "type_line": "Creature â€” Human Knight // Sorcery â€” Adventure",
         "uri": "https://api.scryfall.com/cards/4dbaa855-3f8e-42e6-8ec8-5ffbc5c8acf0"
       },
       {
@@ -28204,7 +28330,7 @@
     "digital": false,
     "rarity": "uncommon",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Néstor Ossandón Leal",
+    "artist": "NÃ©stor OssandÃ³n Leal",
     "artist_ids": [
       "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
     ],
@@ -28273,7 +28399,7 @@
     },
     "mana_cost": "{2}{R} // {4}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Human Knight // Sorcery — Adventure",
+    "type_line": "Creature â€” Human Knight // Sorcery â€” Adventure",
     "power": "2",
     "toughness": "2",
     "colors": [
@@ -28289,11 +28415,11 @@
         "object": "card_face",
         "name": "Imodane's Recruiter",
         "mana_cost": "{2}{R}",
-        "type_line": "Creature — Human Knight",
+        "type_line": "Creature â€” Human Knight",
         "oracle_text": "When this creature enters, creatures you control get +1/+0 and gain haste until end of turn.",
         "power": "2",
         "toughness": "2",
-        "artist": "Néstor Ossandón Leal",
+        "artist": "NÃ©stor OssandÃ³n Leal",
         "artist_id": "7a6f1667-a8ac-47f5-a302-f71cb54b2adf",
         "illustration_id": "b4917d96-22fa-46ed-a330-98a7ee72c116"
       },
@@ -28301,9 +28427,9 @@
         "object": "card_face",
         "name": "Train Troops",
         "mana_cost": "{4}{W}",
-        "type_line": "Sorcery — Adventure",
+        "type_line": "Sorcery â€” Adventure",
         "oracle_text": "Create two 2/2 white Knight creature tokens with vigilance. (Then exile this card. You may cast the creature later from exile.)",
-        "artist": "Néstor Ossandón Leal",
+        "artist": "NÃ©stor OssandÃ³n Leal",
         "artist_id": "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
       }
     ],
@@ -28313,7 +28439,7 @@
         "id": "f4035134-a162-4651-86c5-ae006b6e0e20",
         "component": "token",
         "name": "Knight",
-        "type_line": "Token Creature — Knight",
+        "type_line": "Token Creature â€” Knight",
         "uri": "https://api.scryfall.com/cards/f4035134-a162-4651-86c5-ae006b6e0e20"
       },
       {
@@ -28321,7 +28447,7 @@
         "id": "4dbaa855-3f8e-42e6-8ec8-5ffbc5c8acf0",
         "component": "combo_piece",
         "name": "Imodane's Recruiter // Train Troops",
-        "type_line": "Creature — Human Knight // Sorcery — Adventure",
+        "type_line": "Creature â€” Human Knight // Sorcery â€” Adventure",
         "uri": "https://api.scryfall.com/cards/4dbaa855-3f8e-42e6-8ec8-5ffbc5c8acf0"
       },
       {
@@ -28388,7 +28514,7 @@
     "digital": false,
     "rarity": "uncommon",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Néstor Ossandón Leal",
+    "artist": "NÃ©stor OssandÃ³n Leal",
     "artist_ids": [
       "7a6f1667-a8ac-47f5-a302-f71cb54b2adf"
     ],
@@ -28588,7 +28714,7 @@
     },
     "mana_cost": "{1}{W}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Bird Rogue",
+    "type_line": "Creature â€” Bird Rogue",
     "oracle_text": "Flash\nFlying\nWhen this creature enters, exile target spell. It becomes plotted. (Its owner may cast it as a sorcery on a later turn without paying its mana cost.)\nSpells your opponents cast from graveyards or from exile cost {2} more to cast.",
     "power": "2",
     "toughness": "2",
@@ -28609,7 +28735,7 @@
         "id": "75143fdb-5651-4289-86df-76c9655a0599",
         "component": "combo_piece",
         "name": "Aven Interrupter",
-        "type_line": "Creature — Bird Rogue",
+        "type_line": "Creature â€” Bird Rogue",
         "uri": "https://api.scryfall.com/cards/75143fdb-5651-4289-86df-76c9655a0599"
       },
       {
@@ -28941,7 +29067,7 @@
     "collector_number": "259",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"Urza fortified every thirty miles on the path to Tomakul, creating a network of trenches the brothers would trade for decades.\"\n—*The Antiquities War*",
+    "flavor_text": "\"Urza fortified every thirty miles on the path to Tomakul, creating a network of trenches the brothers would trade for decades.\"\nâ€”*The Antiquities War*",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Thomas Stoop",
     "artist_ids": [
@@ -29009,7 +29135,7 @@
     "mana_cost": "{2}{W}{W}",
     "cmc": 4.0,
     "type_line": "Legendary Planeswalker",
-    "oracle_text": "Flash\nAs long as The Wandering Emperor entered this turn, you may activate her loyalty abilities any time you could cast an instant.\n+1: Put a +1/+1 counter on up to one target creature. It gains first strike until end of turn.\n−1: Create a 2/2 white Samurai creature token with vigilance.\n−2: Exile target tapped creature. You gain 2 life.",
+    "oracle_text": "Flash\nAs long as The Wandering Emperor entered this turn, you may activate her loyalty abilities any time you could cast an instant.\n+1: Put a +1/+1 counter on up to one target creature. It gains first strike until end of turn.\nâˆ’1: Create a 2/2 white Samurai creature token with vigilance.\nâˆ’2: Exile target tapped creature. You gain 2 life.",
     "loyalty": "3",
     "colors": [
       "W"
@@ -29034,7 +29160,7 @@
         "id": "f68e5337-6e44-4f8f-a102-2f97b433beea",
         "component": "token",
         "name": "Samurai",
-        "type_line": "Token Creature — Samurai",
+        "type_line": "Token Creature â€” Samurai",
         "uri": "https://api.scryfall.com/cards/f68e5337-6e44-4f8f-a102-2f97b433beea"
       }
     ],
@@ -29162,7 +29288,7 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Creature — Human Bard",
+    "type_line": "Creature â€” Human Bard",
     "oracle_text": "Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nYour opponents can't cast spells during your turn.",
     "power": "1",
     "toughness": "3",
@@ -29181,7 +29307,7 @@
         "id": "7edc0515-a130-45a7-aa09-0e23bba41587",
         "component": "token",
         "name": "Warrior",
-        "type_line": "Token Creature — Warrior",
+        "type_line": "Token Creature â€” Warrior",
         "uri": "https://api.scryfall.com/cards/7edc0515-a130-45a7-aa09-0e23bba41587"
       },
       {
@@ -29189,7 +29315,7 @@
         "id": "73f24785-c7b3-46ab-833e-666af3d86c63",
         "component": "combo_piece",
         "name": "Voice of Victory",
-        "type_line": "Creature — Human Bard",
+        "type_line": "Creature â€” Human Bard",
         "uri": "https://api.scryfall.com/cards/73f24785-c7b3-46ab-833e-666af3d86c63"
       }
     ],
@@ -29313,7 +29439,7 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Badger Mole",
+    "type_line": "Creature â€” Badger Mole",
     "oracle_text": "When this creature enters, earthbend 1. (Target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)\nWhenever you tap a creature for mana, add an additional {G}.",
     "power": "2",
     "toughness": "2",
@@ -29450,7 +29576,7 @@
     },
     "mana_cost": "{1}{W}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Spirit Knight",
+    "type_line": "Creature â€” Spirit Knight",
     "oracle_text": "Flash\nVigilance\nWhen this creature enters, any number of other target creatures you control phase out. (Treat them and anything attached to them as though they don't exist until their controller's next turn.)",
     "power": "3",
     "toughness": "2",
@@ -29581,7 +29707,7 @@
     },
     "mana_cost": "{2}",
     "cmc": 2.0,
-    "type_line": "Artifact — Vehicle",
+    "type_line": "Artifact â€” Vehicle",
     "oracle_text": "{T}: Exile up to two target cards from a single graveyard.\nUnlicensed Hearse's power and toughness are each equal to the number of cards exiled with it.\nCrew 2",
     "power": "*",
     "toughness": "*",
@@ -29714,7 +29840,7 @@
     },
     "mana_cost": "{1}{W}{W}",
     "cmc": 3.0,
-    "type_line": "Enchantment Creature — Sheep Glimmer",
+    "type_line": "Enchantment Creature â€” Sheep Glimmer",
     "oracle_text": "Lifelink\nWhenever one or more other creatures you control with power 2 or less enter, draw a card. This ability triggers only once each turn.\nWhen Enduring Innocence dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment. (It's not a creature.)",
     "power": "2",
     "toughness": "1",
@@ -29984,7 +30110,7 @@
     },
     "mana_cost": "{2}{G}{G}",
     "cmc": 4.0,
-    "type_line": "Creature — Plant Wurm",
+    "type_line": "Creature â€” Plant Wurm",
     "oracle_text": "At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.",
     "power": "1",
     "toughness": "3",
@@ -30049,7 +30175,7 @@
     "collector_number": "201",
     "digital": false,
     "rarity": "mythic",
-    "flavor_text": "\"I've found a strange vine in the ice. Thawing for further analysis.\"\n—Meltstrider log, final entry",
+    "flavor_text": "\"I've found a strange vine in the ice. Thawing for further analysis.\"\nâ€”Meltstrider log, final entry",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Samuel Perin",
     "artist_ids": [
@@ -30112,7 +30238,7 @@
     },
     "mana_cost": "{1}{W}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Kor Spirit",
+    "type_line": "Creature â€” Kor Spirit",
     "oracle_text": "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less.\nWhen this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card.",
     "power": "2",
     "toughness": "2",
@@ -30129,7 +30255,7 @@
         "id": "e671de25-c47c-48a1-919b-6aa30dab142f",
         "component": "combo_piece",
         "name": "Skyclave Apparition",
-        "type_line": "Creature — Kor Spirit",
+        "type_line": "Creature â€” Kor Spirit",
         "uri": "https://api.scryfall.com/cards/e671de25-c47c-48a1-919b-6aa30dab142f"
       },
       {
@@ -30137,7 +30263,7 @@
         "id": "f6469938-5af9-4f0a-9f2e-603c833e48ba",
         "component": "token",
         "name": "Illusion",
-        "type_line": "Token Creature — Illusion",
+        "type_line": "Token Creature â€” Illusion",
         "uri": "https://api.scryfall.com/cards/f6469938-5af9-4f0a-9f2e-603c833e48ba"
       }
     ],
@@ -30257,8 +30383,8 @@
     },
     "mana_cost": "{3}{W}{W}",
     "cmc": 5.0,
-    "type_line": "Legendary Planeswalker — Elspeth",
-    "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+    "type_line": "Legendary Planeswalker â€” Elspeth",
+    "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\nâˆ’3: Destroy target creature an opponent controls with mana value 3 or greater.",
     "loyalty": "5",
     "colors": [
       "W"
@@ -30273,7 +30399,7 @@
         "id": "6455d903-6996-448f-9148-9068febecb00",
         "component": "token",
         "name": "Soldier",
-        "type_line": "Token Creature — Soldier",
+        "type_line": "Token Creature â€” Soldier",
         "uri": "https://api.scryfall.com/cards/6455d903-6996-448f-9148-9068febecb00"
       },
       {
@@ -30281,7 +30407,7 @@
         "id": "89b98fd0-e2e5-4533-af2b-5230af2c88bd",
         "component": "combo_piece",
         "name": "Elspeth, Storm Slayer",
-        "type_line": "Legendary Planeswalker — Elspeth",
+        "type_line": "Legendary Planeswalker â€” Elspeth",
         "uri": "https://api.scryfall.com/cards/89b98fd0-e2e5-4533-af2b-5230af2c88bd"
       }
     ],
@@ -30404,7 +30530,7 @@
     },
     "mana_cost": "{2}{W}{W}",
     "cmc": 4.0,
-    "type_line": "Legendary Creature — Elemental Elk",
+    "type_line": "Legendary Creature â€” Elemental Elk",
     "oracle_text": "When Beza enters, create a Treasure token if an opponent controls more lands than you. You gain 4 life if an opponent has more life than you. Create two 1/1 blue Fish creature tokens if an opponent controls more creatures than you. Draw a card if an opponent has more cards in hand than you.",
     "power": "4",
     "toughness": "5",
@@ -30423,7 +30549,7 @@
         "id": "0fc98b72-d268-4ce5-93b4-57c812a24eff",
         "component": "combo_piece",
         "name": "Beza, the Bounding Spring",
-        "type_line": "Legendary Creature — Elemental Elk",
+        "type_line": "Legendary Creature â€” Elemental Elk",
         "uri": "https://api.scryfall.com/cards/0fc98b72-d268-4ce5-93b4-57c812a24eff"
       },
       {
@@ -30431,7 +30557,7 @@
         "id": "ff0357fb-d90c-49c7-b16a-8b52ac686c3b",
         "component": "token",
         "name": "Treasure",
-        "type_line": "Token Artifact — Treasure",
+        "type_line": "Token Artifact â€” Treasure",
         "uri": "https://api.scryfall.com/cards/ff0357fb-d90c-49c7-b16a-8b52ac686c3b"
       },
       {
@@ -30439,7 +30565,7 @@
         "id": "de0d6700-49f0-4233-97ba-cef7821c30ed",
         "component": "token",
         "name": "Fish",
-        "type_line": "Token Creature — Fish",
+        "type_line": "Token Creature â€” Fish",
         "uri": "https://api.scryfall.com/cards/de0d6700-49f0-4233-97ba-cef7821c30ed"
       }
     ],
@@ -30569,7 +30695,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Forest Plains",
+    "type_line": "Land â€” Forest Plains",
     "oracle_text": "({T}: Add {G} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
     "colors": [],
     "color_identity": [
@@ -30961,7 +31087,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Dragon",
+    "type_line": "Creature â€” Dragon",
     "oracle_text": "Flying\nActivated abilities of artifacts, creatures, and planeswalkers can't be activated.",
     "power": "3",
     "toughness": "3",
@@ -31094,7 +31220,7 @@
     "mana_cost": "{G}{W}",
     "cmc": 2.0,
     "type_line": "Instant",
-    "oracle_text": "Choose two —\n• Prevent all damage target instant or sorcery spell would deal this turn.\n• Target player sacrifices an enchantment of their choice.\n• Put a +1/+1 counter on target creature.\n• Target creature you control fights target creature you don't control.",
+    "oracle_text": "Choose two â€”\nâ€¢ Prevent all damage target instant or sorcery spell would deal this turn.\nâ€¢ Target player sacrifices an enchantment of their choice.\nâ€¢ Put a +1/+1 counter on target creature.\nâ€¢ Target creature you control fights target creature you don't control.",
     "colors": [
       "G",
       "W"
@@ -31225,7 +31351,7 @@
     "mana_cost": "",
     "cmc": 0.0,
     "type_line": "Legendary Land",
-    "oracle_text": "{T}: Add {G}.\nChannel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle. This ability costs {1} less to activate for each legendary creature you control.",
+    "oracle_text": "{T}: Add {G}.\nChannel â€” {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle. This ability costs {1} less to activate for each legendary creature you control.",
     "colors": [],
     "color_identity": [
       "G"
@@ -31363,7 +31489,7 @@
     },
     "mana_cost": "{2}{W}",
     "cmc": 3.0,
-    "type_line": "Creature — Archon",
+    "type_line": "Creature â€” Archon",
     "oracle_text": "Flying\nEach player can't cast more than one spell each turn.\nNonbasic lands your opponents control enter tapped.",
     "power": "2",
     "toughness": "3",
@@ -31430,7 +31556,7 @@
     "collector_number": "4",
     "digital": false,
     "rarity": "rare",
-    "flavor_text": "\"Archons dispense justice according to an ancient, and flawed, premise.\"\n—Nissa Revane",
+    "flavor_text": "\"Archons dispense justice according to an ancient, and flawed, premise.\"\nâ€”Nissa Revane",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Ryan Pancoast",
     "artist_ids": [
@@ -31569,7 +31695,7 @@
     "rarity": "rare",
     "flavor_text": "Here, the Hauntwoods churn like a viper's nest, as monstrous creatures prowl hungrily toward the ghostly light.",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
-    "artist": "Kasia 'Kafis' Zielińska",
+    "artist": "Kasia 'Kafis' ZieliÅ„ska",
     "artist_ids": [
       "a662cb71-4770-4b49-8b03-2cf8497049a7"
     ],
@@ -31637,7 +31763,7 @@
     },
     "mana_cost": "{G}",
     "cmc": 1.0,
-    "type_line": "Creature — Elf Druid",
+    "type_line": "Creature â€” Elf Druid",
     "oracle_text": "{T}: Add {G}.",
     "power": "1",
     "toughness": "1",
@@ -31703,7 +31829,7 @@
     "collector_number": "266",
     "digital": false,
     "rarity": "common",
-    "flavor_text": "\"Life grows everywhere. My kin merely find those places where it grows strongest.\"\n—Nissa Revane",
+    "flavor_text": "\"Life grows everywhere. My kin merely find those places where it grows strongest.\"\nâ€”Nissa Revane",
     "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
     "artist": "Wesley Burt",
     "artist_ids": [
@@ -31768,7 +31894,7 @@
     },
     "mana_cost": "{G}",
     "cmc": 1.0,
-    "type_line": "Creature — Elf Druid",
+    "type_line": "Creature â€” Elf Druid",
     "oracle_text": "{T}: Add {G}.",
     "power": "1",
     "toughness": "1",
@@ -31788,7 +31914,7 @@
         "id": "11bd6cef-f887-4b07-a957-4c53cb3c9c87",
         "component": "combo_piece",
         "name": "Llanowar Elves",
-        "type_line": "Creature — Elf Druid",
+        "type_line": "Creature â€” Elf Druid",
         "uri": "https://api.scryfall.com/cards/11bd6cef-f887-4b07-a957-4c53cb3c9c87"
       },
       {
@@ -31954,7 +32080,7 @@
         "id": "64839118-09d2-4645-9d3c-f80755ac781f",
         "component": "token",
         "name": "Map",
-        "type_line": "Token Artifact — Map",
+        "type_line": "Token Artifact â€” Map",
         "uri": "https://api.scryfall.com/cards/64839118-09d2-4645-9d3c-f80755ac781f"
       }
     ],
@@ -32081,7 +32207,7 @@
     },
     "mana_cost": "",
     "cmc": 0.0,
-    "type_line": "Land — Town",
+    "type_line": "Land â€” Town",
     "oracle_text": "This land enters tapped unless it's your first, second, or third turn of the game.\n{T}: Add {C}.\n{T}, Pay 1 life: Add one mana of any color.",
     "colors": [],
     "color_identity": [],
@@ -32222,7 +32348,7 @@
     },
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
-    "type_line": "Creature — Ooze",
+    "type_line": "Creature â€” Ooze",
     "oracle_text": "{G}: Exile target card from a graveyard. If it was a creature card, put a +1/+1 counter on this creature and you gain 1 life.",
     "power": "2",
     "toughness": "2",
@@ -32359,7 +32485,7 @@
     },
     "mana_cost": "{1}{W}",
     "cmc": 2.0,
-    "type_line": "Legendary Creature — Human Soldier",
+    "type_line": "Legendary Creature â€” Human Soldier",
     "oracle_text": "First strike\nNoncreature spells cost {1} more to cast.",
     "power": "2",
     "toughness": "1",
