@@ -1,15 +1,13 @@
 import discord, os
 from discord.ext import commands
 from datetime import datetime
-from dotenv import load_dotenv
 
-load_dotenv()
-LOG_GUILD_ID = int(os.getenv("LOG_GUILD_ID"))
+from config.config import LOG_CHANNEL_ID
 
 class Logger(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.log_channel_id = LOG_GUILD_ID
+        self.log_channel_id = LOG_CHANNEL_ID
         
         self.levels = {
             "INFO": ("🟢", discord.Color.green()),
