@@ -21,6 +21,8 @@ PRESENTATION_CHANNEL_ID = int(
         )
     )
 
+TOURNAMENT_CHANNEL_ID = int(os.getenv("TOURNAMENT_CHANNEL_ID") or "0")
+
 VERSION = os.getenv("VERSION")
 if TEST_MODE: VERSION = VERSION + "-test"
 

@@ -167,6 +167,16 @@ class TournamentService:
         finally:
             await session.close()
 
+    async def get_latest_tournament(self) -> Tournament | None:
+        session, trepo, _, _, _ = self._get_repos()
+        try:
+            tournaments = await trepo.list_all()
+            if not tournaments:
+                return None
+            return max(tournaments, key=lambda t: t.id)
+        finally:
+            await session.close()
+
     async def find_tournament(self, identifier: str) -> Tournament | None:
         session, trepo, _, _, _ = self._get_repos()
         try:
