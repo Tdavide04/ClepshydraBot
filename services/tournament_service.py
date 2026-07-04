@@ -2,7 +2,7 @@ from datetime import datetime
 
 from database import get_session
 from database.models import (
-    Tournament, TournamentPlayer, Match,
+    Tournament, TournamentPlayer, Match, User,
     TournamentStatus, MatchResult,
 )
 from repositories.tournament_repository import (
@@ -13,6 +13,7 @@ from repositories.tournament_repository import (
 from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
 from services.standings import StandingsCalculator, StandingsEntry
+from services.rating import Rating, rate_1vs1, rate_draw
 from config.config import TEST_MODE, GUILD_ID
 
 
@@ -62,6 +63,19 @@ class TournamentService:
         session, repo, _, _, _ = self._get_repos()
         try:
             return await repo.list_all()
+        finally:
+            await session.close()
+
+    async def list_tournaments_with_counts(self) -> list[tuple[Tournament, int]]:
+        session, trepo, tprepo, _, _ = self._get_repos()
+        try:
+            tournaments = await trepo.list_all()
+            tournaments.sort(key=lambda t: t.created_at or datetime.min, reverse=True)
+            result = []
+            for t in tournaments:
+                count = await tprepo.count_in_tournament(t.id)
+                result.append((t, count))
+            return result
         finally:
             await session.close()
 
@@ -286,6 +300,8 @@ class TournamentService:
             session.add(tournament)
             await session.commit()
 
+            await self._update_ratings(tournament_id)
+
             return f"Torneo **{tournament.name}** concluso forzatamente."
         finally:
             await session.close()
@@ -324,6 +340,8 @@ class TournamentService:
         match_id: int,
         winner_tp_id: int | None,
         result: str | None,
+        p1_game_wins: int | None = None,
+        p2_game_wins: int | None = None,
     ) -> str:
         session, _, _, mrepo, _ = self._get_repos()
         try:
@@ -350,9 +368,74 @@ class TournamentService:
                 match.winner_id = winner_tp_id
                 match.result = MatchResult.WIN
 
+            match.p1_game_wins = p1_game_wins
+            match.p2_game_wins = p2_game_wins
+
             session.add(match)
             await session.commit()
             return "Risultato registrato!"
+        finally:
+            await session.close()
+
+    async def _update_ratings(self, tournament_id: int):
+        session, _, tprepo, mrepo, urepo = self._get_repos()
+        try:
+            tournament = await session.get(Tournament, tournament_id)
+            if tournament is None:
+                return
+
+            players = await tprepo.get_by_tournament(tournament_id)
+            matches = await mrepo.get_by_tournament(tournament_id)
+
+            user_map: dict[int, User] = {}
+            for tp in players:
+                if tp.user_id:
+                    user = await session.get(User, tp.user_id)
+                    if user:
+                        user_map[tp.user_id] = user
+
+            for m in matches:
+                if m.player2_id is None or m.result is None:
+                    continue
+                if m.winner_id is None and m.result != MatchResult.DRAW:
+                    continue
+
+                tp1 = next((tp for tp in players if tp.id == m.player1_id), None)
+                tp2 = next((tp for tp in players if tp.id == m.player2_id), None)
+                if not tp1 or not tp2 or not tp1.user_id or not tp2.user_id:
+                    continue
+
+                u1 = user_map.get(tp1.user_id)
+                u2 = user_map.get(tp2.user_id)
+                if not u1 or not u2:
+                    continue
+
+                r1 = Rating(u1.rating, u1.rating_deviation, u1.rating_volatility, u1.rating_matches)
+                r2 = Rating(u2.rating, u2.rating_deviation, u2.rating_volatility, u2.rating_matches)
+
+                gw1 = m.p1_game_wins or (2 if m.winner_id == m.player1_id else 0)
+                gw2 = m.p2_game_wins or (2 if m.winner_id == m.player2_id else 0)
+
+                if m.result == MatchResult.DRAW:
+                    nr1, nr2 = rate_draw(r1, r2)
+                elif m.winner_id == m.player1_id:
+                    nr1, nr2 = rate_1vs1(r1, r2, gw1, gw2)
+                else:
+                    nr2, nr1 = rate_1vs1(r2, r1, gw2, gw1)
+
+                u1.rating = round(nr1.value, 1)
+                u1.rating_deviation = round(nr1.rd, 1)
+                u1.rating_volatility = round(nr1.volatility, 4)
+                u1.rating_matches = nr1.matches
+                u1.last_rated_at = datetime.now()
+
+                u2.rating = round(nr2.value, 1)
+                u2.rating_deviation = round(nr2.rd, 1)
+                u2.rating_volatility = round(nr2.volatility, 4)
+                u2.rating_matches = nr2.matches
+                u2.last_rated_at = datetime.now()
+
+            await session.commit()
         finally:
             await session.close()
 
@@ -385,6 +468,7 @@ class TournamentService:
                 tournament.ended_at = datetime.now()
                 session.add(tournament)
                 await session.commit()
+                await self._update_ratings(tournament_id)
                 return (
                     f"Torneo **{tournament.name}** completato!"
                 )
@@ -456,5 +540,27 @@ class TournamentService:
         session, _, _, mrepo, _ = self._get_repos()
         try:
             return await mrepo.get_by_tournament(tournament_id)
+        finally:
+            await session.close()
+
+    async def get_leaderboard(self, limit: int = 50) -> list[dict]:
+        session, _, _, _, urepo = self._get_repos()
+        try:
+            users = await urepo.get_leaderboard(limit)
+            result = []
+            for u in users:
+                name = f"<@{u.discord_id}>"
+                if u.nome:
+                    name = f"{u.nome} ({name})"
+                lb_rating = u.rating - 2 * u.rating_deviation
+                result.append({
+                    "discord_id": u.discord_id,
+                    "name": name,
+                    "rating": round(u.rating, 1),
+                    "rd": round(u.rating_deviation, 1),
+                    "matches": u.rating_matches,
+                    "lb_rating": round(lb_rating, 1),
+                })
+            return result
         finally:
             await session.close()

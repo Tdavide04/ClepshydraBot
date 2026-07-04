@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SAEnum,
+    Column, Integer, Float, String, Boolean, DateTime, ForeignKey, Enum as SAEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 import enum
@@ -30,6 +30,12 @@ class User(Base):
     nickname_arena = Column(String(100), nullable=True)
     nome = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
+
+    rating = Column(Float, default=1500.0, nullable=False)
+    rating_deviation = Column(Float, default=350.0, nullable=False)
+    rating_volatility = Column(Float, default=0.06, nullable=False)
+    rating_matches = Column(Integer, default=0, nullable=False)
+    last_rated_at = Column(DateTime, nullable=True)
 
     tournament_players = relationship("TournamentPlayer", back_populates="user")
 
@@ -119,6 +125,8 @@ class Match(Base):
     )
     result = Column(SAEnum(MatchResult), nullable=True)
     table_number = Column(Integer, nullable=True)
+    p1_game_wins = Column(Integer, nullable=True)
+    p2_game_wins = Column(Integer, nullable=True)
 
     tournament = relationship("Tournament", back_populates="matches")
     player1 = relationship(

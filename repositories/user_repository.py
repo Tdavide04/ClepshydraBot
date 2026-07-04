@@ -20,3 +20,13 @@ class UserRepository(BaseRepository[User]):
             return user
         user = User(discord_id=discord_id)
         return await self.add(user)
+
+    async def get_leaderboard(self, limit: int = 50) -> list[User]:
+        from sqlalchemy import desc
+        result = await self.session.execute(
+            select(User)
+            .where(User.rating_matches > 0)
+            .order_by(desc(User.rating))
+            .limit(limit)
+        )
+        return list(result.scalars().all())

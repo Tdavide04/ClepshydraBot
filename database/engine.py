@@ -76,6 +76,55 @@ async def _migrate_schema():
             print("Migrazione: aggiunta colonna deck_name a tournament_players")
         except Exception:
             pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER")
+            )
+            print("Migrazione: aggiunta colonna p1_game_wins a matches")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE matches ADD COLUMN p2_game_wins INTEGER")
+            )
+            print("Migrazione: aggiunta colonna p2_game_wins a matches")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN rating FLOAT DEFAULT 1500.0")
+            )
+            print("Migrazione: aggiunta colonna rating a users")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN rating_deviation FLOAT DEFAULT 350.0")
+            )
+            print("Migrazione: aggiunta colonna rating_deviation a users")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN rating_volatility FLOAT DEFAULT 0.06")
+            )
+            print("Migrazione: aggiunta colonna rating_volatility a users")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN rating_matches INTEGER DEFAULT 0")
+            )
+            print("Migrazione: aggiunta colonna rating_matches a users")
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN last_rated_at TIMESTAMP")
+            )
+            print("Migrazione: aggiunta colonna last_rated_at a users")
+        except Exception:
+            pass
 
 
 async def close_db():
