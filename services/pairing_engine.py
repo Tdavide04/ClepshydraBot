@@ -1,5 +1,5 @@
 import math
-import random
+from collections import defaultdict
 from dataclasses import dataclass
 
 
@@ -7,6 +7,7 @@ POINTS_WIN = 3
 POINTS_DRAW = 1
 POINTS_LOSS = 0
 POINTS_BYE = 3
+MWP_FLOOR = 0.33
 
 
 @dataclass
@@ -14,9 +15,7 @@ class PlayerStanding:
     player_id: int
     seed: int
     score: float
-    opponent_wins: float
-    game_win_percent: float
-    opponent_game_win_percent: float
+    opponent_win_percent: float
 
 
 @dataclass
@@ -33,64 +32,77 @@ class PairingEngine:
         return max(1, math.ceil(math.log2(player_count)))
 
     @staticmethod
-    def _compute_scores(
-        players: list,
-        matches: list,
-    ) -> dict[int, PlayerStanding]:
-        scores: dict[int, float] = {}
-        for p in players:
-            pid = p.id if hasattr(p, "id") else p
-            scores[pid] = 0.0
+    def _scoreboard(players: list, matches: list) -> dict[int, PlayerStanding]:
+        points: dict[int, float] = defaultdict(float)
+        match_wins: dict[int, int] = defaultdict(int)
+        opponents: dict[int, list[int]] = defaultdict(list)
 
-        match_records: dict[int, list[bool | None]] = {}
         for p in players:
             pid = p.id if hasattr(p, "id") else p
-            match_records[pid] = []
+            points[pid] = 0.0
+            match_wins[pid] = 0
+            opponents[pid] = []
 
         for m in matches:
-            if m.winner_id is not None:
-                scores[m.winner_id] += POINTS_WIN
-                loser = (
-                    m.player1_id if m.player2_id == m.winner_id
-                    else m.player2_id
-                )
-                if loser is not None:
-                    scores[loser] += POINTS_LOSS
-                    match_records[m.winner_id].append(True)
-                    match_records[loser].append(False)
-            elif m.result is not None:
+            if m.player2_id is None:
                 if m.player1_id is not None:
-                    scores[m.player1_id] += POINTS_DRAW
-                    match_records[m.player1_id].append(None)
-                if m.player2_id is not None:
-                    scores[m.player2_id] += POINTS_DRAW
-                    match_records[m.player2_id].append(None)
-            elif m.player2_id is None:
-                if m.player1_id is not None:
-                    scores[m.player1_id] += POINTS_BYE
-                    match_records[m.player1_id].append(True)
+                    points[m.player1_id] += POINTS_BYE
+                    match_wins[m.player1_id] += 1
+                continue
+            if m.player1_id is None or m.player2_id is None:
+                continue
 
-        standings: dict[int, PlayerStanding] = {}
+            opponents[m.player1_id].append(m.player2_id)
+            opponents[m.player2_id].append(m.player1_id)
+
+            if m.winner_id == m.player1_id:
+                points[m.player1_id] += POINTS_WIN
+                points[m.player2_id] += POINTS_LOSS
+                match_wins[m.player1_id] += 1
+            elif m.winner_id == m.player2_id:
+                points[m.player2_id] += POINTS_WIN
+                points[m.player1_id] += POINTS_LOSS
+                match_wins[m.player2_id] += 1
+            elif m.result is not None:
+                points[m.player1_id] += POINTS_DRAW
+                points[m.player2_id] += POINTS_DRAW
+
+        def mwp(pid: int) -> float:
+            total_wins = match_wins.get(pid, 0)
+            total = sum(
+                1 for m in matches
+                if (m.player1_id == pid or m.player2_id == pid)
+                and m.player2_id is not None
+            )
+            if total == 0:
+                return MWP_FLOOR
+            return max(MWP_FLOOR, total_wins / total)
+
+        standings = {}
         for p in players:
             pid = p.id if hasattr(p, "id") else p
-            pseed = p.seed if hasattr(p, "seed") else 0
-
-            ow = sum(
-                scores.get(m.winner_id if m.winner_id != pid else (
-                    m.player1_id if m.player2_id == pid else m.player2_id
-                ), 0.0)
-                for m in matches
-                if m.player1_id == pid or m.player2_id == pid
-            )
+            opps = opponents.get(pid, [])
+            omw = sum(mwp(o) for o in opps) / len(opps) if opps else 0.0
             standings[pid] = PlayerStanding(
                 player_id=pid,
-                seed=pseed,
-                score=scores.get(pid, 0.0),
-                opponent_wins=ow,
-                game_win_percent=0.5,
-                opponent_game_win_percent=0.5,
+                seed=getattr(p, "seed", 0) or 0,
+                score=points.get(pid, 0.0),
+                opponent_win_percent=omw,
             )
         return standings
+
+    @staticmethod
+    def _existing_pairs(matches: list) -> set[tuple[int, int]]:
+        pairs = set()
+        for m in matches:
+            if m.player1_id and m.player2_id:
+                a, b = m.player1_id, m.player2_id
+                pairs.add((a, b) if a < b else (b, a))
+        return pairs
+
+    @staticmethod
+    def _bye_history(matches: list) -> set[int]:
+        return {m.player1_id for m in matches if m.player2_id is None}
 
     @staticmethod
     def generate_round(
@@ -99,48 +111,100 @@ class PairingEngine:
         round_number: int,
     ) -> list[Pairing]:
         active = [p for p in players if not getattr(p, "dropped", False)]
-        standings = PairingEngine._compute_scores(active, matches)
-        existing = PairingEngine._get_existing_pairs(matches)
+        standings = PairingEngine._scoreboard(active, matches)
+        existing = PairingEngine._existing_pairs(matches)
+        bye_received = PairingEngine._bye_history(matches)
 
-        sorted_players = sorted(
-            active,
+        brackets = defaultdict(list)
+        for p in active:
+            pid = p.id if hasattr(p, "id") else p
+            brackets[standings[pid].score].append(p)
+
+        sorted_scores = sorted(brackets.keys(), reverse=True)
+
+        pairings: list[Pairing] = []
+        used: set[int] = set()
+        dropped_down: int | None = None
+        table = 1
+
+        for score in sorted_scores:
+            bracket = sorted(
+                brackets[score],
+                key=lambda p: (
+                    -standings[p.id].opponent_win_percent,
+                    -(p.seed or 0),
+                )
+            )
+
+            if round_number == 1:
+                import random
+                random.shuffle(bracket)
+
+            pool = []
+            if dropped_down is not None:
+                dd_player = next((p for p in bracket if p.id == dropped_down), None)
+                if dd_player:
+                    pool.append(dd_player)
+                    dropped_down = None
+
+            pool.extend(p for p in bracket if p.id not in used)
+
+            paired = set()
+            i = 0
+            while i < len(pool):
+                p1 = pool[i]
+                pid1 = p1.id if hasattr(p1, "id") else p1
+                if pid1 in paired:
+                    i += 1
+                    continue
+
+                opponent = None
+                for j in range(i + 1, len(pool)):
+                    p2 = pool[j]
+                    pid2 = p2.id if hasattr(p2, "id") else p2
+                    if pid2 in paired:
+                        continue
+                    a, b = (pid1, pid2) if pid1 < pid2 else (pid2, pid1)
+                    if (a, b) in existing:
+                        continue
+                    opponent = pid2
+                    break
+
+                if opponent is not None:
+                    pairings.append(Pairing(
+                        player1_id=pid1,
+                        player2_id=opponent,
+                        table_number=table,
+                    ))
+                    paired.add(pid1)
+                    paired.add(opponent)
+                    table += 1
+                else:
+                    player_obj = next(
+                        (p for p in active if (p.id if hasattr(p, "id") else p) == pid1),
+                        None
+                    )
+                    if player_obj:
+                        dropped_down = pid1
+                        used.add(pid1)
+
+                i += 1
+
+        unpaired = [p for p in active if (
+            p.id if hasattr(p, "id") else p
+        ) not in paired and (
+            p.id if hasattr(p, "id") else p
+        ) not in used]
+
+        unpaired.sort(
             key=lambda p: (
-                -standings[p.id].score,
-                -standings[p.id].opponent_wins,
+                standings[p.id].score,
+                p.id in bye_received,
                 -(p.seed or 0),
             )
         )
 
-        if round_number == 1:
-            random.shuffle(sorted_players)
-
-        pairings: list[Pairing] = []
-        used: set[int] = set()
-        table = 1
-
-        for i in range(len(sorted_players)):
-            pid = sorted_players[i].id if hasattr(sorted_players[i], "id") else sorted_players[i]
-            if pid in used:
-                continue
-
-            opponent = PairingEngine._find_opponent(
-                sorted_players, i, used, existing, standings
-            )
-
-            if opponent is not None:
-                pairings.append(Pairing(
-                    player1_id=pid,
-                    player2_id=opponent,
-                    table_number=table,
-                ))
-                used.add(pid)
-                used.add(opponent)
-                table += 1
-
-        remaining = [p for p in sorted_players if (
-            p.id if hasattr(p, "id") else p
-        ) not in used]
-        for p in remaining:
+        for p in unpaired:
             pid = p.id if hasattr(p, "id") else p
             pairings.append(Pairing(
                 player1_id=pid,
@@ -150,38 +214,3 @@ class PairingEngine:
             table += 1
 
         return pairings
-
-    @staticmethod
-    def _get_existing_pairs(
-        matches: list,
-    ) -> set[tuple[int, int]]:
-        pairs: set[tuple[int, int]] = set()
-        for m in matches:
-            if m.player1_id and m.player2_id:
-                a, b = m.player1_id, m.player2_id
-                pairs.add((a, b) if a < b else (b, a))
-        return pairs
-
-    @staticmethod
-    def _find_opponent(
-        sorted_players: list,
-        current_idx: int,
-        used: set[int],
-        existing_pairs: set[tuple[int, int]],
-        standings: dict[int, PlayerStanding],
-    ) -> int | None:
-        pid = sorted_players[current_idx].id if hasattr(sorted_players[current_idx], "id") else sorted_players[current_idx]
-
-        for j in range(current_idx + 1, len(sorted_players)):
-            opp = sorted_players[j]
-            opp_id = opp.id if hasattr(opp, "id") else opp
-            if opp_id in used:
-                continue
-
-            pair = (pid, opp_id) if pid < opp_id else (opp_id, pid)
-            if pair in existing_pairs:
-                continue
-
-            return opp_id
-
-        return None
