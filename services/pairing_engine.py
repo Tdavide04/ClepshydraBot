@@ -124,6 +124,7 @@ class PairingEngine:
 
         pairings: list[Pairing] = []
         used: set[int] = set()
+        all_paired: set[int] = set()
         dropped_down: int | None = None
         table = 1
 
@@ -178,6 +179,8 @@ class PairingEngine:
                     ))
                     paired.add(pid1)
                     paired.add(opponent)
+                    all_paired.add(pid1)
+                    all_paired.add(opponent)
                     table += 1
                 else:
                     player_obj = next(
@@ -192,9 +195,17 @@ class PairingEngine:
 
         unpaired = [p for p in active if (
             p.id if hasattr(p, "id") else p
-        ) not in paired and (
+        ) not in all_paired and (
             p.id if hasattr(p, "id") else p
         ) not in used]
+
+        if dropped_down is not None:
+            dd_p = next(
+                (p for p in active if (p.id if hasattr(p, "id") else p) == dropped_down),
+                None,
+            )
+            if dd_p:
+                unpaired.append(dd_p)
 
         unpaired.sort(
             key=lambda p: (
