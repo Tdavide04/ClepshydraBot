@@ -36632,7 +36632,7 @@
       "cardmarket": "https://www.cardmarket.com/en/Magic/Products?idProduct=660860&referrer=scryfall&utm_campaign=card_prices&utm_medium=text&utm_source=scryfall",
       "cardhoarder": "https://www.cardhoarder.com/cards/100160?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
     },
-    "artisan_legal": false
+    "artisan_legal": true
   },
   "goblin tomb raider": {
     "object": "card",

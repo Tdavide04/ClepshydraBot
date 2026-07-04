@@ -167,6 +167,164 @@ Le API Scryfall sono usate nella fase successiva (validazione rarità Artisan), 
 
 ---
 
+## Sistema di Validazione Rarità Artisan
+
+Dopo aver superato il controllo banlist, ogni carta del deck viene verificata contro le API Scryfall per determinare se è legale nel formato Artisan (solo carte Common e Uncommon su MTG Arena). Quattro componenti lavorano insieme per questo scopo.
+
+---
+
+### Componenti
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     ArtisanService.validate_deck()                │
+│   cogs/tournament/service.py                                      │
+│                                                                    │
+│   1. check_banlist() ──── ok? ───→ 2. _fetch_collection()         │
+│                                        ↓                          │
+│                                    3. _is_arena_artisan_legal()    │
+│                                        ↓                          │
+│                          ┌───────────┴───────────┐                │
+│                          ▼                       ▼                │
+│              utils/arena_overrides.py   utils/card_cache.py       │
+│              data/arena_rarity_data.json  data/card_cache.json    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### `utils/arena_overrides.py` — Override di rarità
+
+**Problema**: Alcune carte esistono in versione Common/Uncommon su carta (paper), ma su MTG Arena sono state stampate solo con rarità Rare/Mythic (es. le Special Guest — set `SPG`). Scryfall le vedrebbe come Rare, ma nel formato Artisan dovrebbero essere considerate legali in base alla loro rarità paper più bassa.
+
+**Soluzione**: Il modulo mantiene un dizionario di override che forza una rarità più bassa per queste carte.
+
+| Funzione | Ruolo |
+|---|---|
+| `get_override_rarity(card_name)` | API pubblica: restituisce `"common"`/`"uncommon"` o `None` |
+| `update_spg_overrides(set_code="spg")` | Scansione Scryfall: trova carte stampate su Arena a rarità alta ma con versioni paper a rarità bassa |
+| `invalidate_override_cache()` | Forza il ricaricamento del JSON al prossimo accesso |
+
+**Caching**: Il JSON viene caricato una volta in `_override_cache` (variabile globale) e tenuto in memoria. `_save_override_data()` aggiorna sia il file su disco che la cache.
+
+**Utilizzo nel flusso** (`_is_arena_artisan_legal()` in `service.py:266-312`):
+1. Chiama `get_override_rarity(card_name)`
+2. Se l'override è `"common"` o `"uncommon"` → carta legale, salta la chiamata API
+3. Altrimenti procede con la scansione Scryfall delle stampe
+
+---
+
+### `data/arena_rarity_data.json` — Storage override
+
+```json
+{
+    "processed_sets": ["SPG"],
+    "overrides": {
+        "Swords to Plowshares": "uncommon",
+        "Lightning Bolt": "common",
+        "Sylvan Library": "uncommon",
+        ...
+    }
+}
+```
+
+| Campo | Descrizione |
+|---|---|
+| `processed_sets` | Set già scansionati da `update_spg_overrides()`. Un set presente qui non verrà riscansionato. |
+| `overrides` | Dizionario `nome_carta → rarità_forzata`. Contiene attualmente ~40 carte del set SPG (Special Guest). |
+
+**Attenzione**: Se all'avvio il JSON contiene già `"SPG"` in `processed_sets`, `update_spg_overrides()` salterà la scansione. Per forzare una nuova scansione:
+1. Chiamare `invalidate_override_cache()`
+2. Rimuovere `"SPG"` da `processed_sets` nel JSON
+3. Eseguire `update_spg_overrides()`
+
+---
+
+### `utils/card_cache.py` — Cache Scryfall in memoria
+
+Cache chiave-valore (nome carta lowercase → dati Scryfall) che evita di richiamare le API per carte già viste.
+
+| Funzione | Ruolo |
+|---|---|
+| `load_cache()` | Carica `data/card_cache.json` in `_card_cache` (una volta sola) |
+| `save_cache()` | Scrive su disco con scrittura atomica (file `.tmp` + `os.replace`) |
+| `get_cached_card(name)` | Restituisce il dict Scryfall di una carta, o `None` |
+| `set_cached_card(name, data)` | Aggiunge/aggiorna una carta nella cache; marca `_dirty = True` |
+| `periodic_save_loop()` | Salva automaticamente ogni 60 secondi se ci sono modifiche |
+
+**Dettagli implementativi**:
+- `_dirty`: flag che evita scritture su disco se non ci sono state modifiche
+- `_save_lock`: `asyncio.Lock()` per evitare race-condition su scritture concorrenti
+- Scrittura atomica: `json.dump` su file `.tmp`, poi `os.replace()` → nessun file corrotto se il bot crasha durante il salvataggio
+
+---
+
+### `data/card_cache.json` — Cache persistente su disco
+
+Contiene i dati delle carte già fetchate da Scryfall durante le validazioni dei deck.
+
+**Struttura tipica** (una voce per carta, chiave = nome lowercase):
+
+```json
+{
+  "goblin bushwhacker": {
+    "name": "Goblin Bushwhacker",
+    "type_line": "Creature — Goblin Warrior",
+    "cmc": 1.0,
+    "prints_search_uri": "https://...",
+    "artisan_legal": true,
+    "image_uris": { "small": "https://...", ... }
+  }
+}
+```
+
+**Dati memorizzati per carta**:
+- `name`, `type_line`, `cmc` — usati per costruire l'embed e le card object
+- `image_uris` — usato per generare l'immagine del deck (`DeckImageGenerator`)
+- `prints_search_uri` — usato da `_is_arena_artisan_legal()` per fetchare le stampe
+- `artisan_legal` — flag calcolato (cached) che indica se la carta è legale in Artisan
+- Per le carte double-faced: l'intero oggetto Scryfall (`card_faces`, `layout`, ecc.)
+
+**Dimensione**: Il file cresce organicamente col tempo. Ogni nuova carta vista durante una validazione deck viene aggiunta. Non c'è un meccanismo di pulizia/expiry.
+
+---
+
+### Flusso completo (banlist + validazione rarità + cache)
+
+```
+Utente invia deck
+    → TournamentSystemCog (/deck_check o registrazione torneo)
+        → ArtisanService.validate_deck()
+            │
+            ├─ 1. _load_banlist() ← BanlistRepository (SQLite)
+            ├─ 2. check_banlist(entries, banlist)
+            │      ↓
+            │   Se banned → DeckValidationResult(banned_cards=[...]) → STOP
+            │
+            └─ 3. _fetch_collection(session, unique_names)
+            │      │
+            │      ├─ get_cached_card(nome) → se presente, salta API
+            │      └─ POST /cards/collection (Scryfall, chunk 75)
+            │             ↓
+            │         set_cached_card(nome, data) per ogni carta
+            │
+            └─ 4. _is_arena_artisan_legal(session, data, nome)
+                     │
+                     ├─ get_override_rarity(nome) ← arena_rarity_data.json
+                     │      ↓
+                     │   Se override → True/False (senza API)
+                     │
+                     └─ GET prints_search_uri + game:arena (Scryfall)
+                            ↓
+                        Controlla rarità di ogni stampa su Arena
+                        Se esiste comune/uncommon → legale
+                        Altrimenti → illegale
+                            ↓
+                        Cache: set_cached_card(... "artisan_legal": bool)
+```
+
+---
+
 ## Problemi Noti / Potenziali
 
 1. **Double-faced cards**: La banlist in `cards.txt` include già il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`). Il `check_banlist()` si basa sul nome così come viene parsato dal deck — a sua volta, `parse_decklist()` tronca al ` // ` e prende solo il fronte. **Se un utente scrive il nome completo nel deck, il confronto potrebbe fallire** e la carta bannata passare inosservata.

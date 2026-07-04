@@ -275,7 +275,8 @@ class ArtisanService:
 
         cached_entry = get_cached_card(card_name)
         if cached_entry is not None and "artisan_legal" in cached_entry:
-            return cached_entry["artisan_legal"]
+            if cached_entry["artisan_legal"] or card_name.startswith("A-"):
+                return cached_entry["artisan_legal"]
 
         oracle_id = card_data.get("oracle_id", "")
         if oracle_id and oracle_id in _ARENA_LEGAL_CACHE:
@@ -296,7 +297,7 @@ class ArtisanService:
         for printing in prints_data.get("data", []):
             rarity = printing.get("rarity", "").lower()
             set_type = printing.get("set_type", "").lower()
-            if set_type == "alchemy":
+            if set_type == "alchemy" and printing.get("name", "").startswith("A-"):
                 continue
             if rarity in ("common", "uncommon"):
                 legal = True
