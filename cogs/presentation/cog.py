@@ -39,7 +39,7 @@ class PresentationCog(commands.Cog):
                 f"Benvenuto {member.mention}! Attualmente hai una visione limitata dei canali del server. "
                 f"Usa `/presentati` per sbloccare tutte le funzionalita del server. "
                 f"All'interno troverai canali specifici per ogni formato di Magic Arena, canali generali e qualche nuovo amico.",
-                delete_after=300.0
+                delete_after=1800.0
             )
 
     @discord.app_commands.command(name="presentati", description="Apri il modulo di presentazione")
@@ -84,7 +84,7 @@ class PresentationCog(commands.Cog):
             await message.channel.send(
                 f"Attenzione {message.author.mention}, in questo canale puoi solo usare `/presentati`. "
                 f"I messaggi normali vengono eliminati.",
-                delete_after=15
+                delete_after=300.0
             )
         except Exception as e:
             if logger:
