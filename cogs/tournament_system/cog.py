@@ -116,10 +116,14 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=False)
-
         deck_name = self.titolo.value.strip() or "ARTISAN DECK"
         entries, total_cards, _ = parse_decklist(self.deck_list.value)
+
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
         result = await self.artisan_service.validate_deck(
             entries, deck_name, total_cards
@@ -322,17 +326,16 @@ class RisultatoView(discord.ui.View):
         embed.add_field(name="Torneo", value=self.tournament.name, inline=True)
         embed.set_footer(text=f"Match ID: {self.match.id}")
 
-        for child in self.children:
-            child.disabled = True
         await interaction.response.edit_message(
-            content=None, embed=embed, view=self,
+            content=None, embed=embed, view=None,
         )
 
-        await interaction.followup.send(
-            f"\U0001f4dd Risultato **Tavolo {self.match.table_number}**: "
-            f"{labels.get(self.selected, self.selected)}",
-            ephemeral=False,
-        )
+        channel = interaction.channel
+        if channel:
+            await channel.send(
+                f"{interaction.user.mention} \U0001f4dd Risultato **Tavolo {self.match.table_number}**: "
+                f"{labels.get(self.selected, self.selected)}"
+            )
 
         logger = self.bot.get_cog("Logger")
         if logger:
@@ -647,6 +650,53 @@ class TournamentSystemCog(commands.Cog):
     # ------------------------------------------------------------------
 
     @discord.app_commands.command(
+        name="lista_tornei",
+        description="Mostra tutti i tornei con ID, nome, partecipanti e stato"
+    )
+    async def lista_tornei(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=False)
+
+        tournaments = await self.service.list_tournaments_with_counts()
+
+        if not tournaments:
+            await interaction.followup.send("Nessun torneo trovato.")
+            return
+
+        embed = discord.Embed(
+            title="\U0001f3c6 Lista Tornei",
+            color=discord.Color.blue(),
+            timestamp=datetime.now(),
+        )
+
+        status_emoji = {
+            "registration": "\U0001f4c5",
+            "active": "\U0001f525",
+            "completed": "\U00002705",
+        }
+        status_label = {
+            "registration": "Iscrizioni aperte",
+            "active": "In corso",
+            "completed": "Completato",
+        }
+
+        for tournament, player_count in tournaments:
+            icon = status_emoji.get(tournament.status.value, "\U00002753")
+            stato = status_label.get(tournament.status.value, tournament.status.value.capitalize())
+
+            players = f"{player_count}"
+            if tournament.max_players:
+                players += f"/{tournament.max_players}"
+
+            embed.add_field(
+                name=f"`#{tournament.id}` {tournament.name}",
+                value=f"{icon} {stato} \u2022 \U0001f465 {players}",
+                inline=False,
+            )
+
+        embed.set_footer(text=f"Totale tornei: {len(tournaments)}")
+        await interaction.followup.send(embed=embed)
+
+    @discord.app_commands.command(
         name="iscriviti",
         description="Iscriviti a un torneo"
     )
@@ -859,6 +909,20 @@ class TournamentSystemCog(commands.Cog):
             lines.append("Nessun dato disponibile.")
 
         embed.description = "\n".join(lines)
+
+        if result:
+            top = result[0]
+            tiebreaker_info = (
+                f"OMW%: {top.opponent_win_percent:.1%} "
+                f"| GWP%: {top.game_win_percent:.1%} "
+                f"| OGW%: {top.opponent_game_win_percent:.1%}"
+            )
+            embed.add_field(
+                name="Tiebreaker (1\u00b0 class.)",
+                value=tiebreaker_info,
+                inline=False,
+            )
+
         embed.set_footer(text=f"Torneo ID: {torneo_id}")
         await interaction.followup.send(embed=embed)
 
@@ -934,6 +998,56 @@ class TournamentSystemCog(commands.Cog):
 
         embed.description = "\n".join(lines)
         embed.set_footer(text=f"Torneo ID: {torneo_id} | Round {current_round}")
+        await interaction.followup.send(embed=embed)
+
+    @discord.app_commands.command(
+        name="leaderboard",
+        description="Classifica rating giocatori (Glicko-2)"
+    )
+    @discord.app_commands.describe(
+        limite="Numero di giocatori da mostrare (default 20)"
+    )
+    async def leaderboard(
+        self,
+        interaction: discord.Interaction,
+        limite: int | None = None,
+    ):
+        await interaction.response.defer(ephemeral=False)
+
+        limit = min(max(1, limite or 20), 100)
+
+        entries = await self.service.get_leaderboard(limit)
+
+        if not entries:
+            await interaction.followup.send(
+                "Nessun giocatore con rating disponibile. "
+                "I rating vengono calcolati al termine dei tornei."
+            )
+            return
+
+        embed = discord.Embed(
+            title="\U0001f3c6 Leaderboard Rating",
+            color=discord.Color.gold(),
+            timestamp=datetime.now(),
+        )
+
+        lines = []
+        MEDALS = ["\U0001f947", "\U0001f948", "\U0001f949"]
+        for i, e in enumerate(entries):
+            medal = MEDALS[i] if i < 3 else f"`#{i + 1:<2}`"
+            confidence = f"\u00b1{e['rd']:.0f}" if e["rd"] < 100 else "\u00b1>100"
+            lines.append(
+                f"{medal} **{e['name']}** \u2014 "
+                f"`{e['rating']:.0f}` {confidence} "
+                f"({e['matches']} partite)"
+            )
+
+        chunks = [lines[i:i + 15] for i in range(0, len(lines), 15)]
+        for i, chunk in enumerate(chunks):
+            name = "Giocatori" if len(chunks) == 1 else f"Giocatori (parte {i + 1})"
+            embed.add_field(name=name, value="\n".join(chunk), inline=False)
+
+        embed.set_footer(text=f"Mostrati {len(entries)}/{limit} giocatori")
         await interaction.followup.send(embed=embed)
 
     @discord.app_commands.command(
