@@ -75,9 +75,7 @@ class StandingsCalculator:
                     s = stats[m.player1_id]
                     s.match_points += POINTS_BYE
                     s.match_wins += 1
-                    gw, gl = StandingsCalculator._get_game_wins(m, m.player1_id)
-                    s.game_wins += gw
-                    s.game_losses += gl
+                    s.game_wins += 2
                 continue
 
             if m.player1_id is None or m.player2_id is None:
