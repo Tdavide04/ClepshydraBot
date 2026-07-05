@@ -62,7 +62,7 @@ def normalizza_gilda(value: str) -> str:
         "br": "Rakdos", "rb": "Rakdos", "rakdos": "Rakdos",
         "bg": "Golgari", "gb": "Golgari", "golgari": "Golgari",
         "ug": "Simic", "gu": "Simic", "simic": "Simic",
-        "gu": "Gruul", "rg": "Gruul", "gruul": "Gruul",
+        "rg": "Gruul", "gruul": "Gruul",
         "esper": "Esper", "grixis": "Grixis", "bant": "Bant", "temur": "Temur",
         "jeskai": "Jeskai", "mardu": "Mardu", "abzan": "Abzan", "sultai": "Sultai",
         "jund": "Jund", "naya": "Naya",

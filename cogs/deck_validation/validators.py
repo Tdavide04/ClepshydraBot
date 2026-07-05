@@ -1,7 +1,7 @@
 import os
 import re
 
-from cogs.tournament.models import DeckEntry
+from cogs.deck_validation.models import DeckEntry
 
 
 BANLIST_PATH = "cards.txt"

@@ -1,6 +1,32 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+# Storage temporaneo per i dati di presentazione tra le interazioni
+PRESENTATION_DATA_STORE: dict[int, 'PresentationData'] = {}
+
+
+def get_presentation_data(user_id: int) -> Optional['PresentationData']:
+    return PRESENTATION_DATA_STORE.get(user_id)
+
+
+def store_presentation_data(user_id: int, data: 'PresentationData') -> None:
+    PRESENTATION_DATA_STORE[user_id] = data
+
+
+async def get_or_create_presentation_data(user_id: int) -> 'PresentationData':
+    if user_id not in PRESENTATION_DATA_STORE:
+        PRESENTATION_DATA_STORE[user_id] = PresentationData(
+            user_id=user_id,
+            nome="",
+            nickname_arena="",
+            anno_nascita="",
+            professione="",
+            provenienza="",
+            anno_cartaceo="",
+            anno_arena=""
+        )
+    return PRESENTATION_DATA_STORE[user_id]
+
 
 @dataclass
 class PresentationData:

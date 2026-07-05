@@ -7,8 +7,8 @@ import urllib.parse
 from utils.arena_overrides import get_override_rarity
 from utils.card_cache import load_cache, get_cached_card, set_cached_card
 from utils.deck_image_generator import DeckImageGenerator
-from cogs.tournament.models import DeckEntry, DeckValidationResult, ArtisanCard
-from cogs.tournament.validators import check_banlist
+from cogs.deck_validation.models import DeckEntry, DeckValidationResult, ArtisanCard
+from cogs.deck_validation.validators import check_banlist
 from database import get_session
 from repositories.banlist_repository import BanlistRepository
 
@@ -178,7 +178,7 @@ class ArtisanService:
         logger,
         member
     ):
-        from cogs.tournament.embeds import build_result_embed
+        from cogs.deck_validation.embeds import build_result_embed
         from config.config import LOG_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
         embed = build_result_embed(result, member)

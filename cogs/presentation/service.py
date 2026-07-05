@@ -1,5 +1,5 @@
 import discord, os
-from cogs.presentation.models import PresentationData
+from cogs.presentation.models import PresentationData, PRESENTATION_DATA_STORE
 from cogs.presentation.embeds import build_published_embed
 from cogs.presentation.validators import valida_presentazione
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
@@ -120,6 +120,5 @@ class PresentationService:
                 )
 
         # Pulizia storage temporaneo
-        from cogs.presentation.modals import PRESENTATION_DATA_STORE
         if data.user_id in PRESENTATION_DATA_STORE:
             del PRESENTATION_DATA_STORE[data.user_id]

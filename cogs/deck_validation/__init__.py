@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from cogs.tournament.validators import parse_decklist
-from cogs.tournament.service import ArtisanService
+from cogs.deck_validation.validators import parse_decklist
+from cogs.deck_validation.service import ArtisanService
 
 
 class ArtisanDeckCheckModal(
