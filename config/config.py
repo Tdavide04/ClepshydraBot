@@ -21,6 +21,8 @@ PRESENTATION_CHANNEL_ID = int(
         )
     )
 
+TOURNAMENT_CHANNEL_ID = int(os.getenv("TOURNAMENT_CHANNEL_ID") or "0")
+
 VERSION = os.getenv("VERSION")
 if TEST_MODE: VERSION = VERSION + "-test"
 
@@ -30,3 +32,9 @@ LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
 INITIAL_ROLE = os.getenv("INITIAL_ROLE")
 FINAL_ROLE = os.getenv("FINAL_ROLE")
+
+ADMIN_ROLE = os.getenv("ADMIN_ROLE", "Staff")
+
+DB_PATH = os.getenv("DB_PATH", "data/clepshydra.db")
+if TEST_MODE:
+    DB_PATH = DB_PATH.replace(".db", "_test.db")

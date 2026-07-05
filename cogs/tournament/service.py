@@ -1,4 +1,5 @@
 import asyncio
+from io import BytesIO
 import discord
 import aiohttp
 import urllib.parse
@@ -7,7 +8,9 @@ from utils.arena_overrides import get_override_rarity
 from utils.card_cache import load_cache, get_cached_card, set_cached_card
 from utils.deck_image_generator import DeckImageGenerator
 from cogs.tournament.models import DeckEntry, DeckValidationResult, ArtisanCard
-from cogs.tournament.validators import load_banlist, check_banlist
+from cogs.tournament.validators import check_banlist
+from database import get_session
+from repositories.banlist_repository import BanlistRepository
 
 
 _COLLECTION_URL = "https://api.scryfall.com/cards/collection"
@@ -16,7 +19,6 @@ _MIN_REQUEST_INTERVAL = 0.11
 
 _SCRYFALL_SEMAPHORE = asyncio.Semaphore(1)
 _ARENA_LEGAL_CACHE: dict[str, bool] = {}
-_BANLIST: set[str] = load_banlist()
 
 
 class ArtisanService:
@@ -24,6 +26,7 @@ class ArtisanService:
     def __init__(self, bot=None):
         self.bot = bot
         self._logger = None
+        self._banlist: set[str] = set()
         load_cache()
 
     def _get_logger(self):
@@ -31,27 +34,35 @@ class ArtisanService:
             self._logger = self.bot.get_cog("Logger")
         return self._logger
 
-    async def validate_and_publish(
+    async def _load_banlist(self) -> set[str]:
+        session = get_session()
+        if session is None:
+            return set()
+        try:
+            repo = BanlistRepository(session)
+            self._banlist = await repo.get_all_for_format()
+            return self._banlist
+        finally:
+            await session.close()
+
+    async def validate_deck(
         self,
-        interaction,
         entries: list[DeckEntry],
         deck_name: str,
-        total_cards: int
-    ):
-        member = interaction.user
-        logger = self._get_logger()
+        total_cards: int,
+    ) -> DeckValidationResult:
+        if not self._banlist:
+            await self._load_banlist()
 
-        banned = check_banlist(entries, _BANLIST)
+        banned = check_banlist(entries, self._banlist)
         if banned:
-            result = DeckValidationResult(
+            return DeckValidationResult(
                 deck_name=deck_name,
                 total_cards=total_cards,
                 main_count=sum(e.quantity for e in entries if not e.is_sideboard),
                 side_count=sum(e.quantity for e in entries if e.is_sideboard),
                 banned_cards=banned,
             )
-            await self._publish_result(interaction, result, None, logger, member)
-            return result
 
         headers = {"User-Agent": "ClepshydraBot/2.0 (Discord Tournament Bot)"}
         timeout = aiohttp.ClientTimeout(total=120)
@@ -106,7 +117,7 @@ class ArtisanService:
             main_count = sum(e.quantity for e in entries if not e.is_sideboard)
             side_count = sum(e.quantity for e in entries if e.is_sideboard)
 
-            result = DeckValidationResult(
+            return DeckValidationResult(
                 deck_name=deck_name,
                 total_cards=total_cards,
                 main_count=main_count,
@@ -117,10 +128,23 @@ class ArtisanService:
                 sideboard=sideboard,
             )
 
-            deck_image = None
-            if result.is_valid:
-                mainboard_dicts = [c.to_dict() for c in mainboard]
-                sideboard_dicts = [c.to_dict() for c in sideboard]
+    async def validate_and_publish(
+        self,
+        interaction,
+        entries: list[DeckEntry],
+        deck_name: str,
+        total_cards: int
+    ):
+        member = interaction.user
+        logger = self._get_logger()
+
+        result = await self.validate_deck(entries, deck_name, total_cards)
+
+        deck_image = None
+        if result.is_valid:
+            mainboard_dicts = [c.to_dict() for c in result.mainboard]
+            sideboard_dicts = [c.to_dict() for c in result.sideboard]
+            async with aiohttp.ClientSession() as session:
                 deck_image = await DeckImageGenerator.create_deck_showcase(
                     session, mainboard_dicts, sideboard_dicts,
                     player_name=member.display_name,
@@ -129,6 +153,22 @@ class ArtisanService:
 
         await self._publish_result(interaction, result, deck_image, logger, member)
         return result
+
+    async def generate_deck_image(
+        self,
+        result: DeckValidationResult,
+        player_name: str,
+    ) -> BytesIO | None:
+        if not result.is_valid:
+            return None
+        async with aiohttp.ClientSession() as session:
+            return await DeckImageGenerator.create_deck_showcase(
+                session,
+                [c.to_dict() for c in result.mainboard],
+                [c.to_dict() for c in result.sideboard],
+                player_name=player_name,
+                deck_name=result.deck_name,
+            )
 
     async def _publish_result(
         self,
@@ -193,7 +233,9 @@ class ArtisanService:
 
         for name in names:
             cached = get_cached_card(name)
-            if cached is not None:
+            if cached is not None and "image_uris" in cached:
+                result[name] = cached
+            elif cached is not None and "card_faces" in cached and any("image_uris" in f for f in cached.get("card_faces", [])):
                 result[name] = cached
             else:
                 to_fetch.append(name)
@@ -233,7 +275,8 @@ class ArtisanService:
 
         cached_entry = get_cached_card(card_name)
         if cached_entry is not None and "artisan_legal" in cached_entry:
-            return cached_entry["artisan_legal"]
+            if cached_entry["artisan_legal"] or card_name.startswith("A-"):
+                return cached_entry["artisan_legal"]
 
         oracle_id = card_data.get("oracle_id", "")
         if oracle_id and oracle_id in _ARENA_LEGAL_CACHE:
@@ -254,7 +297,7 @@ class ArtisanService:
         for printing in prints_data.get("data", []):
             rarity = printing.get("rarity", "").lower()
             set_type = printing.get("set_type", "").lower()
-            if set_type == "alchemy":
+            if set_type == "alchemy" and printing.get("name", "").startswith("A-"):
                 continue
             if rarity in ("common", "uncommon"):
                 legal = True
@@ -335,7 +378,14 @@ class ArtisanService:
             return card_data["image_uris"].get("small")
         elif "card_faces" in card_data:
             for face in card_data["card_faces"]:
-                url = face.get("image_uris", {}).get("small")
+                if "image_uris" in face:
+                    url = face["image_uris"].get("small")
+                    if url:
+                        return url
+                url = face.get("image_url")
                 if url:
                     return url
+        url = card_data.get("image_url")
+        if url:
+            return url
         return None

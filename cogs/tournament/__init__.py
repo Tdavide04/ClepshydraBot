@@ -9,17 +9,20 @@ class ArtisanDeckCheckModal(
     discord.ui.Modal,
     title="Controllo Mazzo Artisan"
 ):
+    titolo = discord.ui.TextInput(
+        label="Nome del tuo mazzo",
+        placeholder="es. Mono Red Aggro",
+        required=True,
+        max_length=100,
+    )
+
     deck_list = discord.ui.TextInput(
         label="Incolla la tua lista (60 Main + 15 Side)",
         style=discord.TextStyle.paragraph,
-        placeholder=(
-            "Deck\n"
-            "4 Experimental Confectioner (WOE) 314\n"
-            "Sideboard\n"
-            "3 Pawpatch Formation (BLB) 186"
-        ),
+        placeholder="4 Experimental Confectioner / 3 Honey Mammoth ...",
         required=True,
-        min_length=10
+        min_length=10,
+        max_length=2000,
     )
 
     def __init__(self, service: ArtisanService):
@@ -42,7 +45,8 @@ class ArtisanDeckCheckModal(
         )
 
         try:
-            entries, total_cards, deck_name = parse_decklist(self.deck_list.value)
+            entries, total_cards, _ = parse_decklist(self.deck_list.value)
+            deck_name = self.titolo.value.strip() or "ARTISAN DECK"
             await self.service.validate_and_publish(
                 interaction, entries, deck_name, total_cards
             )
