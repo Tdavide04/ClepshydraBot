@@ -21,12 +21,20 @@ PRESENTATION_CHANNEL_ID = int(
         )
     )
 
-TOURNAMENT_CHANNEL_ID = int(os.getenv("TOURNAMENT_CHANNEL_ID") or "0")
+TOURNAMENT_CHANNEL_ID = int(
+    os.getenv(
+        "TOURNAMENT_CHANNEL_ID_TEST" if TEST_MODE else "TOURNAMENT_CHANNEL_ID"
+    ) or "0"
+)
 
 VERSION = os.getenv("VERSION")
 if TEST_MODE: VERSION = VERSION + "-test"
 
-PUBLIC_DECK_CHANNEL_ID = int(os.getenv("PUBLIC_DECK_CHANNEL_ID"))
+PUBLIC_DECK_CHANNEL_ID = int(
+    os.getenv(
+        "PUBLIC_DECK_CHANNEL_ID_TEST" if TEST_MODE else "PUBLIC_DECK_CHANNEL_ID"
+    )
+)
 
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 

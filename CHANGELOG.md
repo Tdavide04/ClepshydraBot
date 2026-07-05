@@ -10,6 +10,9 @@
 - `normalizza_gilda` in `presentation/validators.py`: duplicate key `"gu"` silently overwrote Simic → Gruul (now `"gu"` correctly maps to Simic)
 - `interaction_check` in `presentation/views.py`: publish logic moved from hook to dedicated `_on_confirm` callback
 
+### Changed
+- `config/config.py`: `TOURNAMENT_CHANNEL_ID`, `PUBLIC_DECK_CHANNEL_ID` now support `_TEST` env vars like other channels
+
 ### Refactored
 - `cogs/tournament/` → `cogs/deck_validation/`: renamed to disambiguate from `cogs/tournament_system/`; all imports and docs updated
 - `PRESENTATION_DATA_STORE` moved from `modals.py` to `models.py` (neutral data module)
