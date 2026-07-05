@@ -77,15 +77,15 @@ class BannedCard(Base):
 | `count()` | Numero totale di carte bandite |
 | `import_from_file(path)` | Importa bulk da file di testo (solo se DB vuoto) |
 
-### 5. Validazione Deck — `cogs/tournament/service.py:48-65`
+### 5. Validazione Deck — `cogs/deck_validation/service.py:48-65`
 
 `ArtisanService.validate_deck()`:
 1. Alla prima chiamata, carica la banlist in memoria via `_load_banlist()` → `BanlistRepository.get_all_for_format()`
-2. Chiama `check_banlist(entries, self._banlist)` (da `cogs/tournament/validators.py:72-79`)
+2. Chiama `check_banlist(entries, self._banlist)` (da `cogs/deck_validation/validators.py:72-79`)
 3. Se trova carte bandite, restituisce subito `DeckValidationResult(banned_cards=[...])` → deck **invalido**
 4. Se nessuna carta bandita, prosegue con la validazione rarità (API Scryfall)
 
-### 6. Check Banlist — `cogs/tournament/validators.py:72-79`
+### 6. Check Banlist — `cogs/deck_validation/validators.py:72-79`
 
 ```python
 def check_banlist(entries: list[DeckEntry], banlist: set[str]) -> list[str]:
@@ -104,7 +104,7 @@ Logica:
 - Se matcha, aggiunge alla lista dei risultati (senza duplicati)
 - Se la lista risultante non è vuota → deck invalido
 
-### 7. Load Banlist da File (legacy) — `cogs/tournament/validators.py:10-22`
+### 7. Load Banlist da File (legacy) — `cogs/deck_validation/validators.py:10-22`
 
 Funzione `load_banlist()` usata **solo come utility standalone** (non più chiamata dal flusso principale dal vivo):
 - Legge `cards.txt` riga per riga
@@ -119,7 +119,7 @@ Funzione `load_banlist()` usata **solo come utility standalone** (non più chiam
 | `/banlist_aggiungi <carta>` | Aggiunge una carta al DB | `@is_admin()` (ruolo `Staff`) |
 | `/banlist_rimuovi <carta>` | Rimuove una carta dal DB | `@is_admin()` |
 
-### 9. Embed di Risultato — `cogs/tournament/embeds.py`
+### 9. Embed di Risultato — `cogs/deck_validation/embeds.py`
 
 Se il deck ha carte bandite, l'embed mostra:
 - **Carte Bannate**: elenco (max 10)
@@ -178,7 +178,7 @@ Dopo aver superato il controllo banlist, ogni carta del deck viene verificata co
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                     ArtisanService.validate_deck()                │
-│   cogs/tournament/service.py                                      │
+│   cogs/deck_validation/service.py                                      │
 │                                                                    │
 │   1. check_banlist() ──── ok? ───→ 2. _fetch_collection()         │
 │                                        ↓                          │

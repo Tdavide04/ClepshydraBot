@@ -1,7 +1,7 @@
 import discord
 from datetime import datetime
 
-from cogs.tournament.models import DeckValidationResult
+from cogs.deck_validation.models import DeckValidationResult
 
 
 def build_result_embed(

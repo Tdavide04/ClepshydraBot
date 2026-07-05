@@ -12,8 +12,8 @@ from utils.tournament_embeds import (
 from database.models import Tournament, TournamentStatus, TournamentPlayer, MatchResult
 from database import get_session
 from repositories.banlist_repository import BanlistRepository
-from cogs.tournament.service import ArtisanService
-from cogs.tournament.validators import parse_decklist, validate_counts
+from cogs.deck_validation.service import ArtisanService
+from cogs.deck_validation.validators import parse_decklist, validate_counts
 from config.config import GUILD_ID, TOURNAMENT_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
 

@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands
 
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
+from cogs.presentation.modals import BasicPresentationModal
+from cogs.presentation.views import PreferencesView
 
 class PresentationCog(commands.Cog):
     def __init__(self, bot):
@@ -58,8 +60,19 @@ class PresentationCog(commands.Cog):
                     ephemeral=True
                 )
 
-        from cogs.presentation.modals import BasicPresentationModal
-        modal = BasicPresentationModal(interaction.user.id if hasattr(interaction.user, 'id') else 0)
+        async def after_basic_modal(interaction: discord.Interaction, data):
+            view = PreferencesView(data)
+            view.message = interaction.message
+            await interaction.followup.send(
+                "Seleziona le tue preferenze:",
+                view=view,
+                ephemeral=True
+            )
+
+        modal = BasicPresentationModal(
+            interaction.user.id if hasattr(interaction.user, 'id') else 0,
+            on_complete=after_basic_modal,
+        )
         await interaction.response.send_modal(modal)
 
     @commands.Cog.listener()

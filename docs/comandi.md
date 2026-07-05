@@ -73,7 +73,7 @@
 | Comando | File | Linea |
 |---|---|---|
 | `/presentati` | `cogs/presentation/cog.py` | 45 |
-| `/artisan_check_deck` | `cogs/tournament/__init__.py` | 67 |
+| `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 67 |
 | `/crea_torneo` | `cogs/tournament_system/cog.py` | 489 |
 | `/avvia_torneo` | `cogs/tournament_system/cog.py` | 500 |
 | `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 684 |

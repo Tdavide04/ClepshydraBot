@@ -1,6 +1,8 @@
 import discord
 from cogs.presentation.models import PresentationData
 from cogs.presentation.embeds import build_preview_embed
+from cogs.presentation.modals import OptionalPresentationModal
+from cogs.presentation.service import PresentationService
 
 
 COLORI_OPTIONS = [
@@ -243,8 +245,18 @@ class PreferencesView(discord.ui.View):
         self.add_item(continue_btn)
 
     async def _on_continue(self, interaction: discord.Interaction):
-        from cogs.presentation.modals import OptionalPresentationModal
-        modal = OptionalPresentationModal(self.data)
+        async def after_optional_modal(interaction: discord.Interaction, data):
+            member = interaction.user
+            preview_embed = build_preview_embed(member, data)
+            view = PreviewView(data, member)
+            await interaction.followup.send(
+                "Ecco l'anteprima della tua presentazione:",
+                embed=preview_embed,
+                view=view,
+                ephemeral=True
+            )
+
+        modal = OptionalPresentationModal(self.data, on_complete=after_optional_modal)
         await interaction.response.send_modal(modal)
 
 
@@ -256,36 +268,34 @@ class PreviewView(discord.ui.View):
         self.completed = False
         self.processing = False
 
-        self.add_item(discord.ui.Button(label="Conferma", style=discord.ButtonStyle.success, custom_id="preview_confirm", emoji="✅"))
-        self.add_item(discord.ui.Button(label="Annulla", style=discord.ButtonStyle.danger, custom_id="preview_cancel", emoji="❌"))
+        confirm_btn = discord.ui.Button(label="Conferma", style=discord.ButtonStyle.success, custom_id="preview_confirm", emoji="✅")
+        confirm_btn.callback = self._on_confirm
+        self.add_item(confirm_btn)
+
+        cancel_btn = discord.ui.Button(label="Annulla", style=discord.ButtonStyle.danger, custom_id="preview_cancel", emoji="❌")
+        cancel_btn.callback = self._on_cancel
+        self.add_item(cancel_btn)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        custom_id = interaction.data.get("custom_id")
-
-        if custom_id == "preview_confirm":
-            if self.completed or self.processing:
-                await interaction.response.send_message("Elaborazione in corso o gia completata.", ephemeral=True)
-                return False
-
-            self.processing = True
-            await interaction.response.defer(ephemeral=True)
-
-            try:
-                from cogs.presentation.service import PresentationService
-                service = getattr(interaction.client, 'presentation_service', None) or PresentationService(interaction.client)
-                await service.publish(interaction, self.data)
-                self.completed = True
-                await interaction.followup.send("✅ Benvenuto tra i Planeswalker!", ephemeral=True)
-            except Exception as e:
-                self.processing = False
-                await interaction.followup.send(f"❌ Errore: {str(e)}", ephemeral=True)
-
-            return True
-
-        elif custom_id == "preview_cancel":
-            await interaction.response.send_message("Presentazione annullata.", ephemeral=True)
-            if self.message:
-                await self.message.delete()
-            return True
-
+        if self.completed or self.processing:
+            await interaction.response.send_message("Elaborazione in corso o gia completata.", ephemeral=True)
+            return False
         return True
+
+    async def _on_confirm(self, interaction: discord.Interaction):
+        self.processing = True
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            service = getattr(interaction.client, 'presentation_service', None) or PresentationService(interaction.client)
+            await service.publish(interaction, self.data)
+            self.completed = True
+            await interaction.followup.send("✅ Benvenuto tra i Planeswalker!", ephemeral=True)
+        except Exception as e:
+            self.processing = False
+            await interaction.followup.send(f"❌ Errore: {str(e)}", ephemeral=True)
+
+    async def _on_cancel(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Presentazione annullata.", ephemeral=True)
+        if self.message:
+            await self.message.delete()

@@ -9,7 +9,7 @@ Il sistema di validazione verifica che i mazzi rispettino le regole del formato 
 ## Struttura
 
 ```
-cogs/tournament/
+cogs/deck_validation/
 ├── __init__.py           # ArtisanDeckCheckModal + Tournament cog
 ├── models.py             # DeckEntry, ArtisanCard, DeckValidationResult
 ├── validators.py         # parse_decklist(), check_banlist(), count validation
