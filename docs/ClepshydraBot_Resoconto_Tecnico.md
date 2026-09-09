@@ -128,6 +128,7 @@ clepshydrabot/
 ├── requirements.txt                 # Dipendenze Python (produzione)
 ├── requirements-dev.txt             # + pytest, ruff (sviluppo/CI)
 ├── ruff.toml                        # Config lint (regole minime: E4, E7, E9, F)
+├── pytest.ini                       # pythonpath=. (necessario per "pytest tests/" nudo, vedi CI)
 ├── .env                             # Variabili d'ambiente (non in git)
 │
 ├── .github/workflows/

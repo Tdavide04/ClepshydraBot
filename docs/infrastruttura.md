@@ -122,6 +122,8 @@ Installazione (sviluppo, aggiunge `pytest` e `ruff`):
 pip install -r requirements-dev.txt
 ```
 
+`pytest.ini` (`pythonpath = .`) aggiunge esplicitamente la root del repo a `sys.path`: senza, l'invocazione nuda `pytest tests/` (usata dalla CI, a differenza di `python -m pytest` che aggiunge la cwd automaticamente) fallisce con `ModuleNotFoundError` sui moduli di primo livello (`services`, `database`, `utils`), perché non esiste un `tests/__init__.py` a catena fino alla root.
+
 ---
 
 ## Logging
