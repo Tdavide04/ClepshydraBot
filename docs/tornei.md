@@ -167,6 +167,8 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | `get_leaderboard(limit)` | Top N rating |
 | `_update_ratings(tournament_id)` | Glicko-2 su tutti i match |
 
+Coperto da test end-to-end in `tests/tournament/test_tournament_service.py` (iscrizione, avvio, pairing, submit risultato, generazione round, drop forzato, standings, aggiornamento rating) su un DB SQLite temporaneo isolato per test — nessun mock sul layer di persistenza.
+
 ---
 
 ## Comandi Slash

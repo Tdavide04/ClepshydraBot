@@ -1,0 +1,15 @@
+[Unit]
+Description=ClepshydraBot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/clepsydrabot
+EnvironmentFile=/opt/clepsydrabot/.env
+ExecStart=/opt/clepsydrabot/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -173,3 +173,13 @@ Repository generico con CRUD base:
 | `remove_card(card_name)` | Rimuovi per nome esatto |
 | `count()` | Conteggio banlist |
 | `import_from_file(path)` | Bulk import da txt (solo se DB vuoto) |
+
+---
+
+## Testing
+
+`tests/tournament/test_tournament_service.py` esercita l'intero stack DB (engine, sessioni, repository, migrazioni) contro un file SQLite temporaneo, isolato per ogni test:
+
+1. Fixture `isolated_db` (`tmp_path` + `monkeypatch`) punta `database.engine.DB_PATH` a un file temporaneo e azzera i globali `_engine`/`_async_session_maker`.
+2. Ogni test esegue `init_db()` → logica → `close_db()` in un **unico** `asyncio.run()`: `aiosqlite` lega le connessioni al loop che le ha create, quindi non si possono distribuire setup/uso/teardown su piu' event loop separati.
+3. Non ci sono mock: le query SQLAlchemy girano davvero contro SQLite, comprese le migrazioni `ALTER TABLE` di `_migrate_schema()`.

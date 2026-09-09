@@ -165,9 +165,8 @@ La banlist (`BannedCard` in SQLite) è cacheata in memoria in `ArtisanService._b
 | Aspetto | Dettaglio |
 |---|---|
 | Caricamento | Prima validazione: `await BanlistRepository.get_all_for_format()` |
-| Validità | Per tutta la vita dell'istanza |
-| Invalida | Solo al prossimo riavvio (noto: non si aggiorna dopo add/remove via slash) |
-| Fix suggerito | Ricaricare `self._banlist` dopo `add_card`/`remove_card` |
+| Validità | Per tutta la vita dell'istanza, fino a un reload esplicito |
+| Invalida | `ArtisanService.reload_banlist()`, chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB |
 
 ---
 
@@ -177,4 +176,4 @@ La banlist (`BannedCard` in SQLite) è cacheata in memoria in `ArtisanService._b
 |---|---|---|---|
 | Carte Scryfall | `card_cache.json` | 60s (atomica) | Nessuna (crescita organica) |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
-| Banlist | `ArtisanService._banlist` | Per istanza | Riavvio (bug noto) |
+| Banlist | `ArtisanService._banlist` | Per istanza | Esplicita (`reload_banlist()` dopo add/remove) |

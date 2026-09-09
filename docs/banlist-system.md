@@ -130,6 +130,8 @@ Se il deck ha carte bandite, l'embed mostra:
 
 La banlist non ha un caching esplicito oltre al campo `self._banlist: set[str]` in `ArtisanService`. Viene caricata dal DB alla prima validazione e tenuta in memoria per l'intera vita dell'istanza.
 
+Il metodo `ArtisanService.reload_banlist()` forza il refresh: viene chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB, cosi' la cache in memoria resta sincronizzata senza attendere un riavvio del bot.
+
 ---
 
 ## Flusso Completo (Deck Check con Banlist)
@@ -329,7 +331,6 @@ Utente invia deck
 
 1. **Double-faced cards**: La banlist in `cards.txt` include già il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`). Il `check_banlist()` si basa sul nome così come viene parsato dal deck — a sua volta, `parse_decklist()` tronca al ` // ` e prende solo il fronte. **Se un utente scrive il nome completo nel deck, il confronto potrebbe fallire** e la carta bannata passare inosservata.
 
-2. **Aggiornamento live**: Se un admin aggiunge/rimuove una carta via slash command, il `self._banlist` in `ArtisanService` non viene invalidato. La nuova carta non sarà considerata fino al prossimo riavvio del bot (o finché `_load_banlist()` non viene richiamato).  
-   **Fix suggerito**: Dopo `add_card`/`remove_card`, fare `self._banlist = await repo.get_all_for_format()` nel service.
+2. ~~**Aggiornamento live**: il `self._banlist` in `ArtisanService` non veniva invalidato dopo add/remove via slash command.~~ **Risolto**: `/banlist_aggiungi` e `/banlist_rimuovi` chiamano ora `ArtisanService.reload_banlist()` subito dopo la scrittura sul DB (vedi `cogs/tournament_system/cog.py`).
 
 3. **Case sensitivity**: Tutto è normalizzato in lowercase, quindi non ci sono problemi.

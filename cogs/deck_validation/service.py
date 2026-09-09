@@ -45,6 +45,10 @@ class ArtisanService:
         finally:
             await session.close()
 
+    async def reload_banlist(self) -> set[str]:
+        """Forza il refresh della cache banlist. Da chiamare dopo ogni add/remove sul DB."""
+        return await self._load_banlist()
+
     async def validate_deck(
         self,
         entries: list[DeckEntry],

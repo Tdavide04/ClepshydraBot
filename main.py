@@ -1,5 +1,5 @@
 from datetime import datetime
-import discord, os
+import discord, os, sys
 from discord.ext import commands
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db
@@ -46,5 +46,15 @@ class ClepshydraBotte(commands.Bot):
     async def close(self):
         await close_db()
         await super().close()
+
+
 bot = ClepshydraBotte()
-bot.run(DISCORD_TOKEN)
+
+try:
+    bot.run(DISCORD_TOKEN)
+except discord.LoginFailure:
+    print("FATAL: token Discord non valido o scaduto. Il bot non puo' avviarsi.", file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f"FATAL: avvio del bot fallito: {e}", file=sys.stderr)
+    sys.exit(1)

@@ -73,6 +73,8 @@ Processo gestito via `screen` o `tmux`.
 
 ### Avvio con systemd (consigliato)
 
+Il unit file e' disponibile in `deploy/clepshydrabot.service` (da copiare in `/etc/systemd/system/`):
+
 ```
 [Unit]
 Description=ClepshydraBot
@@ -91,6 +93,8 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
+`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e stampa un errore esplicito su stderr — visibile in `journalctl -u clepshydrabot` e necessario perche' `Restart=on-failure` scatti in modo affidabile.
+
 ---
 
 ## Dipendenze (`requirements.txt`)
@@ -104,12 +108,18 @@ sqlalchemy[asyncio]
 aiosqlite
 ```
 
-Installazione:
+Installazione (produzione):
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Installazione (sviluppo, aggiunge `pytest` e `ruff`):
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ---
@@ -129,7 +139,7 @@ Tutti gli eventi vengono loggati su un canale Discord dedicato tramite embed:
 
 ### Log su Console
 
-Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH.
+Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I fallimenti di avvio (token invalido, eccezioni non gestite in `setup_hook`) vengono sempre scritti su stderr con prefisso `FATAL:`, anche quando il canale Discord di log non e' raggiungibile.
 
 ---
 
@@ -151,10 +161,12 @@ CMD ["python", "main.py"]
 - `restart: unless-stopped`
 - Bind mount per `.env`
 
-### Sprint 8 — CI/CD (da fare)
+### Sprint 8 — CI/CD (parziale)
 
-GitHub Actions:
-- `ruff` lint su ogni push
-- `pytest` su ogni push e PR
-- `build` check Docker
+`.github/workflows/ci.yml`, attivo su push/PR:
+- `pytest` su ogni push e PR — **gate bloccante**
+- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`) — **step informativo**, non bloccante: il codebase ha debito di lint pre-esistente non ancora sanato
+
+Ancora da fare:
+- `build` check Docker (dipende dal completamento dello Sprint 7)
 - Deploy automatico su OCI via SSH/deploy key

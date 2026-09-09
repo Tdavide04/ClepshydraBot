@@ -1,6 +1,7 @@
 # ClepshydraBot — Resoconto Tecnico
 
-**Versione 1.0.0 — Giugno 2026**  
+**Versione 1.0.0 — Giugno 2026**
+**Aggiornamento debito tecnico — Settembre 2026** (vedi §9 e §11)
 **Autore: tdavide — Confidenziale**
 
 ---
@@ -123,9 +124,17 @@ Il progetto nasce come strumento interno per la community Clepshydra. La V1 orig
 
 ```
 clepshydrabot/
-├── main.py                          # Entry point del bot
-├── requirements.txt                 # Dipendenze Python
+├── main.py                          # Entry point del bot (con gestione esplicita errori di avvio)
+├── requirements.txt                 # Dipendenze Python (produzione)
+├── requirements-dev.txt             # + pytest, ruff (sviluppo/CI)
+├── ruff.toml                        # Config lint (regole minime: E4, E7, E9, F)
 ├── .env                             # Variabili d'ambiente (non in git)
+│
+├── .github/workflows/
+│   └── ci.yml                       # pytest (gate) + ruff (informativo) su push/PR
+│
+├── deploy/
+│   └── clepshydrabot.service        # Unit systemd (Restart=on-failure)
 │
 ├── cogs/                            # Moduli Discord (Cog)
 │   ├── logger.py                    # Sistema di logging su canale Discord
@@ -133,7 +142,7 @@ clepshydrabot/
 │   ├── presentation/                # Sistema presentazioni (multi-step wizard)
 │   │   ├── cog.py, models.py, modals.py, views.py
 │   │   ├── service.py, validators.py, embeds.py
-│   ├── tournament/                  # Verifica mazzi Artisan
+│   ├── deck_validation/             # Verifica mazzi Artisan
 │   │   ├── models.py, validators.py, service.py, embeds.py
 │   └── tournament_system/           # Sistema tornei Swiss
 │       └── cog.py                   # 14 comandi slash torneo
@@ -177,11 +186,14 @@ clepshydrabot/
 │   ├── legacy_presentation.py
 │   └── legacy_deck_image_generator.py
 │
-├── tests/                           # Test suite
+├── tests/                           # Test suite (88 test)
 │   └── tournament/
+│       ├── test_pairing_engine.py
+│       ├── test_rating.py
 │       ├── test_standings.py
 │       ├── test_tournament_embeds.py
-│       └── test_tournament_logic.py
+│       ├── test_tournament_logic.py
+│       └── test_tournament_service.py   # Orchestratore: DB SQLite isolato per test, nessun mock
 │
 └── docs/                            # Documentazione
     ├── banlist-system.md
@@ -304,19 +316,21 @@ Il database principale con tabelle `users`, `tournaments`, `tournament_players`,
 
 ## 9. Limitazioni Attuali e Debito Tecnico
 
+Aggiornato a Settembre 2026, dopo un intervento mirato sui quattro punti a impatto più alto emersi dalla revisione di Giugno 2026 (vedi sotto). Le voci corrette non vengono rimosse dalla lista ma marcate **Risolto**, per mantenere lo storico delle decisioni.
+
 ### 9.1 Architetturali
 
-- **Cache banlist non invalidata** dopo aggiunta/rimozione via slash command (fix: ricaricare `self._banlist` dopo ogni modifica)
-- **Doppia fonte di verità** per la banlist: `ArtisanService._banlist` (cache) vs database
-- **Assenza di test** per i moduli core (PairingEngine, TournamentService) — solo test standings e embeds
-- **Nessun meccanismo di recovery** per il token Discord (se scade, il bot si ferma)
-- **DeckImageGenerator** non testato in ambiente headless (dipende da Pillow)
+- ~~**Cache banlist non invalidata** dopo aggiunta/rimozione via slash command~~ **Risolto**: `/banlist_aggiungi` e `/banlist_rimuovi` chiamano `ArtisanService.reload_banlist()` subito dopo la scrittura sul DB (vedi `cogs/tournament_system/cog.py`, `cogs/deck_validation/service.py`). Dettagli in [banlist-system.md](banlist-system.md) e [caching.md](caching.md).
+- **Doppia fonte di verità** per la banlist: `ArtisanService._banlist` (cache in memoria) vs database. Resta cosi' per design — il fix sopra sincronizza le due copie ad ogni scrittura, invece di eliminare la cache e leggere dal DB ad ogni deck check (costerebbe una query in più per ogni validazione).
+- ~~**Assenza di test** per i moduli core (PairingEngine, TournamentService)~~ **Risolto**: `PairingEngine` e `Rating` avevano già copertura (`test_pairing_engine.py`, `test_rating.py`, aggiunti dopo la stesura originale di questo documento). `TournamentService` — l'orchestratore centrale, 576 righe, in precedenza a zero test — ha ora una suite end-to-end dedicata (`tests/tournament/test_tournament_service.py`, 10 test: iscrizione, avvio torneo, pairing, submit risultato, generazione round con anti-rematch, conclusione + rating update, drop forzato, standings), eseguita contro un DB SQLite reale isolato per test, senza mock. Suite completa: 88 test, tutti verdi.
+- ~~**Nessun meccanismo di recovery** per il token Discord~~ **Parzialmente risolto**: `main.py` ora intercetta `discord.LoginFailure` e altre eccezioni di startup, logga su stderr con prefisso `FATAL:` ed esce con codice non-zero, invece di fallire in modo silenzioso o con una traceback ambigua. Il recovery effettivo (restart automatico) richiede un supervisore di processo esterno — vedi `deploy/clepshydrabot.service` (systemd, `Restart=on-failure`), non ancora installato sulla VM di produzione. Se il token è genuinamente scaduto, nessun restart automatico lo risolve: serve comunque intervento umano per rigenerarlo.
+- **DeckImageGenerator** non testato in ambiente headless (dipende da Pillow) — non affrontato in questo intervento, resta debito aperto.
 
 ### 9.2 Operativi
 
-- **Nessun Docker**: deploy manuale tramite SSH
-- **Nessun CI/CD**: nessun workflow automatico
-- **1 GB RAM**: vincolo che limita scelte tecnologiche (no PostgreSQL, no Redis)
+- **Nessun Docker**: deploy manuale tramite SSH — non affrontato in questo intervento (Sprint 7 della roadmap, §11).
+- ~~**Nessun CI/CD**: nessun workflow automatico~~ **Parzialmente risolto**: `.github/workflows/ci.yml` esegue `pytest` (gate bloccante) su ogni push/PR. `ruff` gira come step informativo/non bloccante — il codebase ha 55 problemi di lint pre-esistenti (import inutilizzati, statement multipli su una riga, ecc.) su file non toccati da questo intervento; introdurre un gate bloccante ora avrebbe richiesto un refactor di pulizia estraneo allo scope. Manca ancora: build check Docker, deploy automatico.
+- **1 GB RAM**: vincolo che limita scelte tecnologiche (no PostgreSQL, no Redis) — invariato, nessuna delle modifiche di Settembre 2026 lo tocca.
 
 ---
 
@@ -392,5 +406,11 @@ README professionale, documentazione tecnica, CHANGELOG.
 ### Sprint 7 — Docker *(da fare)*
 Dockerfile multi-stage, docker-compose con volume per data/.
 
-### Sprint 8 — CI/CD *(da fare)*
-GitHub Actions: lint (ruff), test (pytest), build check.
+### Sprint 8 — CI/CD *(parziale, Settembre 2026)*
+`.github/workflows/ci.yml`: `pytest` come gate bloccante su ogni push/PR, `ruff` come step informativo (non bloccante, per via del debito di lint pre-esistente). Mancano ancora: build check Docker (dipende dallo Sprint 7) e deploy automatico su OCI.
+
+### Sprint 9 — Resilienza avvio *(completato, Settembre 2026)*
+`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup con log esplicito su stderr ed exit code non-zero. Unit systemd raccomandato reso disponibile in `deploy/clepshydrabot.service` (`Restart=on-failure`), non ancora installato in produzione.
+
+### Sprint 10 — Fix cache banlist e test TournamentService *(completato, Settembre 2026)*
+`ArtisanService.reload_banlist()` invalida la cache in memoria dopo ogni `/banlist_aggiungi` e `/banlist_rimuovi`. Aggiunta suite `tests/tournament/test_tournament_service.py` (10 test end-to-end sull'orchestratore torneo, DB isolato per test, nessun mock).

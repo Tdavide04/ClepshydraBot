@@ -55,8 +55,8 @@
 
 | Comando | Descrizione |
 |---|---|
-| `/banlist_aggiungi <carta>` | Aggiunge carta alla banlist |
-| `/banlist_rimuovi <carta>` | Rimuove carta dalla banlist |
+| `/banlist_aggiungi <carta>` | Aggiunge carta alla banlist (invalida subito la cache in memoria) |
+| `/banlist_rimuovi <carta>` | Rimuove carta dalla banlist (invalida subito la cache in memoria) |
 
 ### Manutenzione
 

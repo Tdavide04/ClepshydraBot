@@ -1233,6 +1233,7 @@ class TournamentSystemCog(commands.Cog):
         try:
             repo = BanlistRepository(session)
             await repo.add_card(carta)
+            await self.artisan_service.reload_banlist()
             await self._log(
                 "INFO", "BANLIST_ADD", user=interaction.user,
                 info=f"Aggiunta: {carta}"
@@ -1264,6 +1265,7 @@ class TournamentSystemCog(commands.Cog):
             repo = BanlistRepository(session)
             ok = await repo.remove_card(carta)
             if ok:
+                await self.artisan_service.reload_banlist()
                 await self._log(
                     "INFO", "BANLIST_REMOVE", user=interaction.user,
                     info=f"Rimossa: {carta}"
