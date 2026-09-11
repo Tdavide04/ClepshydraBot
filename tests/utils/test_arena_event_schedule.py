@@ -117,28 +117,45 @@ class TestParseFullEventCalendar:
         assert arena_event_schedule.parse_full_event_calendar(NO_CALENDAR_HTML) is None
 
 
+class TestPickLatest:
+
+    def test_returns_the_entry_with_the_most_recent_lastmod(self):
+        entries = {SET_A_URL: "2026-08-03T00:00:00Z", SET_B_URL: "2026-06-15T00:00:00Z"}
+        assert arena_event_schedule._pick_latest(entries) == (SET_A_URL, "2026-08-03T00:00:00Z")
+
+    def test_returns_none_for_empty_input(self):
+        assert arena_event_schedule._pick_latest({}) is None
+
+
 class TestCheckEventScheduleUpdates:
 
-    def test_first_check_processes_every_known_page(self, monkeypatch):
+    def test_first_check_reports_only_the_latest_page_not_older_ones(self, monkeypatch):
+        """Regressione diretta per il flood segnalato in produzione: al primo
+        avvio su una macchina nuova (stato vuoto), il sitemap conteneva 4
+        pagine Event Schedule ancora online (Wizards non rimuove quelle dei
+        set passati) e venivano notificate tutte e 4 insieme. Deve arrivarne
+        una sola: quella del set attualmente attivo (lastmod piu' recente)."""
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03", SET_B_URL: "2026-06-15"},
+            sitemap={
+                SET_A_URL: "2026-08-03T00:00:00Z",  # set attivo
+                SET_B_URL: "2026-06-15T00:00:00Z",  # set concluso, ancora sul sitemap
+            },
             pages={SET_A_URL: VALID_CALENDAR_HTML, SET_B_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
 
         results = run(arena_event_schedule.check_event_schedule_updates())
 
-        urls_seen = {r["url"] for r in results}
-        assert urls_seen == {SET_A_URL, SET_B_URL}
-        assert all(r["categories"] is not None for r in results)
+        assert [r["url"] for r in results] == [SET_A_URL]
+        assert SET_B_URL not in calls, "la pagina del set concluso non va nemmeno scaricata"
 
-    def test_second_check_skips_unchanged_lastmod(self, monkeypatch):
+    def test_second_check_skips_when_latest_is_unchanged(self, monkeypatch):
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03"},
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
@@ -151,11 +168,11 @@ class TestCheckEventScheduleUpdates:
         assert SET_A_URL not in calls
         assert "sitemap" in calls, "il sitemap va comunque ricontrollato per sapere se qualcosa e' cambiato"
 
-    def test_changed_lastmod_triggers_reprocessing(self, monkeypatch):
+    def test_changed_lastmod_on_the_latest_page_triggers_reprocessing(self, monkeypatch):
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03"},
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
@@ -165,7 +182,7 @@ class TestCheckEventScheduleUpdates:
         # (pubblicata il 3 agosto, lastmod aggiornato al 2 settembre).
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-09-02"},
+            sitemap={SET_A_URL: "2026-09-02T00:00:00Z"},
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
@@ -177,13 +194,41 @@ class TestCheckEventScheduleUpdates:
 
         with open(arena_event_schedule.STATE_PATH, encoding="utf-8") as f:
             on_disk = json.load(f)
-        assert on_disk["known"][SET_A_URL] == "2026-09-02"
+        assert on_disk["latest_lastmod"] == "2026-09-02T00:00:00Z"
+
+    def test_a_newer_page_overtakes_the_previous_latest(self, monkeypatch):
+        """Se esce un nuovo set con lastmod piu' recente di quello finora
+        noto, deve diventare lui il 'latest' - anche se il lastmod della
+        vecchia pagina non e' cambiato."""
+        calls = []
+        _install_fake_network(
+            monkeypatch,
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
+            pages={SET_A_URL: VALID_CALENDAR_HTML},
+            calls=calls,
+        )
+        run(arena_event_schedule.check_event_schedule_updates())
+
+        _install_fake_network(
+            monkeypatch,
+            sitemap={
+                SET_A_URL: "2026-08-03T00:00:00Z",  # invariato
+                SET_B_URL: "2026-09-05T00:00:00Z",  # nuovo set, piu' recente
+            },
+            pages={SET_A_URL: VALID_CALENDAR_HTML, SET_B_URL: VALID_CALENDAR_HTML},
+            calls=calls,
+        )
+        calls.clear()
+        results = run(arena_event_schedule.check_event_schedule_updates())
+
+        assert [r["url"] for r in results] == [SET_B_URL]
+        assert SET_A_URL not in calls
 
     def test_force_reprocesses_even_without_lastmod_change(self, monkeypatch):
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03"},
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
@@ -202,7 +247,7 @@ class TestCheckEventScheduleUpdates:
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03"},
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
             pages={SET_A_URL: NO_CALENDAR_HTML},
             calls=calls,
         )
@@ -215,7 +260,7 @@ class TestCheckEventScheduleUpdates:
         # ritentare la stessa pagina invariata ad ogni giro.
         with open(arena_event_schedule.STATE_PATH, encoding="utf-8") as f:
             on_disk = json.load(f)
-        assert on_disk["known"][SET_A_URL] == "2026-08-03"
+        assert on_disk["latest_url"] == SET_A_URL
 
     def test_failed_fetch_does_not_update_state(self, monkeypatch):
         """Se il fetch della pagina fallisce (torna None), non va marcata come
@@ -223,7 +268,7 @@ class TestCheckEventScheduleUpdates:
         calls = []
         _install_fake_network(
             monkeypatch,
-            sitemap={SET_A_URL: "2026-08-03"},
+            sitemap={SET_A_URL: "2026-08-03T00:00:00Z"},
             pages={},  # nessuna risposta -> _fetch_page_html restituisce None
             calls=calls,
         )

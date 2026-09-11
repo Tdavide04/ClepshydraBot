@@ -65,7 +65,7 @@
 | Comando | Descrizione |
 |---|---|
 | `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
-| `/forced_event_schedule_check` | Forza subito un controllo delle pagine "Event Schedule" Arena, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`) |
+| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`) |
 | `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
 
 ---

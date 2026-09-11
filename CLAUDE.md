@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 124 tests total, no `pytest-asyncio` — async integration tests
+Suite: 133 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`) instead
@@ -113,6 +113,10 @@ Schedule page monitor, every 24h — see below) — and syncs the slash command 
 failures (`discord.LoginFailure` and other exceptions in `setup_hook`/`bot.run`) are caught, logged to
 stderr with a `FATAL:` prefix, and exit non-zero instead of failing silently.
 
+`VERSION` (shown in the `SYSTEM_STARTUP` Discord log) is a hardcoded constant in `config/config.py`, not
+an env var — bump it by hand in the same commit that bumps `CHANGELOG.md`. From 3.0.0 onward: bump MINOR
+for a new feature, PATCH for a bug fix (see "Versioning" at the top of `CHANGELOG.md`).
+
 ### Deployment
 
 Production runs on an Oracle Cloud VM (1 OCPU / 1 GB RAM — see `docs/ClepshydraBot_Resoconto_Tecnico.md`
@@ -141,6 +145,14 @@ assume systemd when writing deployment-related docs or scripts.
    (`periodic_spg_refresh_loop()`) — `update_spg_overrides()` is incremental (`checked_cards` per set
    code, not the old "whole set done forever" `processed_sets` flag that used to make every run after the
    first a silent no-op), so repeated/scheduled calls only cost the cards that are new since last time.
+   Unevaluated cards' prints are fetched in batches of 25 via a combined Scryfall query
+   (`_fetch_prints_by_oracle_ids()`, `q=oracleid:X or oracleid:Y or ...`) instead of one
+   `prints_search_uri` request per card — the first full-set scan after the `processed_sets` →
+   `checked_cards` migration had to re-check ~175 cards at once and triggered a storm of 429s under the
+   old one-request-per-card design (observed in production). The oracle_id list is always deduplicated
+   before building the query: the upstream `set:spg unique=prints` search lists one row per *printing*,
+   so a card with several SPG printings appears more than once, and a query with repeated `oracleid:`
+   terms was verified live to make Scryfall silently drop some cards from the results instead of erroring.
    Admin `/forced_rarity_refresh` triggers the same check immediately instead of waiting for the weekly
    run.
 5. Validate mainboard ≥ 60 / sideboard ≤ 15 counts.
@@ -175,20 +187,25 @@ tournament can open registration before every player has a deck ready.
 `utils/arena_event_schedule.py` watches Wizards' per-set "[Set] MTG Arena Event Schedule" pages (e.g.
 `the-hobbit-event-schedule`) — distinct from the weekly "MTG Arena Announcements" posts, published once
 per expansion (~6-9 weeks) and updated in place by Wizards during the set's lifecycle rather than being a
-one-off snapshot. Since there
-is no official API/RSS, `check_event_schedule_updates()` fetches `magic.wizards.com/en/sitemap.xml`
-(standard XML sitemap with `<lastmod>` per URL) every 24h (`periodic_event_schedule_check_loop()`, cheap
-check — a single static-file GET), and only fetches+parses an individual event-schedule page when its
-`lastmod` changed versus `data/arena_event_schedule_state.json` (not tracked in git, pure bookkeeping —
-contrast with `arena_rarity_data.json`, which holds curated data and is tracked). The 24h cadence is
+one-off snapshot. Wizards does not remove past sets' pages from the sitemap, so at any given time several
+of them coexist there — `check_event_schedule_updates()` only cares about the one with the most recent
+`lastmod` (`_pick_latest()`, plain lexicographic max since the timestamps are fixed-width ISO-8601), i.e.
+the currently active set; without this filter, the first run on a fresh machine (empty state) would report
+every still-listed page as "new" at once (observed in production: 4 pages flooding the log channel
+simultaneously). Since there is no official API/RSS, `check_event_schedule_updates()` fetches
+`magic.wizards.com/en/sitemap.xml` (standard XML sitemap with `<lastmod>` per URL) every 24h
+(`periodic_event_schedule_check_loop()`, cheap check — a single static-file GET), and only fetches+parses
+the latest event-schedule page when its `lastmod` changed versus `data/arena_event_schedule_state.json`
+(`{latest_url, latest_lastmod}`, not tracked in git, pure bookkeeping — contrast with
+`arena_rarity_data.json`, which holds curated data and is tracked). The 24h cadence is
 deliberately much tighter than the ~6-9 week content cadence: the sitemap check itself is nearly free, so
 polling often lowers notification latency without adding cost, while the fragile part (HTML parsing) only
 ever runs on an actual change. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
 section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</li></ul>` blocks, bounded
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
 so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
-summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate check of all
-known pages, ignoring the saved `lastmod`.
+summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate re-check of
+the current latest page, ignoring the saved `lastmod`.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 
