@@ -8,6 +8,15 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.1.1 (2026-09-11)
+
+### Fixed
+- `check_event_schedule_updates()` non stampava nulla in console quando non trovava cambiamenti (il caso
+  più comune) — indistinguibile da "il task non è partito", causa di confusione reale in produzione dopo
+  un riavvio in cui il check aveva già processato la pagina più recente in un giro precedente. Aggiunti
+  log `[EVENT SCHEDULE] ...` per ogni esito (nessun cambiamento, pagina nuova/aggiornata, fetch fallito,
+  sezione non riconosciuta), simmetrico ai log `[SPG] ...`/`[DONE]` già presenti in `arena_overrides.py`
+
 ## 3.1.0 (2026-09-11)
 
 ### Fixed

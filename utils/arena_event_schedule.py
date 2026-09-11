@@ -246,6 +246,7 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
+            print("[EVENT SCHEDULE] nessuna pagina Event Schedule trovata sul sitemap")
             return []
 
         url, lastmod = latest
@@ -255,18 +256,27 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
             and state.get("latest_lastmod") == lastmod
         )
         if already_seen and not force:
+            print(f"[EVENT SCHEDULE] nessun cambiamento (piu' recente: {url})")
             return []
+
+        print(f"[EVENT SCHEDULE] pagina nuova/aggiornata: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
             # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
             # prossimo giro invece di marcarla come vista.
+            print(f"[EVENT SCHEDULE] fetch fallito per {url}, ritento al prossimo giro")
             return []
 
         categories = parse_full_event_calendar(page_html)
 
     _save_state({"latest_url": url, "latest_lastmod": lastmod})
+
+    if categories is None:
+        print(f"[EVENT SCHEDULE] {url}: sezione 'Full Event Calendar' non riconosciuta")
+    else:
+        print(f"[EVENT SCHEDULE] {url}: {len(categories)} categorie interpretate")
 
     return [{"url": url, "lastmod": lastmod, "categories": categories}]
 

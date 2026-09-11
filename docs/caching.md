@@ -248,6 +248,13 @@ settimane.
 | `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
 | `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: una categoria per campo embed (non tutto nella description), diviso in più messaggi da `_CATEGORIES_PER_MESSAGE` (6) categorie l'uno invece di un unico embed enorme |
 
+`check_event_schedule_updates()` stampa sempre un esito in console (`[EVENT SCHEDULE] ...`) — nessun
+cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta — anche quando non c'è nulla
+da postare su Discord. Senza questo log, un giro che non trova cambiamenti (l'esito più comune, dato che
+il contenuto reale cambia solo ogni 6-9 settimane) è indistinguibile in console da un task che non è mai
+partito — origine di una confusione reale in produzione, dove sembrava che il check non girasse mentre in
+realtà girava e correttamente non trovava nulla di nuovo.
+
 ### Parsing e gestione dei fallimenti
 
 La sezione "Full Event Calendar" di queste pagine è HTML realmente strutturato (non prosa libera come i
