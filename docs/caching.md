@@ -187,7 +187,66 @@ semplicemente trattato come "nessuna carta ancora controllata" e riscansionato u
 
 ---
 
-## 3. Scryfall API — Strategia
+## 3. Monitoraggio Event Schedule Arena (`utils/arena_event_schedule.py`)
+
+### Problema
+
+Wizards pubblica una pagina dedicata "**[Set] MTG Arena Event Schedule**" (URL tipo
+`magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule`) una volta per espansione — non
+settimanalmente come i post "MTG Arena Announcements". Contiene una sezione "Full Event Calendar" con la
+rotazione Quick Draft e tutti gli altri eventi ricorrenti, organizzata per categoria. Non esiste
+un'API/RSS ufficiale per sapere quando una nuova pagina viene pubblicata o quando una esistente viene
+aggiornata (Wizards la modifica **in place** durante il ciclo di vita del set, non solo alla
+pubblicazione).
+
+### Soluzione
+
+`magic.wizards.com/en/sitemap.xml` è un sitemap XML standard con `<lastmod>` per ogni pagina del sito.
+Un task in background scarica quotidianamente il sitemap (richiesta economica, file statico), filtra le
+URL `*-event-schedule` sotto `/en/news/mtg-arena/` e le confronta con l'ultimo `lastmod` salvato. Solo per
+le pagine nuove o con `lastmod` cambiato viene scaricata e interpretata la pagina vera e propria (fetch +
+parsing HTML, più costoso e fragile) — la maggior parte dei check giornalieri non fa nulla oltre alla GET
+sul sitemap, perché il contenuto reale cambia solo ogni 6-9 settimane.
+
+| Funzione | Descrizione |
+|---|---|
+| `check_event_schedule_updates(force=False)` | Confronta sitemap e stato salvato, scarica+interpreta solo le pagine nuove/cambiate (tutte se `force=True`); ritorna `[{url, lastmod, categories}]` |
+| `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
+| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord ogni pagina nuova/aggiornata |
+
+### Parsing e gestione dei fallimenti
+
+La sezione "Full Event Calendar" di queste pagine è HTML realmente strutturato (non prosa libera come i
+post Announcements settimanali): blocchi `<h2>/<h3>/<h4>Categoria</h2>` seguiti da
+`<ul><li>intervallo date: descrizione</li></ul>`, delimitati tra l'heading "Full Event Calendar" e la
+prima chiusura `</article>` successiva (esclude le card di navigazione laterale, che usano heading con
+attributi CSS anziché bare come quelli della sezione calendario).
+
+Se la struttura attesa non viene trovata, `parse_full_event_calendar()` ritorna `None` invece di un
+riassunto parziale o sbagliato — il chiamante logga un `WARN` ("controllo manuale consigliato") invece di
+postare dati potenzialmente inaffidabili come se fossero autorevoli. Un fetch di rete fallito (pagina non
+raggiungibile) non aggiorna lo stato salvato: viene ritentato al giro successivo invece di essere marcato
+come "già visto".
+
+### Stato (`data/arena_event_schedule_state.json`, non tracciato in git)
+
+```json
+{
+  "known": {
+    "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule": "2026-09-02T16:05:08.364Z"
+  }
+}
+```
+
+Puro bookkeeping operativo (ultimo `lastmod` visto per URL) — a differenza di `arena_rarity_data.json`
+non contiene dati curati/editoriali, quindi non è tracciato in git (vedi `.gitignore`).
+
+Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla tutte le
+pagine note): `/forced_event_schedule_check`.
+
+---
+
+## 4. Scryfall API — Strategia
 
 ### Endpoint
 
@@ -215,7 +274,7 @@ Le carte con `set_type=alchemy` sono escluse esplicitamente (non ammesse in Arti
 
 ---
 
-## 4. Cache Banlist
+## 5. Cache Banlist
 
 La banlist (`BannedCard` in SQLite) è cacheata in memoria nella variabile di modulo
 `_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, condivisa da tutte le istanze
@@ -235,4 +294,5 @@ di `ArtisanService`.
 |---|---|---|---|
 | Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
+| Event Schedule Arena | `arena_event_schedule_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
 | Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |

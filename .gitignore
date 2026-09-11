@@ -34,6 +34,12 @@ Thumbs.db
 # dal bot una volta popolata la tabella cached_cards.
 data/card_cache.json
 
+# Stato "ultimo lastmod visto" per le pagine Event Schedule Arena (utils/arena_event_schedule.py):
+# puro bookkeeping operativo per evitare ri-processare pagine gia' notificate, nessun valore
+# editoriale da tracciare in git (a differenza di arena_rarity_data.json, che contiene override
+# curati manualmente).
+data/arena_event_schedule_state.json
+
 # Coverage
 .coverage
 htmlcov/

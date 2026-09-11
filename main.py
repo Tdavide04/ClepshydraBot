@@ -6,6 +6,7 @@ from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db
 from utils.card_cache import periodic_save_loop
 from utils.arena_overrides import periodic_spg_refresh_loop
+from utils.arena_event_schedule import periodic_event_schedule_check_loop
 
 
 class ClepshydraBotte(commands.Bot):
@@ -26,6 +27,7 @@ class ClepshydraBotte(commands.Bot):
                 await self.load_extension(f'cogs.{entry}')
         self.loop.create_task(periodic_save_loop())
         self.loop.create_task(periodic_spg_refresh_loop(self))
+        self.loop.create_task(periodic_event_schedule_check_loop(self))
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)

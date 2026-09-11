@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.10.0 (2026-09-11)
+
+### Added
+- `utils/arena_event_schedule.py`: nuovo monitoraggio delle pagine "[Set] MTG Arena Event Schedule"
+  pubblicate da Wizards (una per espansione, non settimanali come i post "MTG Arena Announcements") —
+  discovery preliminare fatta analizzando manualmente gli annunci Arena di gennaio-settembre 2026. Usa
+  `magic.wizards.com/en/sitemap.xml` (con `<lastmod>` per pagina) per individuare pagine nuove o
+  aggiornate senza dover indovinare in anticipo lo
+  slug del prossimo set; scarica e interpreta la singola pagina solo quando il `lastmod` risulta cambiato
+  rispetto allo stato salvato. La sezione "Full Event Calendar" di queste pagine è HTML realmente
+  strutturato (heading + `<ul><li>`), non prosa libera — se la struttura attesa non viene trovata, viene
+  segnalato un `WARN` invece di pubblicare un riassunto parziale/sbagliato
+- `periodic_event_schedule_check_loop(bot)`: nuovo task in background (avviato da `main.py`) che controlla
+  il sitemap ogni 24 ore — check economico e frequente, disaccoppiato dalla cadenza reale dei contenuti
+  (~6-9 settimane, con eventuali aggiornamenti in-place a metà ciclo) per ridurre la latenza di notifica
+  senza aumentare il costo/fragilità del parsing, che scatta solo sui cambiamenti reali
+- `/forced_event_schedule_check` (admin, nuovo cog `cogs/arena_event_schedule_updater.py` — separato da
+  `spg_override_updater.py`, che resta dedicato solo alla manutenzione carte/rarità): forza un controllo
+  immediato di
+  tutte le pagine Event Schedule note, ignorando il confronto `lastmod`
+- `tests/utils/test_arena_event_schedule.py` (nuova cartella `tests/utils/`, dedicata a moduli `utils/`
+  non legati al dominio di un cog specifico — `arena_event_schedule.py` non tocca `config`/`database`,
+  a differenza di `arena_overrides.py` che infatti resta in `tests/deck_validation/`): 12 test (parsing
+  "Full Event Calendar" da HTML reale, parsing del sitemap XML, rilevamento nuovo/cambiato `lastmod`,
+  `force=True`, pagina non interpretabile segnalata invece di scartata, fetch fallito non aggiorna lo
+  stato). Suite totale: 112 → 124
+
 ## 1.9.0 (2026-09-11)
 
 ### Fixed

@@ -56,9 +56,10 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 112 tests total, no `pytest-asyncio` — async integration tests
+Suite: 124 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
-`tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`) instead
+`tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
+`tests/utils/test_arena_event_schedule.py`) instead
 wrap each scenario in a single `asyncio.run()` call,
 since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
 `_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
@@ -94,18 +95,20 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   real ones. `init_db()` also imports `cards.txt` into `banned_cards` on first run via
   `_migrate_banlist()`, but only if the table is empty.
 - **`utils/`** — Cross-cutting helpers: `card_cache.py` (Scryfall response cache), `arena_overrides.py`
-  (SPG rarity overrides), `deck_image_generator.py` (Pillow-based deck showcase PNGs), `permissions.py`
-  (`@is_admin()` app-command check based on a configured Discord role name), `tournament_embeds.py`,
-  `tournament_logic.py`.
+  (SPG rarity overrides), `arena_event_schedule.py` (monitors Wizards' "[Set] MTG Arena Event Schedule"
+  pages via the site's `sitemap.xml`, see below), `deck_image_generator.py` (Pillow-based deck showcase
+  PNGs), `permissions.py` (`@is_admin()` app-command check based on a configured Discord role name),
+  `tournament_embeds.py`, `tournament_logic.py`.
 
 ### Config and environment
 
 `config/config.py` loads `.env` via `python-dotenv` and reads all settings as module-level constants
 (no pydantic/settings class). `TEST_MODE` selects `_TEST`-suffixed env vars (token, guild, channels, db
 path) at import time — there is no runtime toggle. `main.py` constructs the bot, calls `init_db()`,
-dynamically loads every module/package under `cogs/`, starts two background tasks —
-`periodic_save_loop()` (card cache autosave, every 60s) and `periodic_spg_refresh_loop()` (SPG rarity
-override auto-refresh, every 7 days — see below) — and syncs the slash command tree to a single guild
+dynamically loads every module/package under `cogs/`, starts three background tasks —
+`periodic_save_loop()` (card cache autosave, every 60s), `periodic_spg_refresh_loop()` (SPG rarity
+override auto-refresh, every 7 days — see below), and `periodic_event_schedule_check_loop()` (Arena Event
+Schedule page monitor, every 24h — see below) — and syncs the slash command tree to a single guild
 (`GUILD_ID`) rather than globally. Startup
 failures (`discord.LoginFailure` and other exceptions in `setup_hook`/`bot.run`) are caught, logged to
 stderr with a `FATAL:` prefix, and exit non-zero instead of failing silently.
@@ -166,6 +169,26 @@ round (Swiss pairing, anti-rematch) → on final round, conclude and update Glic
 against an isolated SQLite DB (no mocks) — registration and deck submission were split into two separate
 steps/commands deliberately (previously `/iscriviti` opened a deck-validation modal directly), so a
 tournament can open registration before every player has a deck ready.
+
+### Arena Event Schedule monitor
+
+`utils/arena_event_schedule.py` watches Wizards' per-set "[Set] MTG Arena Event Schedule" pages (e.g.
+`the-hobbit-event-schedule`) — distinct from the weekly "MTG Arena Announcements" posts, published once
+per expansion (~6-9 weeks) and updated in place by Wizards during the set's lifecycle rather than being a
+one-off snapshot. Since there
+is no official API/RSS, `check_event_schedule_updates()` fetches `magic.wizards.com/en/sitemap.xml`
+(standard XML sitemap with `<lastmod>` per URL) every 24h (`periodic_event_schedule_check_loop()`, cheap
+check — a single static-file GET), and only fetches+parses an individual event-schedule page when its
+`lastmod` changed versus `data/arena_event_schedule_state.json` (not tracked in git, pure bookkeeping —
+contrast with `arena_rarity_data.json`, which holds curated data and is tracked). The 24h cadence is
+deliberately much tighter than the ~6-9 week content cadence: the sitemap check itself is nearly free, so
+polling often lowers notification latency without adding cost, while the fragile part (HTML parsing) only
+ever runs on an actual change. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
+section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</li></ul>` blocks, bounded
+between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
+so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
+summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate check of all
+known pages, ignoring the saved `lastmod`.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 
