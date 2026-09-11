@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.1 (2026-09-11)
+
+### Added
+- `tests/deck_validation/test_artisan_service.py`: 5 test per `ArtisanService.validate_deck()` — deck
+  bannato (nessuna chiamata Scryfall), deck valido, carta rara illegale, e due regressioni mirate: banlist
+  invalidata su un'istanza deve essere visibile dall'altra (bug del Step 1), entry di cache legacy senza
+  timestamp deve essere ri-verificata invece di considerata valida per sempre (Step 3). Nessuna chiamata
+  di rete reale — `_post_with_retry`/`_get_with_retry` sostituiti per-istanza con funzioni finte. Suite
+  totale: 93 test (88 → 93)
+
 ## 1.5.0 (2026-09-11)
 
 ### Added

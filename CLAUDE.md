@@ -41,12 +41,19 @@ sqlitebrowser data/clepshydra.db
 
 `pytest.ini` sets `pythonpath = .` — required for the bare `pytest tests/` invocation (used by CI) to
 find top-level modules (`services`, `database`, `utils`); without it, only `python -m pytest` would work,
-since that form adds the cwd to `sys.path` itself. `tests/tournament/conftest.py` seeds the env vars
-`services/__init__.py` needs at import time (it eagerly imports `TournamentService`, which requires
-`config.config` to be populated) — any test importing even a pure-logic module like
-`services.pairing_engine` transitively needs these. Suite: 88 tests total, no `pytest-asyncio` — async
-integration tests (`tests/tournament/test_tournament_service.py`) instead wrap each scenario in a single
-`asyncio.run()` call, since aiosqlite connections are bound to the event loop that created them.
+since that form adds the cwd to `sys.path` itself. Both `tests/tournament/conftest.py` and
+`tests/deck_validation/conftest.py` seed the same env vars (duplicated on purpose, not shared, so each
+directory stays runnable in isolation) that `services/__init__.py` needs at import time (it eagerly
+imports `TournamentService`, which requires `config.config` to be populated) — any test importing even a
+pure-logic module like `services.pairing_engine` transitively needs these, and so does anything importing
+`cogs.deck_validation.service` (it imports `database`, which imports `database.engine` → `config.config`).
+Suite: 93 tests total, no `pytest-asyncio` — async integration tests
+(`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`) instead
+wrap each scenario in a single `asyncio.run()` call, since aiosqlite connections are bound to the event
+loop that created them. `ArtisanService` tests mock `_post_with_retry`/`_get_with_retry` (swap them for
+plain async functions on the instance) instead of touching `aiohttp.ClientSession` — no real network
+calls, and it doubles as a regression test for the module-level banlist cache (Step 1) and the
+`artisan_legal` TTL (Step 3).
 
 ## Architecture
 

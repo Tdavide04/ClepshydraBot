@@ -249,7 +249,7 @@ non solo un compile-check. Diff verificato a mano riga per riga: ogni metodo con
 
 ## Step 7 — Test per `ArtisanService` (completare la copertura deck validation)
 
-**Stato:** in corso — `TournamentService` già coperto (vedi "Punto di partenza"), manca `ArtisanService`
+**Stato:** fatto (2026-09-11) — `TournamentService` già coperto (vedi "Punto di partenza")
 
 **Problema:** `ArtisanService.validate_deck()` — banlist + fetch Scryfall + rarità Artisan + override SPG
 — non ha copertura, a differenza di `TournamentService` che ora ha 10 test end-to-end.
@@ -266,6 +266,25 @@ non solo un compile-check. Diff verificato a mano riga per riga: ogni metodo con
 **Documentazione da aggiornare:**
 - `CLAUDE.md` — sezione "Commands" (nuovo percorso di test), se cambia qualcosa di rilevante.
 - `CHANGELOG.md` — nuova voce `Added` con conteggio test.
+
+**Implementazione effettiva:** `tests/deck_validation/test_artisan_service.py` (+ `conftest.py` con lo
+stesso seeding env var di `tests/tournament/conftest.py`, duplicato deliberatamente per restare
+eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run()` già in uso.
+`ArtisanService._post_with_retry`/`_get_with_retry` sono sostituiti per-istanza con funzioni async finte
+(nessuna chiamata di rete reale, nessun mock library). 5 test:
+- carta bannata → stop prima di qualunque chiamata Scryfall (verificato passando un `_post_with_retry`
+  che solleverebbe `KeyError` se venisse invocato).
+- deck valido (mainboard common + sideboard uncommon) → `is_valid` True.
+- carta rara → `illegal_rarity_cards` popolato, `is_valid` False.
+- **regressione Step 1**: due `ArtisanService` separate (come nel bot reale), banlist modificata tramite
+  la prima, verificata tramite la seconda — cattura esattamente il bug che il fix del 9 settembre aveva
+  lasciato aperto.
+- **regressione Step 3**: entry di cache "legacy" (senza `artisan_legal_checked_at`) con
+  `artisan_legal=True`, ma la ristampa via API risulta ora rara → deve essere ri-verificata, non presa
+  per buona.
+
+**Validazione:** `python -m pytest tests/ -v` — 93/93 verdi (88 preesistenti + 5 nuovi), eseguiti sia come
+`tests/deck_validation` in isolamento sia come parte della suite completa.
 
 ---
 
