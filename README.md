@@ -25,7 +25,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 | `/risultato` | Submit match result | All |
 | `/classifica` | View standings | All |
 | `/turni` | View current pairings | All |
-| `/update_spg_overrides` | Update rarity overrides | Admin |
+| `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
 
 ## Tech Stack
 

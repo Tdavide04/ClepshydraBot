@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.9.0 (2026-09-11)
+
+### Fixed
+- **Bug confermato in produzione**: `update_spg_overrides()` usava `processed_sets` per marcare l'intero
+  set `SPG` come "fatto per sempre" dopo la prima scansione riuscita. Sbagliato: Scryfall usa un unico set
+  code `SPG` che cresce nel tempo (nuove Special Guests con quasi ogni set principale, ~4-8 settimane in
+  media — vedi ricerca in `docs/roadmap-miglioramenti.md`). Il file reale del repo aveva già
+  `processed_sets: ["SPG"]` con 37 override — ogni run successivo, anche manuale, era un no-op silenzioso
+  da mesi, senza alcun modo di sbloccarlo se non editando il JSON a mano
+- `utils/arena_overrides.py`: sostituito `processed_sets` (flag per l'intero set) con `checked_cards`
+  (elenco per set code delle singole carte già valutate, con o senza override). Una scansione salta solo
+  le carte già viste, non l'intero set — i run successivi al primo costano solo le carte nuove dall'ultimo
+  controllo. Un file nel vecchio formato non blocca più nulla: `checked_cards` mancante viene trattato come
+  vuoto, quindi la prima scansione dopo l'aggiornamento riscansiona tutto una volta (recupero automatico,
+  nessuna migrazione manuale richiesta). File dati del repo (`data/arena_rarity_data.json`) migrato allo
+  stesso modo, `overrides` esistenti preservati
+- Aggiunto `_update_lock` (`asyncio.Lock()`): evita che il nuovo task automatico e un refresh manuale
+  sovrascrivano il JSON contemporaneamente se capitano nello stesso momento
+
+### Added
+- `periodic_spg_refresh_loop(bot)`: nuovo task in background (avviato da `main.py` insieme a
+  `periodic_save_loop()`) che chiama `update_spg_overrides()` ogni 7 giorni senza intervento admin — primo
+  giro subito all'avvio, non aspetta il primo intervallo. Logga su Discord (`SPG_OVERRIDES_UPDATED`, INFO)
+  solo quando trova davvero qualcosa di nuovo
+- `/forced_rarity_refresh` (rinominato da `/update_spg_overrides`): ora logga anche su Discord oltre alla
+  risposta ephemeral all'admin, coerente con `BANLIST_ADD`/`BANLIST_REMOVE`
+- `tests/deck_validation/test_arena_overrides.py`: 4 test, incluso uno che riproduce esattamente il bug
+  del vecchio formato trovato in produzione (JSON con `processed_sets` legacy non deve più bloccare la
+  scansione). Suite totale: 108 → 112
+
 ## 1.8.0 (2026-09-11)
 
 ### Added

@@ -24,11 +24,11 @@ class SPGOverrideUpdater(commands.Cog):
     # ======================================
 
     @app_commands.command(
-        name="update_spg_overrides",
-        description="Aggiorna automaticamente gli override SPG"
+        name="forced_rarity_refresh",
+        description="Forza subito un controllo degli override SPG (gira anche da solo ogni settimana)"
     )
     @is_admin()
-    async def update_spg_overrides_command(
+    async def forced_rarity_refresh_command(
         self,
         interaction: discord.Interaction
     ):
@@ -41,11 +41,20 @@ class SPGOverrideUpdater(commands.Cog):
 
             added = await update_spg_overrides(set_code="spg")
 
+            logger = self.bot.get_cog("Logger")
+
             if not added:
                 await interaction.followup.send(
-                    "✅ Nessun nuovo override trovato.",
+                    "✅ Nessun nuovo override trovato (già tutto aggiornato).",
                     ephemeral=True
                 )
+                if logger:
+                    await logger.send_log(
+                        level="INFO",
+                        event="SPG_OVERRIDES_UPDATED",
+                        user=interaction.user,
+                        info="Controllo manuale forzato: nessun nuovo override trovato.",
+                    )
                 return
 
             lines = [
@@ -62,6 +71,14 @@ class SPGOverrideUpdater(commands.Cog):
                 f"✅ Override aggiornati ({len(added)} totali):\n\n{text}",
                 ephemeral=True
             )
+
+            if logger:
+                await logger.send_log(
+                    level="INFO",
+                    event="SPG_OVERRIDES_UPDATED",
+                    user=interaction.user,
+                    info=f"Controllo manuale forzato: {len(added)} nuovi override trovati\n\n{text}",
+                )
 
         except Exception as e:
 

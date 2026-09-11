@@ -141,34 +141,49 @@ per `"lightning bolt"`:
 
 Carte del set **SPG (Special Guests)** stampate su carta a rarità common/uncommon, ma apparse su Arena solo a rarità rare/mythic. Scryfall le vedrebbe come illegali per Artisan, ma dovrebbero essere legali in base alla rarità paper più bassa.
 
+`SPG` non è un set che esce una volta e si chiude: Scryfall usa un unico set code che cresce nel tempo — nuove Special Guests vengono aggiunte con quasi ogni nuovo set principale (~4-8 settimane in media).
+
 ### Soluzione
 
-Dizionario di override che forza una rarità più bassa per queste carte.
+Dizionario di override che forza una rarità più bassa per queste carte, aggiornato **automaticamente ogni settimana** da un task in background (`periodic_spg_refresh_loop()`, avviato da `main.py` insieme a `periodic_save_loop()`), oltre che manualmente via `/forced_rarity_refresh` (admin).
 
 | Funzione | Descrizione |
 |---|---|
 | `get_override_rarity(card_name)` | Restituisce `"common"`, `"uncommon"` o `None` |
-| `update_spg_overrides(set_code="spg")` | Scansione Scryfall, aggiorna JSON |
+| `update_spg_overrides(set_code="spg")` | Scansiona solo le carte **non ancora valutate** del set, aggiorna JSON — incrementale, sicuro da chiamare ripetutamente |
+| `periodic_spg_refresh_loop(bot)` | Task in background: chiama `update_spg_overrides()` ogni 7 giorni (primo giro subito all'avvio), logga su Discord se trova qualcosa di nuovo |
 | `invalidate_override_cache()` | Forza ricarica del JSON al prossimo accesso |
 
 ### Cache In-Memory
 
-`_override_cache`: variabile globale popolata al primo accesso. Invalidabile esplicitamente.
+`_override_cache`: variabile globale popolata al primo accesso, invalidabile esplicitamente. `_update_lock`
+(`asyncio.Lock()`) evita che il task automatico e un `/forced_rarity_refresh` manuale sovrascrivano il
+JSON contemporaneamente se capitano nello stesso momento.
 
 ### Struttura JSON (`data/arena_rarity_data.json`)
 
 ```json
 {
-  "processed_sets": ["SPG"],
   "overrides": {
     "Swords to Plowshares": "uncommon",
     "Lightning Bolt": "common",
     "Sylvan Library": "uncommon"
+  },
+  "checked_cards": {
+    "SPG": ["Swords to Plowshares", "Lightning Bolt", "Sylvan Library", "..."]
   }
 }
 ```
 
-Nota: `processed_sets` evita ri-scansioni. Per forzare: rimuovere il set dal JSON e chiamare `update_spg_overrides()`.
+`checked_cards[set_code]` elenca **ogni** carta già valutata in quel set, con o senza override aggiunto
+(non solo quelle che ne hanno ottenuto uno). Una nuova scansione salta solo le carte già presenti qui —
+i giri successivi al primo costano solo le carte apparse dall'ultimo controllo, non l'intero set.
+
+**Storia**: fino a Settembre 2026 il campo era `processed_sets: ["SPG"]`, un flag "tutto il set fatto per
+sempre" — corretto per un set che esce una volta, sbagliato per uno che cresce nel tempo. Dopo la prima
+scansione riuscita, ogni run successivo (anche manuale) diventava un no-op permanente, senza modo di
+sbloccarlo se non editando il JSON a mano. Un file nel vecchio formato non blocca più nulla: viene
+semplicemente trattato come "nessuna carta ancora controllata" e riscansionato una volta per intero.
 
 ---
 

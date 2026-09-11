@@ -64,7 +64,7 @@
 
 | Comando | Descrizione |
 |---|---|
-| `/update_spg_overrides` | Scansione Scryfall per aggiornare override SPG (Special Guest) |
+| `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
 | `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
 
 ---
@@ -94,7 +94,7 @@
 | `/banlist` | `cogs/tournament_system/cog.py` | 1314 |
 | `/banlist_aggiungi` | `cogs/tournament_system/cog.py` | 1360 |
 | `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1391 |
-| `/update_spg_overrides` | `cogs/spg_override_updater.py` | 26 |
+| `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 26 |
 | `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 82 |
 
 ---

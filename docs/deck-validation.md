@@ -190,7 +190,7 @@ Flusso rapido:
 1. `get_override_rarity(nome)` controlla `arena_rarity_data.json`
 2. Se trovato come `"common"` o `"uncommon"` → carta legale (salta API)
 3. Contiene ~40 carte del set SPG (Special Guest)
-4. Aggiornabile via `/update_spg_overrides` (admin)
+4. Aggiornato automaticamente ogni settimana (`periodic_spg_refresh_loop`); forzabile subito via `/forced_rarity_refresh` (admin)
 
 ---
 

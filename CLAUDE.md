@@ -56,9 +56,10 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 101 tests total, no `pytest-asyncio` — async integration tests
+Suite: 112 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
-`tests/deck_validation/test_card_cache.py`) instead wrap each scenario in a single `asyncio.run()` call,
+`tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`) instead
+wrap each scenario in a single `asyncio.run()` call,
 since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
 `_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
 touching `aiohttp.ClientSession` — no real network calls, and it doubles as a regression test for the
@@ -102,8 +103,10 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
 `config/config.py` loads `.env` via `python-dotenv` and reads all settings as module-level constants
 (no pydantic/settings class). `TEST_MODE` selects `_TEST`-suffixed env vars (token, guild, channels, db
 path) at import time — there is no runtime toggle. `main.py` constructs the bot, calls `init_db()`,
-dynamically loads every module/package under `cogs/`, starts `periodic_save_loop()` (card cache
-autosave), and syncs the slash command tree to a single guild (`GUILD_ID`) rather than globally. Startup
+dynamically loads every module/package under `cogs/`, starts two background tasks —
+`periodic_save_loop()` (card cache autosave, every 60s) and `periodic_spg_refresh_loop()` (SPG rarity
+override auto-refresh, every 7 days — see below) — and syncs the slash command tree to a single guild
+(`GUILD_ID`) rather than globally. Startup
 failures (`discord.LoginFailure` and other exceptions in `setup_hook`/`bot.run`) are caught, logged to
 stderr with a `FATAL:` prefix, and exit non-zero instead of failing silently.
 
@@ -131,7 +134,12 @@ assume systemd when writing deployment-related docs or scripts.
    `artisan_legal_checked_at` — entries cached before the TTL existed count as stale), then a live
    `prints_search_uri + game:arena` lookup (excluding `alchemy` set_type prints), caching the result with
    `mark_artisan_legal()`. Admin `/invalidate_card_cache <carta>` forces a full re-check of one card
-   without waiting for the TTL.
+   without waiting for the TTL. The SPG override table itself refreshes automatically every 7 days
+   (`periodic_spg_refresh_loop()`) — `update_spg_overrides()` is incremental (`checked_cards` per set
+   code, not the old "whole set done forever" `processed_sets` flag that used to make every run after the
+   first a silent no-op), so repeated/scheduled calls only cost the cards that are new since last time.
+   Admin `/forced_rarity_refresh` triggers the same check immediately instead of waiting for the weekly
+   run.
 5. Validate mainboard ≥ 60 / sideboard ≤ 15 counts.
 6. On success, generate a showcase PNG (`DeckImageGenerator`) and post embeds to the log/deck channels.
 

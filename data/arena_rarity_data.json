@@ -1,7 +1,4 @@
 {
-    "processed_sets": [
-        "SPG"
-    ],
     "overrides": {
         "Archaeomancer": "common",
         "Condemn": "uncommon",
@@ -40,5 +37,6 @@
         "Unholy Heat": "common",
         "Victimize": "uncommon",
         "Warping Wail": "uncommon"
-    }
+    },
+    "checked_cards": {}
 }
