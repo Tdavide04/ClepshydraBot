@@ -8,6 +8,14 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.0.1 (2026-09-11)
+
+### Fixed
+- `VERSION` era finita nella sezione "Features" di `.env`/`.env.example` insieme a `TEST_MODE` — spostata
+  a costante hardcoded in `config/config.py` (`.env` deve contenere solo `TEST_MODE`, non dati di
+  release). Rimossa anche da `tests/*/conftest.py` (l'env var non serve più). Nessun impatto funzionale:
+  stesso comportamento `-test` in `TEST_MODE`, solo cambia da dove viene letta
+
 ## 3.0.0 (2026-09-11)
 
 ### Fixed
