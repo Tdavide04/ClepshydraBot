@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.8.0 (2026-09-11)
+
+### Added
+- `Dockerfile` multi-stage: stage `builder` installa le dipendenze in un venv isolato, lo stage finale
+  copia solo il venv già pronto + il codice applicativo, gira come utente non-root (`clepshydra`, uid
+  1000)
+- `docker-compose.yml`: `restart: unless-stopped`, `env_file: .env` (mai copiato nell'immagine), volume
+  Docker nominato `clepshydra-data` su `/app/data` per la persistenza tra riavvii
+- `.dockerignore`: esclude `.git`, `data/` (mai nell'immagine — solo runtime/cache), `.env`, test/docs/
+  legacy dal contesto di build
+- README "Quick Start": sezione Docker come alternativa all'installazione diretta
+
+Validato con build e avvio reali (non solo scrittura dei file): immagine costruita con successo,
+container avviato come utente non-root con `/app/data` scrivibile, tutte le dipendenze importabili,
+`docker compose up` con token Discord invalido riproduce correttamente il comportamento `FATAL:` +
+`sys.exit(1)` già documentato per `pm2`, e `restart: unless-stopped` riavvia automaticamente il
+container come atteso. Immagini/volumi/container di test rimossi dopo la verifica.
+
 ## 1.7.1 (2026-09-11)
 
 ### Fixed

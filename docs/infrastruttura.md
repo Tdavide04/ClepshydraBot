@@ -162,21 +162,27 @@ Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I
 
 ## Roadmap Infrastrutturale
 
-### Sprint 7 — Docker (da fare)
+### Sprint 7 — Docker (completato)
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["python", "main.py"]
+`Dockerfile` multi-stage: uno stage `builder` installa le dipendenze in un venv isolato
+(`/opt/venv`), lo stage finale copia solo il venv già pronto + il codice applicativo, gira come utente
+non-root (`clepshydra`, uid 1000). `.dockerignore` esclude `.git`, `data/` (mai bakato nell'immagine —
+contiene solo dati runtime/cache, ricreato a ogni avvio dal volume), `.env` (mai nell'immagine, iniettato
+a runtime), test/docs/legacy.
+
+`docker-compose.yml`:
+- `restart: unless-stopped`
+- `env_file: .env` (letto dall'host all'avvio, non copiato nell'immagine)
+- volume Docker nominato `clepshydra-data` montato su `/app/data` — persiste tra i riavvii del container
+
+```bash
+docker compose up -d --build   # build + avvio
+docker compose logs -f bot     # log in tempo reale
+docker compose down            # ferma (il volume dati resta)
 ```
 
-`docker-compose.yml` con:
-- Volume persistente per `data/`
-- `restart: unless-stopped`
-- Bind mount per `.env`
+Questa è un'opzione di deployment **aggiuntiva**, non sostituisce `pm2` (sezione "Deployment" sopra),
+che resta il metodo effettivamente in uso in produzione finché non si decide di migrare.
 
 ### Sprint 8 — CI/CD (completato)
 
@@ -187,5 +193,5 @@ CMD ["python", "main.py"]
   `docs/roadmap-miglioramenti.md`
 
 Ancora da fare:
-- `build` check Docker (dipende dal completamento dello Sprint 7)
+- `build` check Docker in CI (verifica che l'immagine si costruisca ad ogni push, senza deploy)
 - Deploy automatico su OCI via SSH/deploy key

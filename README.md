@@ -114,6 +114,19 @@ python main.py
 - Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
 - Discord server with appropriate intents enabled (Member, Message Content)
 
+### Docker (alternative)
+
+```bash
+cp .env.example .env
+# Edit .env with your Discord token and channel IDs
+docker compose up -d --build
+docker compose logs -f bot
+```
+
+Data (SQLite DB, card cache) persists in a named Docker volume across restarts. See
+`docs/infrastruttura.md` for details — production currently runs via `pm2`, not Docker, but the image is
+validated and ready to use.
+
 ## Development
 
 ```bash

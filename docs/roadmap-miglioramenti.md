@@ -353,7 +353,7 @@ rispetto a prima del lint cleanup (nessuna delle correzioni ha toccato la logica
 
 ## Step 9 — Containerizzazione (Docker)
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** deploy tramite `pm2` su SSH manuale, nessuna riproducibilità dell'ambiente.
 
@@ -368,11 +368,23 @@ rispetto a prima del lint cleanup (nessuna delle correzioni ha toccato la logica
 - `README.md` — "Quick Start" con opzione Docker.
 - `CHANGELOG.md` — nuova voce `Added`.
 
+**Implementazione effettiva:** `Dockerfile` multi-stage (builder con venv isolato → runtime non-root),
+`.dockerignore` (esclude `.git`, `data/`, `.env`, test/docs/legacy — niente segreti o dati runtime
+nell'immagine), `docker-compose.yml` (volume nominato `clepshydra-data`, `env_file: .env`,
+`restart: unless-stopped`). Resta un'opzione aggiuntiva: la produzione usa `pm2`, non sostituito.
+
+**Validazione:** non solo scrittura dei file — build e avvio reali con Docker Desktop disponibile in
+locale. `docker build` riuscito; `docker run` con token Discord invalido riproduce correttamente
+`FATAL: ... sys.exit(1)` (stesso comportamento già documentato per `pm2`); verificato utente non-root
+(`whoami` → `clepshydra`) e `/app/data` scrivibile; `docker compose up` con lo stesso token invalido
+mostra `restart: unless-stopped` che riavvia il container automaticamente come atteso; volume nominato
+creato e ispezionato. Immagini/container/volumi di test rimossi dopo la verifica, nessun residuo.
+
 ---
 
 ## Ordine consigliato
 
-Step 0 → 1 → 2 → 5 → 6 → 3 → 7 → 4 (tutti fatti) → 8 (chiusura lint, da fare) → 9 (da fare).
+Step 0 → 1 → 2 → 5 → 6 → 3 → 7 → 4 → 8 → 9 — **tutti fatti**. Roadmap completata.
 
 Motivazione: prima i fix di correttezza a basso rischio e isolati (2, 5), poi i refactor interni senza
 cambi di comportamento visibile (6) — entrambi appoggiati alla suite `test_tournament_service.py` già
