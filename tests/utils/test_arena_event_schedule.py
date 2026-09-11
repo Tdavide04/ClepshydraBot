@@ -278,3 +278,70 @@ class TestCheckEventScheduleUpdates:
         assert results == []
         import os
         assert not os.path.exists(arena_event_schedule.STATE_PATH)
+
+
+class FakeLogger:
+    def __init__(self):
+        self.calls = []
+
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None):
+        self.calls.append({"level": level, "event": event, "info": info, "fields": fields or []})
+
+
+class TestCategoryField:
+
+    def test_builds_bulleted_field_from_entries(self):
+        field = arena_event_schedule._category_field("Quick Draft", ["A", "B"])
+        assert field == {"name": "Quick Draft", "value": "• A\n• B", "inline": False}
+
+    def test_truncates_value_over_discord_field_limit(self):
+        # Solo 10 entries vengono usate (limite della funzione): per superare
+        # il limite di 1024 caratteri del campo serve testo lungo per entry,
+        # non tante entry brevi.
+        long_entry = "Evento con una descrizione volutamente molto lunga per superare il limite " * 3
+        entries = [long_entry] * 10
+        field = arena_event_schedule._category_field("Categoria", entries)
+        assert len(field["value"]) <= arena_event_schedule._FIELD_VALUE_LIMIT
+        assert field["value"].endswith("_...troncato_")
+
+
+class TestSendEventScheduleLog:
+
+    def test_unparseable_page_sends_a_single_warn_with_no_fields(self):
+        logger = FakeLogger()
+        result = {"url": SET_A_URL, "lastmod": "2026-08-03T00:00:00Z", "categories": None}
+
+        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+
+        assert len(logger.calls) == 1
+        assert logger.calls[0]["level"] == "WARN"
+        assert logger.calls[0]["fields"] == []
+
+    def test_few_categories_fit_in_a_single_message(self):
+        logger = FakeLogger()
+        categories = {f"Categoria {i}": [f"Evento {i}"] for i in range(3)}
+        result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
+
+        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+
+        assert len(logger.calls) == 1
+        assert len(logger.calls[0]["fields"]) == 3
+        assert "parte" not in logger.calls[0]["info"]
+
+    def test_many_categories_are_split_across_multiple_messages(self):
+        """Regressione per la richiesta di spezzare il muro di testo unico:
+        con piu' categorie di quante ne stiano in un messaggio, deve arrivare
+        piu' di un log, ciascuno con al piu' _CATEGORIES_PER_MESSAGE campi."""
+        logger = FakeLogger()
+        n_categories = arena_event_schedule._CATEGORIES_PER_MESSAGE * 2 + 1
+        categories = {f"Categoria {i}": [f"Evento {i}"] for i in range(n_categories)}
+        result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
+
+        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+
+        assert len(logger.calls) == 3
+        assert all(len(call["fields"]) <= arena_event_schedule._CATEGORIES_PER_MESSAGE for call in logger.calls)
+        total_fields = sum(len(call["fields"]) for call in logger.calls)
+        assert total_fields == n_categories
+        assert "parte 1/3" in logger.calls[0]["info"]
+        assert "parte 3/3" in logger.calls[2]["info"]

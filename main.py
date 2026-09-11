@@ -25,14 +25,11 @@ class ClepshydraBotte(commands.Bot):
                 await self.load_extension(f'cogs.{entry[:-3]}')
             elif os.path.isdir(path) and os.path.exists(os.path.join(path, '__init__.py')):
                 await self.load_extension(f'cogs.{entry}')
-        self.loop.create_task(periodic_save_loop())
-        self.loop.create_task(periodic_spg_refresh_loop(self))
-        self.loop.create_task(periodic_event_schedule_check_loop(self))
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
-        
+
         logger = self.get_cog('Logger')
         if logger:
             await logger.send_log(
@@ -47,6 +44,16 @@ class ClepshydraBotte(commands.Bot):
                     f"**Versione Library:** {discord.__version__}"
                 )
             )
+
+        # Avviati DOPO il log di startup: create_task schedula solo, non
+        # esegue subito, ma i loro primi giri (check SPG/Event Schedule,
+        # entrambi HTTP e non istantanei) possono comunque superare in
+        # velocita' l'await di tree.sync() sopra se partono prima di lui -
+        # osservato in produzione, il log SYSTEM_STARTUP arrivava dopo i log
+        # dei controlli automatici invece che prima.
+        self.loop.create_task(periodic_save_loop())
+        self.loop.create_task(periodic_spg_refresh_loop(self))
+        self.loop.create_task(periodic_event_schedule_check_loop(self))
 
     async def close(self):
         await close_db()

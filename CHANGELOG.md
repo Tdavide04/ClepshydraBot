@@ -8,6 +8,29 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.1.0 (2026-09-11)
+
+### Fixed
+- **Bug confermato in produzione**: il log `SYSTEM_STARTUP` arrivava su Discord *dopo* i log dei controlli
+  automatici (SPG, Event Schedule) invece che prima. Causa: `main.py` schedulava i tre task periodici
+  (`self.loop.create_task(...)`) PRIMA di `await self.tree.sync(...)` — `create_task` schedula ma non
+  blocca, quindi i primi giri dei task (entrambi fanno chiamate HTTP reali, non istantanee) potevano
+  concludersi e loggare prima che l'`await` della sync si risolvesse. Risolto spostando le tre
+  `create_task` dopo il blocco sync+log di `SYSTEM_STARTUP`
+
+### Added
+- `cogs/logger.py`: `Logger.send_log()` accetta ora un parametro opzionale `fields` (lista di
+  `{"name", "value", "inline"}`) aggiunti come campi embed separati invece che concatenati nella
+  description come testo — capacità generica, riusabile da qualunque cog
+- `utils/arena_event_schedule.py`: `send_event_schedule_log()` riscritta per usare un campo embed per
+  categoria (nome in risalto tipografico, non solo grassetto markdown in un paragrafo unico) e per
+  spezzare l'invio in più messaggi da `_CATEGORIES_PER_MESSAGE` (6) categorie l'uno invece di un unico
+  embed enorme — richiesto perché il messaggio precedente (13-15 categorie in un solo blocco di testo)
+  risultava poco leggibile. Messaggi multipli etichettati "parte N/M"
+- `tests/utils/test_arena_event_schedule.py`: nuove classi `TestCategoryField` (troncamento sopra il
+  limite di 1024 caratteri di un campo) e `TestSendEventScheduleLog` (split su più messaggi, conteggio
+  campi per messaggio, etichette "parte N/M"). Suite totale: 133 → 138
+
 ## 3.0.2 (2026-09-11)
 
 ### Fixed
