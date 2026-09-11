@@ -71,10 +71,11 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `TournamentPlayer`, `Match`, `BannedCard` (see file for full schema). `engine.py` holds a lazily
   initialized global async engine/session-maker (singleton pattern) and runs ad-hoc `ALTER TABLE ...`
   migrations by hand inside `_migrate_schema()` at startup (no Alembic) — when adding a column to an
-  existing table, add a matching `try/except`-guarded `ALTER TABLE` there (tracked as debt in
-  `docs/roadmap-miglioramenti.md` Step 2 — the blanket `except Exception: pass` also swallows real
-  errors). `init_db()` also imports `cards.txt` into `banned_cards` on first run via `_migrate_banlist()`,
-  but only if the table is empty.
+  existing table, append a `(table, column, ddl)` tuple to `_SCHEMA_MIGRATIONS` there; the loop checks
+  `PRAGMA table_info(<table>)` before running each `ALTER TABLE` and only logs-and-continues
+  (`ERRORE migrazione: ...`) on an unexpected failure, instead of swallowing every exception including
+  real ones. `init_db()` also imports `cards.txt` into `banned_cards` on first run via
+  `_migrate_banlist()`, but only if the table is empty.
 - **`utils/`** — Cross-cutting helpers: `card_cache.py` (Scryfall response cache), `arena_overrides.py`
   (SPG rarity overrides), `deck_image_generator.py` (Pillow-based deck showcase PNGs), `permissions.py`
   (`@is_admin()` app-command check based on a configured Discord role name), `tournament_embeds.py`,

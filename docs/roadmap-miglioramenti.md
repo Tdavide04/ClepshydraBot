@@ -100,7 +100,7 @@ modulo — un'invalidazione chiamata da una qualsiasi delle due è visibile all'
 
 ## Step 2 — Gestione esplicita delle migrazioni schema
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** `database/engine.py:_migrate_schema()` avvolge ogni `ALTER TABLE` in
 `try/except Exception: pass` (8 occorrenze). Il pattern è voluto per il caso "colonna già esistente", ma
@@ -115,6 +115,15 @@ nasconde anche errori reali (permessi, disco pieno, tipo colonna errato) senza l
 **Documentazione da aggiornare:**
 - `docs/database.md` — sezione sulle migrazioni: descrivere il nuovo controllo esplicito.
 - `CHANGELOG.md` — nuova voce `Fixed`/`Changed`.
+
+**Validazione:** `pytest tests/ -v` — 88 test, tutti passano (`test_tournament_service.py` esercita
+`_migrate_schema()` ad ogni test tramite `init_db()`, ma solo nel caso "colonne già presenti", perché il
+DB di test viene creato da zero con `Base.metadata.create_all`). Per verificare anche il percorso reale
+— schema vecchio senza le colonne, `ALTER TABLE` effettivo, poi idempotenza alla riesecuzione — ho creato
+a mano un DB SQLite con lo schema "vecchio" (tabelle senza le colonne migrate) tramite uno script
+temporaneo, eseguito `_migrate_schema()` due volte di fila: la prima aggiunge tutte le 8 colonne
+(confermato leggendo `PRAGMA table_info` per ogni tabella dopo), la seconda non genera errori né
+ALTER ridondanti. Script rimosso dopo la verifica, non è nel repository.
 
 ---
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.1 (2026-09-11)
+
+### Fixed
+- `database/engine.py`: `_migrate_schema()` avvolgeva ogni `ALTER TABLE` in un `try/except Exception:
+  pass` generico — pensato per il caso "colonna già esistente", ma capace di nascondere silenziosamente
+  anche errori reali (permessi, disco pieno, tipo colonna incompatibile). Ora verifica esplicitamente
+  l'esistenza della colonna via `PRAGMA table_info(<tabella>)` prima di ogni `ALTER TABLE`; un fallimento
+  imprevisto viene stampato su stdout (`ERRORE migrazione: ...`) invece di sparire senza traccia. Le 8
+  migrazioni sono ora dichiarate come lista di tuple `(tabella, colonna, ddl)` invece di 8 blocchi
+  try/except ripetuti — aggiungerne una nuova non richiede più toccare la funzione
+- Rimosso `import os` duplicato in cima a `database/engine.py`
+
+### Docs
+- `docs/database.md`, `CLAUDE.md`: aggiornati per descrivere il nuovo controllo esplicito delle
+  migrazioni invece del pattern try/except generico
+
 ## 1.4.0 (2026-09-11)
 
 ### Fixed

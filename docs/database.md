@@ -19,10 +19,23 @@ ClepshydraBot utilizza **SQLite** come database relazionale, gestito tramite **S
 All'avvio, `init_db()` esegue in ordine:
 
 1. **`_migrate_banlist()`** — importa `cards.txt` in `banned_cards` se il DB è vuoto
-2. **`_migrate_schema()`** — aggiunge colonne mancanti via `ALTER TABLE`:
+2. **`_migrate_schema()`** — aggiunge le colonne mancanti elencate in `_SCHEMA_MIGRATIONS`
+   (tabella, colonna, DDL):
    - `tournament_players.deck_name`
    - `matches.p1_game_wins`, `matches.p2_game_wins`
-   - `users.rating_deviation`, `users.rating_volatility`, `users.rating_matches`, `users.last_rated_at`
+   - `users.rating`, `users.rating_deviation`, `users.rating_volatility`, `users.rating_matches`,
+     `users.last_rated_at`
+
+   Per ogni voce, verifica esplicitamente se la colonna esiste già via `PRAGMA table_info(<tabella>)`
+   prima di eseguire l'`ALTER TABLE` — non si affida più a un `try/except Exception: pass` generico che
+   avrebbe nascosto anche errori reali (permessi, disco pieno, colonna con tipo incompatibile). Se
+   l'`ALTER TABLE` fallisce per un motivo diverso da "colonna già esistente" (che ora non può più
+   verificarsi, essendo controllato a monte), l'errore viene stampato su stdout con prefisso `ERRORE
+   migrazione:` invece di essere ignorato silenziosamente — l'avvio del bot non si interrompe comunque,
+   per non bloccare l'intero servizio per una singola colonna non applicata.
+
+   Per aggiungere una nuova migrazione in futuro, basta aggiungere una tupla `(tabella, colonna, ddl)` a
+   `_SCHEMA_MIGRATIONS` in `database/engine.py` — non serve toccare `_migrate_schema()`.
 
 ---
 
