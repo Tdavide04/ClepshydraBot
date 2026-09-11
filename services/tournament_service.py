@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from sqlalchemy import select
+
 from database import get_session
 from database.models import (
     Tournament, TournamentPlayer, Match, User,
@@ -397,12 +399,11 @@ class TournamentService:
             players = await tprepo.get_by_tournament(tournament_id)
             matches = await mrepo.get_by_tournament(tournament_id)
 
+            user_ids = {tp.user_id for tp in players if tp.user_id}
             user_map: dict[int, User] = {}
-            for tp in players:
-                if tp.user_id:
-                    user = await session.get(User, tp.user_id)
-                    if user:
-                        user_map[tp.user_id] = user
+            if user_ids:
+                result = await session.execute(select(User).where(User.id.in_(user_ids)))
+                user_map = {u.id: u for u in result.scalars()}
 
             for m in matches:
                 if m.player2_id is None or m.result is None:

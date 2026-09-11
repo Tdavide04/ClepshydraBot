@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2 (2026-09-11)
+
+### Changed
+- `services/tournament_service.py`: `_update_ratings()` caricava ogni `User` con un `session.get()`
+  separato dentro un ciclo sui giocatori del torneo (query N+1). Sostituito con un'unica query batch
+  (`select(User).where(User.id.in_(user_ids))`) — impatto oggi trascurabile con tornei da poche decine di
+  giocatori, ma non scalava
+
 ## 1.4.1 (2026-09-11)
 
 ### Fixed

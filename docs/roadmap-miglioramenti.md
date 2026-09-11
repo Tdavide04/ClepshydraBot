@@ -183,7 +183,7 @@ invece che a occhio.
 
 ## Step 5 — Ridurre query N+1 in `TournamentService._update_ratings`
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** `services/tournament_service.py:_update_ratings()` carica ogni `User` con un
 `session.get(User, tp.user_id)` separato dentro un ciclo sui giocatori, invece di una singola query
@@ -198,8 +198,10 @@ batch. Impatto oggi trascurabile (tornei da poche decine di persone), ma non sca
   all'implementazione.
 - `CHANGELOG.md` — nuova voce `Changed` (performance).
 
-**Nota:** `tests/tournament/test_tournament_service.py` copre già `_update_ratings()` end-to-end — questo
-step può appoggiarsi a quella suite invece di scriverne una nuova da zero.
+**Validazione:** `pytest tests/ -v` — 88/88 test verdi, incluso
+`test_tournament_completes_and_updates_rating` che esercita `_update_ratings()` end-to-end contro SQLite
+reale (non solo un compile-check). `docs/tornei.md` non descrive il dettaglio implementativo di
+`_update_ratings()` (solo il nome nella tabella dei metodi), quindi non necessitava aggiornamento.
 
 ---
 
