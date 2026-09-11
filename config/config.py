@@ -31,7 +31,7 @@ TOURNAMENT_CHANNEL_ID = int(
 # PATCH per bug fix - vedi nota "Versioning" in CHANGELOG.md), cosi' resta
 # tracciata in git invece di poter disallinearsi silenziosamente da un .env
 # non aggiornato su una specifica macchina.
-VERSION = "3.0.1"
+VERSION = "3.0.2"
 if TEST_MODE:
     VERSION = VERSION + "-test"
 

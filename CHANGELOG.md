@@ -8,6 +8,17 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.0.2 (2026-09-11)
+
+### Fixed
+- **Bug confermato in produzione**: `/forced_event_schedule_check` (`cogs/arena_event_schedule_updater.py`)
+  aveva una description di 107 caratteri, sopra il limite di 100 imposto da Discord per gli slash command
+  — `bot.tree.sync()` falliva con HTTP 400 (error code 50035) ad ogni avvio, mandando il bot in crash-loop
+  su pm2 (`FATAL: avvio del bot fallito`, riavviato da pm2, fallisce di nuovo identico). Description
+  accorciata a 87 caratteri, stesso significato. Nessun test automatico copre questo limite (richiede una
+  vera sync contro l'API Discord, non simulabile nella suite) — verificare a occhio la lunghezza delle
+  description quando se ne aggiungono di nuove
+
 ## 3.0.1 (2026-09-11)
 
 ### Fixed
