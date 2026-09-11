@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.3 (2026-09-11)
+
+### Refactored
+- `services/tournament_service.py`: unificata la gestione delle sessioni DB. I ~20 metodi ripetevano
+  ciascuno `session, repo... = self._get_repos()` seguito da `try/finally: await session.close()`. Ora
+  `self._repos()` è un context manager asincrono (`@asynccontextmanager`) che apre sessione e repository
+  e li chiude sempre all'uscita del blocco (`async with self._repos() as (session, trepo, tprepo, mrepo,
+  urepo):`). Nessuna logica di business toccata — refactor puramente meccanico, un `async with` al posto
+  di ogni `try/finally`
+
 ## 1.4.2 (2026-09-11)
 
 ### Changed

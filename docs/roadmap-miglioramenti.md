@@ -207,7 +207,7 @@ reale (non solo un compile-check). `docs/tornei.md` non descrive il dettaglio im
 
 ## Step 6 — Uniformare la gestione delle sessioni DB
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** ogni metodo di `TournamentService` (e delle altre classi service) ripete manualmente
 `session, repo... = self._get_repos()` seguito da `try/finally: await session.close()`. Corretto ma
@@ -219,12 +219,16 @@ verboso e facile da dimenticare in nuovi metodi.
   sessione, senza cambiare la logica di business dei singoli metodi.
 
 **Documentazione da aggiornare:**
-- `docs/architettura.md` — pattern "Dependency Injection" / gestione sessione, se descritto.
-- `CLAUDE.md` — se descrive il pattern `_get_repos()`.
 - `CHANGELOG.md` — nuova voce `Refactored`.
+- `docs/architettura.md` e `CLAUDE.md` non descrivevano `_get_repos()` nel dettaglio: nessuna modifica
+  necessaria.
 
-**Nota:** anche qui, `test_tournament_service.py` fa da rete di sicurezza per verificare che il refactor
-non cambi comportamento.
+**Validazione:** `pytest tests/ -v` — 88/88 verdi. `test_tournament_service.py` esercita quasi tutti i
+metodi pubblici di `TournamentService` (registrazione, avvio, pairing, submit risultato, round
+successivo, drop forzato, standings, rating), quindi ha fatto da rete di sicurezza reale per il refactor,
+non solo un compile-check. Diff verificato a mano riga per riga: ogni metodo converte
+`session, repo... = self._get_repos(); try: ...; finally: await session.close()` in
+`async with self._repos() as (session, repo, ...): ...` senza toccare la logica al suo interno.
 
 ---
 
