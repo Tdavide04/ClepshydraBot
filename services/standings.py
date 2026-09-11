@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from database.models import MatchResult
 
 
 POINTS_WIN = 3

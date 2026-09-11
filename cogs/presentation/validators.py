@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from typing import Tuple
 
 VALIDI_colori = {
     "bianco", "nero", "rosso", "blu", "verde", "incolore",

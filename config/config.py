@@ -28,7 +28,8 @@ TOURNAMENT_CHANNEL_ID = int(
 )
 
 VERSION = os.getenv("VERSION")
-if TEST_MODE: VERSION = VERSION + "-test"
+if TEST_MODE:
+    VERSION = VERSION + "-test"
 
 PUBLIC_DECK_CHANNEL_ID = int(
     os.getenv(

@@ -1,4 +1,9 @@
 target-version = "py312"
 
+# legacy/ e' il bot V1, mantenuto solo per riferimento storico (vedi CLAUDE.md
+# "Legacy code") - non fa parte del codice attivamente mantenuto e non deve
+# essere toccato come parte del lavoro sulle feature, lint incluso.
+extend-exclude = ["legacy"]
+
 [lint]
 select = ["E4", "E7", "E9", "F"]

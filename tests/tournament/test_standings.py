@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from services.standings import StandingsCalculator, StandingsEntry
+from dataclasses import dataclass
+from services.standings import StandingsCalculator
 
 
 @dataclass

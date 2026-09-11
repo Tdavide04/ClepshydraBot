@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.7.1 (2026-09-11)
+
+### Fixed
+- Sanati i 54 problemi di lint pre-esistenti (`ruff check .`): import inutilizzati, f-string senza
+  placeholder e import multipli sulla stessa riga corretti con `ruff --fix` (diff rivisto a mano);
+  statement multipli su una riga (`if x: y`) separati manualmente; in
+  `repositories/tournament_repository.py`, `TournamentPlayer.dropped == False` sostituito con
+  `.is_(False)` (idioma SQLAlchemy corretto — il fix suggerito da ruff, `not ...`, avrebbe avuto un
+  significato diverso su un'espressione di query)
+- `ruff.toml`: `legacy/` escluso dal lint invece di essere corretto — non fa parte del codice
+  attivamente mantenuto (vedi `CLAUDE.md` "Legacy code")
+
+### Changed
+- `.github/workflows/ci.yml`: rimosso `continue-on-error: true` dal job `lint` — ora blocca la CI come
+  `pytest`, chiudendo lo Step 8 della roadmap
+
 ## 1.7.0 (2026-09-11)
 
 ### Changed

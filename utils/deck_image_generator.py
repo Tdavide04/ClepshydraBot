@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from io import BytesIO
 import aiohttp
 import math
@@ -125,11 +125,16 @@ class DeckImageGenerator:
                 
                 else:
                     colors = card.get("colors", [])
-                    if "R" in colors: color_counts["red"] += qty
-                    if "U" in colors: color_counts["blue"] += qty
-                    if "B" in colors: color_counts["black"] += qty
-                    if "W" in colors: color_counts["white"] += qty
-                    if "G" in colors: color_counts["green"] += qty
+                    if "R" in colors:
+                        color_counts["red"] += qty
+                    if "U" in colors:
+                        color_counts["blue"] += qty
+                    if "B" in colors:
+                        color_counts["black"] += qty
+                    if "W" in colors:
+                        color_counts["white"] += qty
+                    if "G" in colors:
+                        color_counts["green"] += qty
 
         dominant_color = max(color_counts, key=color_counts.get)
         

@@ -17,7 +17,7 @@ from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
 from services.standings import StandingsCalculator, StandingsEntry
 from services.rating import Rating, rate_1vs1, rate_draw
-from config.config import TEST_MODE, GUILD_ID
+from config.config import GUILD_ID
 
 
 class TournamentService:

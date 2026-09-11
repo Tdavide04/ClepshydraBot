@@ -1,5 +1,6 @@
-from datetime import datetime
-import discord, os, sys
+import discord
+import os
+import sys
 from discord.ext import commands
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db

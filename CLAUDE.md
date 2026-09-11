@@ -32,7 +32,7 @@ python -m pytest                          # equivalent; python -m adds cwd to sy
 pytest tests/tournament/test_pairing_engine.py
 pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds::test_otto_giocatori -v
 
-# Lint (informational only in CI — continue-on-error: true, pre-existing lint debt not yet cleared)
+# Lint (blocking gate in CI — legacy/ is excluded, see ruff.toml)
 ruff check .
 
 # Inspect the SQLite DB

@@ -9,7 +9,7 @@ from utils.tournament_embeds import (
     build_pairings_embed,
     build_start_embed,
 )
-from database.models import Tournament, TournamentStatus, TournamentPlayer, MatchResult
+from database.models import Tournament, TournamentStatus, TournamentPlayer
 from database import get_session
 from repositories.banlist_repository import BanlistRepository
 from cogs.deck_validation.service import ArtisanService

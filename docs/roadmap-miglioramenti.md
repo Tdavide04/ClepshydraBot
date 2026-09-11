@@ -318,7 +318,7 @@ eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run(
 
 ## Step 8 — CI leggero (lint + test)
 
-**Stato:** fatto (parziale) — vedi "Punto di partenza"
+**Stato:** fatto (2026-09-11) — parziale fin dal "Punto di partenza", chiuso definitivamente qui
 
 **Problema residuo:** `ruff` gira solo come step informativo/non bloccante (`continue-on-error: true` in
 `.github/workflows/ci.yml`), perché il codebase ha ~55 problemi di lint pre-esistenti non ancora sanati.
@@ -331,6 +331,23 @@ eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run(
 **Documentazione da aggiornare:**
 - `docs/infrastruttura.md` — sezione "Roadmap Infrastrutturale", Sprint 8: da "parziale" a "completato".
 - `CHANGELOG.md` — nuova voce `Fixed`.
+
+**Implementazione effettiva:** 54 problemi (42 fuori da `legacy/`, che è stato escluso in `ruff.toml`
+invece di essere corretto — vedi CLAUDE.md "Legacy code": non fa parte del codice attivamente
+mantenuto). 27 corretti con `ruff check . --fix` (import inutilizzati, f-string senza placeholder,
+import multipli sulla stessa riga) — diff rivisto a mano prima di fidarsi dell'autofix. I restanti 15
+manuali:
+- 12 `E701` (statement multipli su una riga) → separati su righe distinte, nessun cambio di logica.
+- 2 `E712` (`TournamentPlayer.dropped == False` in `repositories/tournament_repository.py`) → **non**
+  applicato il fix suggerito da ruff (`not TournamentPlayer.dropped`), che per un'espressione di query
+  SQLAlchemy avrebbe un significato diverso da quello inteso; usato invece `.is_(False)`, l'idioma
+  SQLAlchemy corretto per lo stesso filtro (gestisce anche i NULL correttamente, a differenza di `==`).
+
+Rimosso `continue-on-error: true` dal job `lint` in `.github/workflows/ci.yml`: ora blocca la CI come
+`pytest`.
+
+**Validazione:** `ruff check .` → `All checks passed!`. `pytest tests/ -v` → 108/108 verdi, invariato
+rispetto a prima del lint cleanup (nessuna delle correzioni ha toccato la logica).
 
 ---
 

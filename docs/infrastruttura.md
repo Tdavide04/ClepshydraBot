@@ -178,11 +178,13 @@ CMD ["python", "main.py"]
 - `restart: unless-stopped`
 - Bind mount per `.env`
 
-### Sprint 8 — CI/CD (parziale)
+### Sprint 8 — CI/CD (completato)
 
 `.github/workflows/ci.yml`, attivo su push/PR:
 - `pytest` su ogni push e PR — **gate bloccante**
-- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`) — **step informativo**, non bloccante: il codebase ha debito di lint pre-esistente non ancora sanato
+- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`, `legacy/` escluso — vedi CLAUDE.md "Legacy code") —
+  **gate bloccante**: il debito di lint pre-esistente (~54 problemi) è stato sanato nello Step 8 di
+  `docs/roadmap-miglioramenti.md`
 
 Ancora da fare:
 - `build` check Docker (dipende dal completamento dello Sprint 7)
