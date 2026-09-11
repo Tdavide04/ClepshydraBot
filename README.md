@@ -20,7 +20,8 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 | `/torneo crea` | Create tournament | Admin |
 | `/torneo avvia` | Start tournament | Admin |
 | `/torneo prossimo_turno` | Generate next round | Admin |
-| `/iscriviti` | Register for tournament | All |
+| `/iscriviti` | Register for tournament (deck sent separately) | All |
+| `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
 | `/risultato` | Submit match result | All |
 | `/classifica` | View standings | All |
 | `/turni` | View current pairings | All |

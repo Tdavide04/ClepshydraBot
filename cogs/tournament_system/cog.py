@@ -93,7 +93,11 @@ class CreaTorneoModal(discord.ui.Modal, title="Crea Nuovo Torneo"):
             )
 
 
-class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il tuo mazzo"):
+class InviaDeckModal(discord.ui.Modal, title="Invia il mazzo per il torneo"):
+    """Invio/aggiornamento del mazzo per un'iscrizione gia' esistente (creata
+    da /iscriviti). Non crea ne' modifica l'iscrizione stessa: aggiorna solo
+    TournamentPlayer.deck_name tramite TournamentService.submit_deck()."""
+
     def __init__(
         self,
         torneo_id: int,
@@ -148,7 +152,10 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
         if not result.is_valid:
             embed = discord.Embed(
                 title="\u274c Mazzo non valido",
-                description=f"La registrazione a **{self.torneo_name}** \u00e8 stata rifiutata.",
+                description=(
+                    f"Il mazzo per **{self.torneo_name}** non \u00e8 stato accettato. "
+                    f"La tua iscrizione resta invariata: correggi e reinvia con /invia_deck."
+                ),
                 color=discord.Color.red(),
             )
 
@@ -194,10 +201,10 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
             if logger:
                 await logger.send_log(
                     level="WARN",
-                    event="TOURNAMENT_DECK_CHECK",
+                    event="TOURNAMENT_DECK_SUBMITTED",
                     user=interaction.user,
                     info=(
-                        f"Esito: NON VALIDO (registrazione rifiutata)\n"
+                        f"Esito: NON VALIDO\n"
                         f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
                         f"Mazzo: **{deck_name}**\n"
                         f"Carte: {result.total_cards} ({result.main_count}M + {result.side_count}S)\n"
@@ -208,12 +215,27 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
                 )
             return
 
-        msg = await self.service.register_player(
+        msg = await self.service.submit_deck(
             self.torneo_id, interaction.user.id, deck_name
         )
 
+        if "Non sei iscritto" in msg or "non accetta piu" in msg:
+            await interaction.followup.send(msg, ephemeral=True)
+            if logger:
+                await logger.send_log(
+                    level="WARN",
+                    event="TOURNAMENT_DECK_SUBMITTED",
+                    user=interaction.user,
+                    info=(
+                        f"Esito: RIFIUTATO ({msg})\n"
+                        f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
+                        f"Mazzo: **{deck_name}**"
+                    ),
+                )
+            return
+
         embed = discord.Embed(
-            title="\u2705 Iscrizione confermata",
+            title="\u2705 Mazzo registrato",
             description=msg,
             color=discord.Color.green(),
             timestamp=datetime.now(),
@@ -255,22 +277,13 @@ class IscrivitiModal(discord.ui.Modal, title="Iscrizione Torneo - Inserisci il t
         if logger:
             await logger.send_log(
                 level="INFO",
-                event="TOURNAMENT_DECK_CHECK",
+                event="TOURNAMENT_DECK_SUBMITTED",
                 user=interaction.user,
                 info=(
-                    f"Esito: OK (registrato al torneo)\n"
+                    f"Esito: OK\n"
                     f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
                     f"Mazzo: **{deck_name}**\n"
                     f"Carte: {result.total_cards} ({result.main_count}M + {result.side_count}S)"
-                ),
-            )
-            await logger.send_log(
-                level="INFO",
-                event="REGISTRATION_CONFIRMED",
-                user=interaction.user,
-                info=(
-                    f"Torneo **{self.torneo_name}** (ID: {self.torneo_id}) \u2014 "
-                    f"Mazzo: **{deck_name}** ({result.main_count}M + {result.side_count}S)"
                 ),
             )
 
@@ -528,7 +541,14 @@ class TournamentSystemCog(commands.Cog):
 
         msg = await self.service.start_tournament(tournament.id)
 
-        if "non trovato" in msg or "non e attivo" in msg or "Servono almeno" in msg:
+        if (
+            "non trovato" in msg or "non e attivo" in msg
+            or "Servono almeno" in msg or "non hanno ancora inviato" in msg
+        ):
+            await self._log(
+                "WARN", "TOURNAMENT_START_BLOCKED", user=interaction.user,
+                info=f"Torneo **{tournament.name}** (ID: {tournament.id}): {msg}"
+            )
             return await interaction.followup.send(msg, ephemeral=True)
 
         players = await self.service.get_registered_players(tournament.id)
@@ -578,9 +598,16 @@ class TournamentSystemCog(commands.Cog):
             )
             await interaction.followup.send(embed=embed_pairings)
 
+        partecipanti_lines = [
+            f"• {name} — **{deck or 'N/D'}**" for name, deck in player_data
+        ]
+        partecipanti_text = "\n".join(partecipanti_lines[:25])
+        if len(partecipanti_lines) > 25:
+            partecipanti_text += f"\n_...e altri {len(partecipanti_lines) - 25}_"
+
         await self._log(
             "INFO", "TOURNAMENT_STARTED", user=interaction.user,
-            info=msg
+            info=f"{msg}\n\n**Partecipanti:**\n{partecipanti_text}"
         )
 
     @discord.app_commands.command(
@@ -845,7 +872,7 @@ class TournamentSystemCog(commands.Cog):
 
     @discord.app_commands.command(
         name="iscriviti",
-        description="Iscriviti a un torneo"
+        description="Iscriviti a un torneo (il mazzo si invia separatamente con /invia_deck)"
     )
     @discord.app_commands.describe(
         torneo_id="ID del torneo (opzionale, usa l'ultimo)"
@@ -877,10 +904,116 @@ class TournamentSystemCog(commands.Cog):
                 "Sei gi\u00e0 iscritto a questo torneo.", ephemeral=True
             )
 
-        modal = IscrivitiModal(
+        await interaction.response.defer(ephemeral=False)
+        msg = await self.service.register_player(tournament.id, interaction.user.id)
+
+        embed = discord.Embed(
+            title="\u2705 Iscrizione confermata",
+            description=(
+                f"{msg}\n\nInvia il mazzo prima dell'avvio con "
+                f"`/invia_deck torneo_id:{tournament.id}` \u2014 il torneo non pu\u00f2 "
+                f"partire finch\u00e9 tutti gli iscritti non hanno inviato un mazzo valido."
+            ),
+            color=discord.Color.green(),
+            timestamp=datetime.now(),
+        )
+        embed.add_field(name="Giocatore", value=interaction.user.mention, inline=True)
+        embed.set_footer(text=f"Torneo ID: {tournament.id}")
+        await interaction.followup.send(embed=embed)
+
+        await self._log(
+            "INFO", "REGISTRATION_CONFIRMED", user=interaction.user,
+            info=f"Iscritto al torneo **{tournament.name}** (ID: {tournament.id}), mazzo non ancora inviato."
+        )
+
+    @discord.app_commands.command(
+        name="invia_deck",
+        description="Invia o aggiorna il mazzo per un torneo a cui sei gi\u00e0 iscritto"
+    )
+    @discord.app_commands.describe(
+        torneo_id="ID del torneo (opzionale, usa l'ultimo)"
+    )
+    async def invia_deck(
+        self,
+        interaction: discord.Interaction,
+        torneo_id: int | None = None,
+    ):
+        if not await self._check_tournament_channel(interaction):
+            return
+        tournament = await self._resolve_tournament(torneo_id=torneo_id)
+        if tournament is None:
+            return await interaction.response.send_message(
+                "Nessun torneo in fase di iscrizioni." if torneo_id is None
+                else "Torneo non trovato.",
+                ephemeral=True,
+            )
+        if tournament.status != TournamentStatus.REGISTRATION:
+            return await interaction.response.send_message(
+                "Il torneo non accetta pi\u00f9 invii di mazzo.", ephemeral=True
+            )
+
+        registered = await self.service.is_player_registered(
+            tournament.id, interaction.user.id
+        )
+        if not registered:
+            return await interaction.response.send_message(
+                "Non sei iscritto a questo torneo: usa /iscriviti prima.", ephemeral=True
+            )
+
+        modal = InviaDeckModal(
             tournament.id, tournament.name, self.service, self.artisan_service, self.bot
         )
         await interaction.response.send_modal(modal)
+
+    @discord.app_commands.command(
+        name="iscrizioni_torneo",
+        description="Mostra gli iscritti a un torneo e chi ha gi\u00e0 inviato il mazzo"
+    )
+    @discord.app_commands.describe(
+        torneo_id="ID del torneo (opzionale, usa l'ultimo)"
+    )
+    async def iscrizioni_torneo(
+        self,
+        interaction: discord.Interaction,
+        torneo_id: int | None = None,
+    ):
+        if not await self._check_tournament_channel(interaction):
+            return
+        await interaction.response.defer(ephemeral=False)
+
+        tournament = await self._resolve_tournament(torneo_id=torneo_id)
+        if tournament is None:
+            return await interaction.followup.send(
+                "Nessun torneo disponibile." if torneo_id is None
+                else "Torneo non trovato.",
+                ephemeral=True,
+            )
+
+        players = await self.service.get_registered_players(tournament.id)
+        if not players:
+            return await interaction.followup.send(
+                f"Nessun iscritto al torneo **{tournament.name}**.", ephemeral=True
+            )
+
+        lines = [
+            f"{'\u2705' if p.deck_name else '\u23f3'} {self._resolve_name(p)}"
+            + (f" \u2014 **{p.deck_name}**" if p.deck_name else " \u2014 mazzo non ancora inviato")
+            for p in players
+        ]
+        mancanti = sum(1 for p in players if not p.deck_name)
+
+        embed = discord.Embed(
+            title=f"Iscrizioni \u2014 {tournament.name}",
+            description="\n".join(lines[:30]),
+            color=discord.Color.blue() if mancanti else discord.Color.green(),
+            timestamp=datetime.now(),
+        )
+        if len(lines) > 30:
+            embed.add_field(name="", value=f"_...e altri {len(lines) - 30}_", inline=False)
+        embed.set_footer(
+            text=f"Torneo ID: {tournament.id} \u00b7 {len(players)} iscritti, {mancanti} senza mazzo"
+        )
+        await interaction.followup.send(embed=embed)
 
     @discord.app_commands.command(
         name="left_torneo",
@@ -922,6 +1055,11 @@ class TournamentSystemCog(commands.Cog):
         )
         embed.set_footer(text=f"Torneo ID: {tournament.id}")
         await interaction.followup.send(embed=embed)
+
+        await self._log(
+            "INFO", "PLAYER_UNREGISTERED", user=interaction.user,
+            info=f"Uscito volontariamente dal torneo **{tournament.name}** (ID: {tournament.id})."
+        )
 
     @discord.app_commands.command(
         name="risultato",

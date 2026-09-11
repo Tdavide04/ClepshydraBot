@@ -148,11 +148,16 @@ atomic `.tmp` + `os.replace()` writes — only the card cache moved to SQLite.
 ### Tournament lifecycle
 
 `TournamentService` + `PairingEngine` + `StandingsCalculator` (`services/`) implement Swiss pairing:
-create → register players (deck-validated) → start (round 1, random pairing) → submit results per round
-→ generate next round (Swiss pairing, anti-rematch) → on final round, conclude and update Glicko-2
-ratings (`services/rating.py`) for all participants. Round count is derived from player count via
-`PairingEngine.calculate_rounds()`. Covered end-to-end by
-`tests/tournament/test_tournament_service.py` against an isolated SQLite DB (no mocks).
+create → register players (`/iscriviti`, no deck required — `TournamentPlayer.deck_name` stays `None`)
+→ players submit/resubmit a validated deck separately (`/invia_deck` → `submit_deck()`, repeatable while
+the tournament is still in `REGISTRATION`) → start (`start_tournament()` refuses if any active registered
+player still has `deck_name is None`, round 1 random pairing) → submit results per round → generate next
+round (Swiss pairing, anti-rematch) → on final round, conclude and update Glicko-2 ratings
+(`services/rating.py`) for all participants. Round count is derived from player count via
+`PairingEngine.calculate_rounds()`. Covered end-to-end by `tests/tournament/test_tournament_service.py`
+against an isolated SQLite DB (no mocks) — registration and deck submission were split into two separate
+steps/commands deliberately (previously `/iscriviti` opened a deck-validation modal directly), so a
+tournament can open registration before every player has a deck ready.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 

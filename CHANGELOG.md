@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.7.0 (2026-09-11)
+
+### Changed
+- **Iscrizione torneo disaccoppiata dall'invio del mazzo**: `/iscriviti` non apre più un modal di
+  validazione deck — registra soltanto (`TournamentPlayer.deck_name` resta `None`). Il mazzo si invia (o
+  reinvia, per correggere errori) separatamente con il nuovo `/invia_deck`, ripetibile finché il torneo
+  resta in fase di registrazione. `services/tournament_service.py`: nuovo metodo `submit_deck()` che
+  aggiorna un'iscrizione esistente (non ne crea una nuova, a differenza di `register_player()`)
+- `start_tournament()` ora **rifiuta l'avvio** se un iscritto attivo (non droppato) non ha ancora inviato
+  un mazzo valido, elencando chi manca — nessuna migrazione DB: riusa `deck_name is not None` come
+  segnale "mazzo inviato"
+
+### Added
+- `/invia_deck [torneo_id]`: apre il modal di validazione deck (stesso flusso di prima, spostato qui) e
+  aggiorna l'iscrizione esistente invece di crearne una
+- `/iscrizioni_torneo [torneo_id]`: elenco iscritti con stato mazzo (✅ inviato / ⏳ in attesa), utile
+  prima di avviare
+- Log Discord: `PLAYER_UNREGISTERED` (uscita volontaria, `/left_torneo` — prima non loggata),
+  `TOURNAMENT_START_BLOCKED` (WARN, quando `/avvia_torneo` viene rifiutato per qualunque motivo: torneo
+  non trovato/non in registrazione, meno di 2 giocatori, o mazzi mancanti), `TOURNAMENT_DECK_SUBMITTED`
+  (sostituisce `TOURNAMENT_DECK_CHECK` per il flusso torneo — vedi sotto)
+- `TOURNAMENT_STARTED` ora include l'elenco completo dei partecipanti e il nome del mazzo di ciascuno
+  (prima solo il messaggio di riepilogo)
+- 5 nuovi test in `tests/tournament/test_tournament_service.py`: invio mazzo su iscrizione esistente,
+  reinvio che sovrascrive, invio senza iscrizione (rifiutato), invio dopo l'avvio (rifiutato), avvio
+  bloccato se manca un mazzo
+
+### Fixed
+- `TOURNAMENT_DECK_CHECK` era usato per due flussi diversi (check standalone `/artisan_check_deck` e,
+  prima di questo cambio, la registrazione al torneo), rendendo ambiguo il canale log. Con la
+  registrazione disaccoppiata, l'evento torna ad avere un solo significato; il flusso di invio mazzo
+  torneo usa ora `TOURNAMENT_DECK_SUBMITTED`, distinto e filtrabile separatamente
+
 ## 1.6.1 (2026-09-11)
 
 ### Fixed

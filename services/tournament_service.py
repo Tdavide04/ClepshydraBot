@@ -119,6 +119,34 @@ class TournamentService:
             deck_info = f" con **{deck_name}**" if deck_name else ""
             return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{count + 1}){deck_info}."
 
+    async def submit_deck(
+        self, tournament_id: int, discord_id: int, deck_name: str
+    ) -> str:
+        """Registra/aggiorna il mazzo di un giocatore gia' iscritto. A differenza
+        di register_player(), non crea una nuova iscrizione: richiede che il
+        TournamentPlayer esista gia' (e non sia droppato). Richiamabile piu'
+        volte finche' il torneo resta in REGISTRATION: l'ultimo invio valido
+        sovrascrive il precedente."""
+        async with self._repos() as (session, trepo, tprepo, _, urepo):
+            tournament = await trepo.get_by_id(tournament_id)
+            if tournament is None:
+                return "Torneo non trovato."
+            if tournament.status != TournamentStatus.REGISTRATION:
+                return "Il torneo non accetta piu' invii di mazzo."
+
+            user = await urepo.get_by_discord_id(discord_id)
+            tp = (
+                await tprepo.get_by_tournament_and_user(tournament_id, user.id)
+                if user else None
+            )
+            if tp is None or tp.dropped:
+                return "Non sei iscritto a questo torneo: usa /iscriviti prima."
+
+            tp.deck_name = deck_name
+            session.add(tp)
+            await session.commit()
+            return f"Mazzo **{deck_name}** registrato per il torneo **{tournament.name}**."
+
     async def start_tournament(self, tournament_id: int) -> str:
         async with self._repos() as (session, trepo, tprepo, mrepo, _):
             tournament = await trepo.get_with_players(tournament_id)
@@ -130,6 +158,14 @@ class TournamentService:
             players = await tprepo.get_by_tournament(tournament_id)
             if len(players) < 2:
                 return "Servono almeno 2 giocatori per iniziare."
+
+            missing_deck = [p for p in players if p.deck_name is None]
+            if missing_deck:
+                names = ", ".join(self._resolve_name(p) for p in missing_deck)
+                return (
+                    f"Impossibile avviare: {len(missing_deck)} giocatore/i non hanno "
+                    f"ancora inviato un mazzo con /invia_deck ({names})."
+                )
 
             round_count = PairingEngine.calculate_rounds(len(players))
             tournament.round_count = round_count

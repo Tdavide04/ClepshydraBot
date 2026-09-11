@@ -16,7 +16,7 @@ services/
 └── rating.py               # Sistema rating Glicko-2
 
 cogs/tournament_system/
-└── cog.py                  # 14 comandi slash + modali + view
+└── cog.py                  # 17 comandi slash + modali + view
 
 utils/
 ├── tournament_logic.py     # Utility (barra OMW, label rank, colonne)
@@ -32,11 +32,15 @@ CREAZIONE (admin)
     │ /crea_torneo → nome, formato, max_giocatori
     ▼
 REGISTRAZIONE
-    │ /iscriviti → IscrivitiModal (deck validation + submit)
+    │ /iscriviti → registrazione diretta, nessun mazzo richiesto
+    │ /invia_deck → InviaDeckModal (deck validation + submit), ripetibile
+    │ /iscrizioni_torneo → chi è iscritto e chi ha già inviato il mazzo
     │ /left_torneo → uscita volontaria
     ▼
 AVVIO (admin)
-    │ /avvia_torneo → calcolo round, pairing round 1
+    │ /avvia_torneo → bloccato se un iscritto attivo non ha ancora
+    │                 inviato un mazzo valido (elenca chi manca)
+    │               → altrimenti: calcolo round, pairing round 1
     ▼
 ATTIVO
     │ /turni → visualizza pairing round corrente
@@ -157,8 +161,9 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | Metodo | Descrizione |
 |---|---|
 | `create_tournament(name, format, max_players)` | Crea torneo in stato `registration` |
-| `register_player(tournament_id, discord_id, deck_name)` | Registra utente con deck |
-| `start_tournament(tournament_id)` | Avvia, calcola round, genera round 1 |
+| `register_player(tournament_id, discord_id, deck_name=None)` | Registra utente, mazzo opzionale (di norma `None`: si invia separatamente) |
+| `submit_deck(tournament_id, discord_id, deck_name)` | Aggiorna il mazzo di un'iscrizione già esistente; fallisce se non iscritto o se il torneo non è più in `registration` |
+| `start_tournament(tournament_id)` | Avvia, calcola round, genera round 1 — **rifiuta** se un iscritto attivo ha `deck_name is None` |
 | `submit_result(match_id, winner_id, p1_wins, p2_wins)` | Registra risultato |
 | `generate_next_round(tournament_id)` | Round successivo o conclusione |
 | `force_drop_player(tournament_id, discord_id)` | Rimozione con auto-loss |
@@ -167,7 +172,7 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | `get_leaderboard(limit)` | Top N rating |
 | `_update_ratings(tournament_id)` | Glicko-2 su tutti i match |
 
-Coperto da test end-to-end in `tests/tournament/test_tournament_service.py` (iscrizione, avvio, pairing, submit risultato, generazione round, drop forzato, standings, aggiornamento rating) su un DB SQLite temporaneo isolato per test — nessun mock sul layer di persistenza.
+Coperto da test end-to-end in `tests/tournament/test_tournament_service.py` (iscrizione, invio/reinvio mazzo, blocco avvio se manca un mazzo, avvio, pairing, submit risultato, generazione round, drop forzato, standings, aggiornamento rating) su un DB SQLite temporaneo isolato per test — nessun mock sul layer di persistenza.
 
 ---
 
@@ -182,7 +187,9 @@ Tutti i comandi in `cogs/tournament_system/cog.py`:
 | `/torneo_next_turn` | Admin | Prossimo round |
 | `/drop_giocatore` | Admin | Rimuovi giocatore |
 | `/concludi_torneo` | Admin | Concludi forzatamente |
-| `/iscriviti` | Pubblico | Iscrizione con deck |
+| `/iscriviti` | Pubblico | Iscrizione (senza mazzo) |
+| `/invia_deck` | Pubblico | Invia/aggiorna il mazzo per un'iscrizione esistente |
+| `/iscrizioni_torneo` | Pubblico | Chi è iscritto e chi ha già inviato il mazzo |
 | `/left_torneo` | Pubblico | Disiscrizione |
 | `/risultato` | Pubblico | Invia risultato |
 | `/classifica` | Pubblico | Visualizza classifica |
@@ -193,17 +200,22 @@ Tutti i comandi in `cogs/tournament_system/cog.py`:
 | `/banlist_aggiungi` | Admin | Aggiungi carta bannata |
 | `/banlist_rimuovi` | Admin | Rimuovi carta bannata |
 
-### IscrivitiModal (`cog.py:128-210`)
+### InviaDeckModal (`cog.py`)
 
-Modal con:
-- Campo `deck_name` (obbligatorio)
-- Campo `deck_text` (obbligatorio, testo Arena decklist)
+Invocato da `/invia_deck`, non da `/iscriviti` (che oggi non apre nessun modal: registra e basta).
+Richiede un'iscrizione già esistente — `submit_deck()` rifiuta altrimenti. Modal con:
+- Campo `titolo` (nome mazzo, obbligatorio)
+- Campo `deck_list` (obbligatorio, testo Arena decklist)
 
 All'invio:
 1. Parsing decklist
 2. Validazione Artisan (banlist + rarità)
-3. Se valido: registrazione + pubblicazione deck su canale torneo
-4. Se invalido: embed con errori
+3. Se valido: `TournamentService.submit_deck()` aggiorna l'iscrizione esistente + pubblicazione deck su
+   canale pubblico + log `TOURNAMENT_DECK_SUBMITTED` (INFO)
+4. Se invalido: embed con errori, l'iscrizione/il mazzo precedente restano invariati, log
+   `TOURNAMENT_DECK_SUBMITTED` (WARN)
+
+Richiamabile più volte finché il torneo resta in `registration`: l'ultimo invio valido sovrascrive.
 
 ### RisultatoView (`cog.py:258-430`)
 
@@ -216,6 +228,25 @@ Con pulsante conferma che:
 2. Chiama `TournamentService.submit_result()`
 3. Pubblica risultato su canale torneo
 4. Logga l'evento
+
+---
+
+## Log su Discord (`cogs/logger.py`, canale `LOG_CHANNEL_ID`)
+
+| Evento | Livello | Quando |
+|---|---|---|
+| `TOURNAMENT_CREATED` | INFO | `/crea_torneo` |
+| `REGISTRATION_CONFIRMED` | INFO | `/iscriviti` (registrazione, mazzo non ancora inviato) |
+| `TOURNAMENT_DECK_SUBMITTED` | INFO/WARN | `/invia_deck` — INFO se il mazzo è valido e registrato, WARN se non valido o rifiutato (non iscritto / torneo non più in registrazione) |
+| `PLAYER_UNREGISTERED` | INFO | `/left_torneo` (uscita volontaria) |
+| `PLAYER_DROPPED` | INFO | `/drop_giocatore` (rimozione forzata admin) |
+| `TOURNAMENT_START_BLOCKED` | WARN | `/avvia_torneo` rifiutato (torneo non trovato/non in registrazione, meno di 2 giocatori, o mazzi mancanti) |
+| `TOURNAMENT_STARTED` | INFO | `/avvia_torneo` riuscito — include l'elenco partecipanti e il nome del mazzo di ciascuno (primi 25, poi "...e altri N") |
+| `MATCH_RESULT` | INFO | `/risultato` confermato |
+| `ROUND_GENERATED` | INFO | `/torneo_next_turn` (nuovo round) |
+| `TOURNAMENT_CONCLUDED` | INFO | `/concludi_torneo` (conclusione forzata) |
+| `TOURNAMENT_COMPLETED` | INFO | Ultimo round completato, torneo concluso naturalmente |
+| `BANLIST_ADD` / `BANLIST_REMOVE` | INFO | `/banlist_aggiungi` / `/banlist_rimuovi` |
 
 ---
 

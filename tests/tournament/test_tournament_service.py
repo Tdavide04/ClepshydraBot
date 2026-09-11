@@ -68,12 +68,61 @@ class TestRegistration:
         run_with_db(scenario)
 
 
+class TestDeckSubmission:
+
+    def test_submit_deck_updates_existing_registration(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Deck Cup")
+            await service.register_player(t.id, discord_id=1)  # senza mazzo
+            msg = await service.submit_deck(t.id, discord_id=1, deck_name="Mono Red")
+            assert "Mono Red" in msg
+
+            players = await service.get_registered_players(t.id)
+            assert players[0].deck_name == "Mono Red"
+        run_with_db(scenario)
+
+    def test_submit_deck_can_be_resent_before_start(self, isolated_db):
+        """Un giocatore puo' correggere il mazzo inviato piu' volte finche' il
+        torneo resta in registrazione: l'ultimo invio valido sovrascrive."""
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Deck Cup")
+            await service.register_player(t.id, discord_id=1)
+            await service.submit_deck(t.id, discord_id=1, deck_name="Bozza Sbagliata")
+            await service.submit_deck(t.id, discord_id=1, deck_name="Versione Finale")
+
+            players = await service.get_registered_players(t.id)
+            assert players[0].deck_name == "Versione Finale"
+        run_with_db(scenario)
+
+    def test_submit_deck_requires_existing_registration(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Deck Cup")
+            msg = await service.submit_deck(t.id, discord_id=999, deck_name="Mono Red")
+            assert "Non sei iscritto" in msg
+        run_with_db(scenario)
+
+    def test_submit_deck_blocked_after_tournament_started(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Deck Cup")
+            await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
+            await service.register_player(t.id, discord_id=2, deck_name="Mono Blue")
+            await service.start_tournament(t.id)
+
+            msg = await service.submit_deck(t.id, discord_id=1, deck_name="Nuovo Mazzo")
+            assert "non accetta piu" in msg
+        run_with_db(scenario)
+
+
 class TestTournamentFlow:
 
     async def _start_with_players(self, service, count):
         t = await service.create_tournament("Swiss Cup")
         for i in range(count):
-            await service.register_player(t.id, discord_id=1000 + i)
+            await service.register_player(t.id, discord_id=1000 + i, deck_name=f"Deck {i}")
         msg = await service.start_tournament(t.id)
         return t, msg
 
@@ -84,6 +133,19 @@ class TestTournamentFlow:
             await service.register_player(t.id, discord_id=1)
             msg = await service.start_tournament(t.id)
             assert "almeno 2" in msg
+        run_with_db(scenario)
+
+    def test_start_blocked_if_deck_missing(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Swiss Cup")
+            await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
+            await service.register_player(t.id, discord_id=2)  # nessun mazzo inviato
+            msg = await service.start_tournament(t.id)
+            assert "non hanno ancora inviato un mazzo" in msg
+
+            tournament = await service.get_tournament(t.id)
+            assert tournament.status == TournamentStatus.REGISTRATION
         run_with_db(scenario)
 
     def test_start_generates_round_one(self, isolated_db):
@@ -146,8 +208,8 @@ class TestTournamentFlow:
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Rating Cup", max_players=2)
-            await service.register_player(t.id, discord_id=1)
-            await service.register_player(t.id, discord_id=2)
+            await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
+            await service.register_player(t.id, discord_id=2, deck_name="Mono Blue")
             await service.start_tournament(t.id)
 
             match = (await service.get_matches(t.id))[0]
