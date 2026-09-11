@@ -62,18 +62,33 @@ Caricate da `.env` tramite `python-dotenv`:
 
 ## Deployment
 
-### Avvio Manuale (attuale)
+### Avvio con pm2 (attuale)
 
 ```bash
 source .venv/bin/activate
-python main.py
+pm2 start main.py --name clepshydrabot --interpreter .venv/bin/python
 ```
 
-Processo gestito via `screen` o `tmux`.
+`pm2` gestisce il processo e lo riavvia automaticamente in caso di crash. Comandi utili:
 
-### Avvio con systemd (consigliato)
+```bash
+pm2 status              # stato del processo
+pm2 logs clepshydrabot  # log in tempo reale
+pm2 restart clepshydrabot
+pm2 save                # persiste la process list
+pm2 startup             # riavvia pm2 (e i processi salvati) al boot della VM
+```
 
-Il unit file e' disponibile in `deploy/clepshydrabot.service` (da copiare in `/etc/systemd/system/`):
+`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e
+stampa un errore esplicito su stderr — visibile in `pm2 logs clepshydrabot`. Da notare: se il token è
+genuinamente scaduto/invalido, `pm2` riavvierà comunque il processo (`Restart=on-failure`-style), che
+fallirà di nuovo allo stesso modo finché non si aggiorna manualmente il token — il riavvio automatico
+non "risolve" un problema di credenziali, dà solo visibilità continua nei log.
+
+### Avvio con systemd (alternativa non in uso)
+
+Il unit file e' disponibile in `deploy/clepshydrabot.service` (da copiare in `/etc/systemd/system/`),
+mantenuto come alternativa nel repository ma non installato sulla VM di produzione (dove si usa `pm2`):
 
 ```
 [Unit]
@@ -93,7 +108,7 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e stampa un errore esplicito su stderr — visibile in `journalctl -u clepshydrabot` e necessario perche' `Restart=on-failure` scatti in modo affidabile.
+Con systemd, lo stesso comportamento di `main.py` (uscita non-zero su errori di startup) sarebbe visibile in `journalctl -u clepshydrabot` invece che in `pm2 logs`.
 
 ---
 

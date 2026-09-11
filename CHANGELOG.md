@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.4.0 (2026-09-11)
+
+### Fixed
+- Cache banlist (`ArtisanService`): il fix del 9 settembre (`reload_banlist()`) restava incompleto — il
+  bot istanzia due `ArtisanService` separate (`tournament_system` e `deck_validation`), e ricaricare
+  `self._banlist` su una non aveva effetto sull'altra. La cache è ora condivisa a livello di modulo
+  (`_banlist_cache` in `cogs/deck_validation/service.py`, stesso pattern di `utils/arena_overrides.py`),
+  cosi' un'invalidazione da un comando è visibile immediatamente da entrambe le istanze
+
+### Docs
+- `docs/ClepshydraBot_Resoconto_Tecnico.md`: ridotto a scheda infra/specifiche/stack — rimossa la
+  duplicazione con `docs/infrastruttura.md` e con gli altri doc dedicati (architettura, cache,
+  validazione mazzi, banlist); sostituite le sezioni rimosse con una tabella di rimandi
+- Aggiunto `docs/roadmap-miglioramenti.md`: piano di lavoro per debito tecnico e miglioramenti
+  architetturali residui, con un riepilogo di cosa era già stato affrontato nell'intervento del 9
+  settembre (CI, test `TournamentService`, resilienza avvio)
+- `docs/infrastruttura.md`: corretta la sezione Deployment — il processo in produzione è gestito con
+  `pm2` (restart automatico su crash), non `screen`/`tmux` come indicato in precedenza; `systemd`
+  (`deploy/clepshydrabot.service`) riclassificato come alternativa disponibile ma non in uso
+- `docs/banlist-system.md`, `docs/caching.md`: aggiornati per riflettere la cache banlist condivisa a
+  livello di modulo invece che per istanza
+- Aggiunto `CLAUDE.md` (guida per Claude Code): comandi di sviluppo/test, architettura a layer, pipeline
+  di validazione deck, lifecycle torneo — unito con la sezione "Agent skills" già presente
+
+## 1.3.2 (2026-09-09)
+
+### Added
+- `.github/workflows/ci.yml`: `pytest` come gate bloccante su ogni push/PR; `ruff` come step
+  informativo/non bloccante (debito di lint pre-esistente non ancora sanato)
+- `tests/tournament/test_tournament_service.py`: 10 test end-to-end sull'orchestratore torneo
+  (iscrizione, avvio, pairing, submit risultato, round successivo con anti-rematch, conclusione + rating
+  update, drop forzato, standings) contro un DB SQLite isolato per test, senza mock — suite totale: 88
+  test verdi
+- `deploy/clepshydrabot.service`: unit systemd (`Restart=on-failure`) come opzione di process management
+  alternativa, raccomandata nei doc ma non ancora resa disponibile come file
+
+### Fixed
+- `main.py`: `discord.LoginFailure` e altre eccezioni di startup ora vengono intercettate con log
+  esplicito su stderr (prefisso `FATAL:`) ed exit code non-zero, invece di fallire in modo silenzioso o
+  con una traceback ambigua
+- `pytest.ini` (`pythonpath = .`): `pytest tests/ -v` (invocazione nuda, usata dalla CI) falliva con
+  `ModuleNotFoundError` sui moduli di primo livello — a differenza di `python -m pytest`, non aggiunge
+  automaticamente la root del repo a `sys.path`
+- `tests/tournament/conftest.py`: variabili d'ambiente di test spostate qui per garantire l'ordine
+  corretto di collection (`services/__init__.py` importa eagerly `TournamentService`, che richiede
+  `config.config` popolato)
+- Cache banlist (`ArtisanService`): primo fix — `reload_banlist()` invalida la cache dopo
+  `/banlist_aggiungi`/`/banlist_rimuovi` invece di aspettare un riavvio del bot (completato l'11
+  settembre, vedi 1.4.0 sopra)
+
 ## 1.3.1 (2026-07-05)
 
 ### Added

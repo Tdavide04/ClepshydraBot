@@ -160,13 +160,15 @@ Le carte con `set_type=alchemy` sono escluse esplicitamente (non ammesse in Arti
 
 ## 4. Cache Banlist
 
-La banlist (`BannedCard` in SQLite) è cacheata in memoria in `ArtisanService._banlist: set[str]`.
+La banlist (`BannedCard` in SQLite) è cacheata in memoria nella variabile di modulo
+`_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, condivisa da tutte le istanze
+di `ArtisanService`.
 
 | Aspetto | Dettaglio |
 |---|---|
-| Caricamento | Prima validazione: `await BanlistRepository.get_all_for_format()` |
-| Validità | Per tutta la vita dell'istanza, fino a un reload esplicito |
-| Invalida | `ArtisanService.reload_banlist()`, chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB |
+| Caricamento | Prima validazione dopo l'avvio (o dopo un'invalidazione): `await BanlistRepository.get_all_for_format()` |
+| Validità | Fino alla prossima invalidazione esplicita |
+| Invalida | `ArtisanService.reload_banlist()` (wrapper su `invalidate_banlist_cache()`), chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB — l'effetto è visibile da tutte le istanze, non solo da quella su cui è chiamato |
 
 ---
 
@@ -176,4 +178,4 @@ La banlist (`BannedCard` in SQLite) è cacheata in memoria in `ArtisanService._b
 |---|---|---|---|
 | Carte Scryfall | `card_cache.json` | 60s (atomica) | Nessuna (crescita organica) |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
-| Banlist | `ArtisanService._banlist` | Per istanza | Esplicita (`reload_banlist()` dopo add/remove) |
+| Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |
