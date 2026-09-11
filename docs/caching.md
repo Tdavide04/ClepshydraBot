@@ -208,7 +208,7 @@ di `ArtisanService`.
 
 | Aspetto | Dettaglio |
 |---|---|
-| Caricamento | Prima validazione dopo l'avvio (o dopo un'invalidazione): `await BanlistRepository.get_all_for_format()` |
+| Caricamento | Prima validazione dopo l'avvio (o dopo un'invalidazione): `await BanlistRepository.get_all_for_format()`, poi espansa con `_expand_double_faced()` (aggiunge la sola metà fronte delle carte double-faced — vedi `docs/banlist-system.md` "Problemi Noti") |
 | Validità | Fino alla prossima invalidazione esplicita |
 | Invalida | `ArtisanService.reload_banlist()` (wrapper su `invalidate_banlist_cache()`), chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB — l'effetto è visibile da tutte le istanze, non solo da quella su cui è chiamato |
 

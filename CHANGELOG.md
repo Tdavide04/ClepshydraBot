@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.1 (2026-09-11)
+
+### Fixed
+- Banlist e carte double-faced (`cogs/deck_validation/service.py`): `cards.txt`/`banned_cards` salva le
+  double-faced col nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`), ma `parse_decklist()`
+  tronca **sempre** al fronte quando legge il deck dell'utente (mimando il formato di export di MTG
+  Arena) — non solo in un caso limite: il confronto in `check_banlist()` falliva sistematicamente per
+  queste carte, che restavano bandite solo sulla carta ma non venivano mai effettivamente catturate.
+  Nuova funzione `_expand_double_faced()` in `ArtisanService._load_banlist()`: aggiunge la sola metà
+  fronte al set usato per il check, applicata solo alla cache di validazione — `/banlist` (comando
+  pubblico) e `BanlistRepository.get_all_for_format()` continuano a mostrare solo le carte davvero
+  salvate nel DB, non varianti sintetiche derivate
+
 ## 1.6.0 (2026-09-11)
 
 ### Changed

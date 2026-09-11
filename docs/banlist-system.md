@@ -80,7 +80,7 @@ class BannedCard(Base):
 ### 5. Validazione Deck — `cogs/deck_validation/service.py:48-65`
 
 `ArtisanService.validate_deck()`:
-1. Alla prima chiamata, carica la banlist nella cache di modulo `_banlist_cache` via `_load_banlist()` → `BanlistRepository.get_all_for_format()`
+1. Alla prima chiamata, carica la banlist nella cache di modulo `_banlist_cache` via `_load_banlist()` → `BanlistRepository.get_all_for_format()`, poi espande le carte double-faced con `_expand_double_faced()` (aggiunge la sola metà fronte accanto al nome completo — vedi "Problemi Noti" punto 1)
 2. Chiama `check_banlist(entries, _banlist_cache)` (da `cogs/deck_validation/validators.py:72-79`)
 3. Se trova carte bandite, restituisce subito `DeckValidationResult(banned_cards=[...])` → deck **invalido**
 4. Se nessuna carta bandita, prosegue con la validazione rarità (API Scryfall)
@@ -335,7 +335,12 @@ Utente invia deck
 
 ## Problemi Noti / Potenziali
 
-1. **Double-faced cards**: La banlist in `cards.txt` include già il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`). Il `check_banlist()` si basa sul nome così come viene parsato dal deck — a sua volta, `parse_decklist()` tronca al ` // ` e prende solo il fronte. **Se un utente scrive il nome completo nel deck, il confronto potrebbe fallire** e la carta bannata passare inosservata.
+1. ~~**Double-faced cards**: la banlist in `cards.txt`/`banned_cards` salva il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`), ma `parse_decklist()` tronca sempre al fronte quando legge il deck dell'utente (mimando il formato di export di MTG Arena) — non solo "se l'utente scrive il nome completo": il confronto falliva **sempre** per queste carte, indipendentemente da cosa scrivesse l'utente, perché `check_banlist()` confrontava un nome tronco contro un nome completo mai presente nel set.~~
+   **Risolto**: `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) espande la banlist con
+   `_expand_double_faced()` — per ogni entry contenente ` // `, aggiunge anche la sola metà fronte al set
+   usato da `check_banlist()`. Applicato **solo** alla cache di validazione, non a
+   `BanlistRepository.get_all_for_format()`: quel metodo alimenta anche `/banlist` (comando pubblico), che
+   deve elencare solo le carte davvero salvate nel DB, non varianti sintetiche.
 
 2. ~~**Aggiornamento live**: il `self._banlist` in `ArtisanService` non veniva invalidato dopo add/remove via slash command.~~ **Risolto**: `/banlist_aggiungi` e `/banlist_rimuovi` chiamano `ArtisanService.reload_banlist()` subito dopo la scrittura sul DB (vedi `cogs/tournament_system/cog.py`). La cache è a livello di modulo (`_banlist_cache`), quindi l'invalidazione copre anche la seconda istanza di `ArtisanService` usata da `cogs/deck_validation/__init__.py` — un primo tentativo di fix con cache per istanza avrebbe lasciato quella seconda istanza stale.
 

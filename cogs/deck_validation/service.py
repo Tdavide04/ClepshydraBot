@@ -39,6 +39,28 @@ def invalidate_banlist_cache() -> None:
     _banlist_cache = None
 
 
+def _expand_double_faced(names: set[str]) -> set[str]:
+    """Aggiunge la sola meta' fronte per ogni carta double-faced ("fronte //
+    retro") gia' presente nel set.
+
+    cards.txt (e quindi banned_cards) salva le double-faced col nome completo,
+    ma parse_decklist() tronca al fronte quando legge il deck dell'utente
+    (mimando il formato di export di MTG Arena) — senza questa espansione,
+    check_banlist() (confronto esatto su set) non fa mai match per queste
+    carte, che quindi non vengono mai catturate come bandite.
+
+    Usata solo per costruire la cache di ArtisanService._load_banlist(), NON
+    dentro BanlistRepository.get_all_for_format(): quel metodo alimenta anche
+    /banlist (comando pubblico), che deve elencare solo le carte davvero
+    salvate nel DB, non varianti sintetiche derivate.
+    """
+    expanded = set(names)
+    for name in names:
+        if " // " in name:
+            expanded.add(name.split(" // ")[0].strip())
+    return expanded
+
+
 class ArtisanService:
 
     def __init__(self, bot=None):
@@ -57,7 +79,8 @@ class ArtisanService:
             return _banlist_cache or set()
         try:
             repo = BanlistRepository(session)
-            _banlist_cache = await repo.get_all_for_format()
+            raw = await repo.get_all_for_format()
+            _banlist_cache = _expand_double_faced(raw)
             return _banlist_cache
         finally:
             await session.close()

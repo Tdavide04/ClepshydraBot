@@ -85,6 +85,45 @@ class TestValidateDeck:
         assert result.is_valid is False
         assert result.mainboard == []
 
+    def test_banned_double_faced_card_matches_front_face_only(self, isolated_db):
+        """Regressione: cards.txt/banned_cards salva le double-faced col nome
+        completo ("Fronte // Retro"), ma parse_decklist() tronca al fronte
+        quando legge il deck dell'utente. Senza espandere la banlist con la
+        sola meta' fronte, check_banlist() non faceva mai match per queste
+        carte, che restavano bandite solo sulla carta ma mai catturate."""
+        async def scenario():
+            await _seed_banlist("Test Front // Test Back")
+            service = ArtisanService()
+            service._post_with_retry = _make_fake_post({})  # non deve essere chiamato
+            # come lo produrrebbe parse_decklist(): solo il fronte
+            entries = [DeckEntry(quantity=60, name="Test Front", is_sideboard=False)]
+            return await service.validate_deck(entries, "Test Deck", 60)
+
+        result = run_with_db(scenario)
+        assert result.banned_cards == ["Test Front"]
+        assert result.is_valid is False
+
+    def test_public_banlist_listing_is_not_expanded(self, isolated_db):
+        """La sola meta' fronte sintetica (vedi test sopra) deve restare
+        confinata alla cache di ArtisanService: BanlistRepository.get_all_for_format()
+        (usata anche da /banlist, il comando pubblico) deve elencare solo le
+        carte davvero salvate nel DB, non varianti derivate."""
+        async def scenario():
+            await _seed_banlist("Test Front // Test Back")
+            session = get_session()
+            try:
+                repo = BanlistRepository(session)
+                return await repo.get_all_for_format()
+            finally:
+                await session.close()
+
+        raw = run_with_db(scenario)
+        # cards.txt reale viene comunque importato nel DB di test (_migrate_banlist
+        # gira su ogni init_db()), quindi raw contiene anche quelle ~219 carte:
+        # controlliamo presenza/assenza, non uguaglianza dell'intero set.
+        assert "test front // test back" in raw
+        assert "test front" not in raw
+
     def test_valid_deck(self, isolated_db):
         async def scenario():
             main_card = _card_data("Test Common")
