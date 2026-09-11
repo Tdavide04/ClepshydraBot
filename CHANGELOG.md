@@ -4,9 +4,9 @@
 
 A partire dalla 3.0.0: `MAJOR.MINOR.PATCH`, dove una nuova feature incrementa **MINOR** e un bug fix
 incrementa **PATCH**. `MAJOR` resta fermo salvo cambi importanti decisi esplicitamente. Le versioni
-precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La versione attiva è impostata
-tramite la variabile d'ambiente `VERSION` (`.env`, non nel repo) — aggiornarla manualmente ad ogni
-release, non è derivata automaticamente da git.
+precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La versione attiva è la costante
+`VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
+che aggiorna questo file, non è derivata automaticamente da git.
 
 ## 3.0.0 (2026-09-11)
 

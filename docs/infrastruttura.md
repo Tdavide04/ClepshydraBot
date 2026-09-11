@@ -48,7 +48,10 @@ Caricate da `.env` tramite `python-dotenv`:
 | `ADMIN_ROLE` | Ruolo admin (default: Staff) | stessi |
 | `DB_PATH` | Percorso DB (default: `data/clepsydra.db`) | suffisso `_test.db` |
 | `TEST_MODE` | Flag test | — |
-| `VERSION` | Versione bot | append `-test` |
+
+`VERSION` **non** è una variabile d'ambiente: è una costante hardcoded in `config/config.py` (append
+`-test` se `TEST_MODE`), aggiornata a mano ad ogni release insieme a `CHANGELOG.md` — vedi la nota
+"Versioning" in cima a quel file per la convenzione (MINOR per feature, PATCH per fix).
 
 ### Test Mode
 

@@ -113,10 +113,9 @@ Schedule page monitor, every 24h — see below) — and syncs the slash command 
 failures (`discord.LoginFailure` and other exceptions in `setup_hook`/`bot.run`) are caught, logged to
 stderr with a `FATAL:` prefix, and exit non-zero instead of failing silently.
 
-`VERSION` (shown in the `SYSTEM_STARTUP` Discord log) comes purely from the `VERSION` env var — not
-derived from git, not hardcoded anywhere in the repo — so it must be updated manually in `.env` on each
-deploy. From 3.0.0 onward: bump MINOR for a new feature, PATCH for a bug fix (see "Versioning" at the top
-of `CHANGELOG.md`); the CHANGELOG version and the deployed `VERSION` env var should be kept in sync.
+`VERSION` (shown in the `SYSTEM_STARTUP` Discord log) is a hardcoded constant in `config/config.py`, not
+an env var — bump it by hand in the same commit that bumps `CHANGELOG.md`. From 3.0.0 onward: bump MINOR
+for a new feature, PATCH for a bug fix (see "Versioning" at the top of `CHANGELOG.md`).
 
 ### Deployment
 
