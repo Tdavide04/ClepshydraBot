@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 133 tests total, no `pytest-asyncio` — async integration tests
+Suite: 138 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`) instead
@@ -105,13 +105,19 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
 `config/config.py` loads `.env` via `python-dotenv` and reads all settings as module-level constants
 (no pydantic/settings class). `TEST_MODE` selects `_TEST`-suffixed env vars (token, guild, channels, db
 path) at import time — there is no runtime toggle. `main.py` constructs the bot, calls `init_db()`,
-dynamically loads every module/package under `cogs/`, starts three background tasks —
-`periodic_save_loop()` (card cache autosave, every 60s), `periodic_spg_refresh_loop()` (SPG rarity
+dynamically loads every module/package under `cogs/`, syncs the slash command tree to a single guild
+(`GUILD_ID`) rather than globally, logs `SYSTEM_STARTUP` to Discord, and only THEN starts three background
+tasks — `periodic_save_loop()` (card cache autosave, every 60s), `periodic_spg_refresh_loop()` (SPG rarity
 override auto-refresh, every 7 days — see below), and `periodic_event_schedule_check_loop()` (Arena Event
-Schedule page monitor, every 24h — see below) — and syncs the slash command tree to a single guild
-(`GUILD_ID`) rather than globally. Startup
-failures (`discord.LoginFailure` and other exceptions in `setup_hook`/`bot.run`) are caught, logged to
-stderr with a `FATAL:` prefix, and exit non-zero instead of failing silently.
+Schedule page monitor, every 24h — see below). The three `self.loop.create_task(...)` calls must stay
+AFTER the sync+log block, not before: `create_task` only schedules, it doesn't block, so if scheduled
+earlier the background tasks' first runs (both do real HTTP calls, not instant) can race ahead of and
+finish before the `await self.tree.sync(...)` call resolves — observed in production, the `SYSTEM_STARTUP`
+log arrived *after* the automatic check logs instead of before. Startup failures (`discord.LoginFailure`
+and other exceptions in `setup_hook`/`bot.run`) are caught, logged to stderr with a `FATAL:` prefix, and
+exit non-zero instead of failing silently — this also means a broken slash-command definition (e.g. a
+description over Discord's 100-char limit) crashes the whole bot on every restart, not just that one
+command, since `tree.sync()` fails for the entire batch.
 
 `VERSION` (shown in the `SYSTEM_STARTUP` Discord log) is a hardcoded constant in `config/config.py`, not
 an env var — bump it by hand in the same commit that bumps `CHANGELOG.md`. From 3.0.0 onward: bump MINOR
@@ -205,7 +211,10 @@ section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
 so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
 summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate re-check of
-the current latest page, ignoring the saved `lastmod`.
+the current latest page, ignoring the saved `lastmod`. `send_event_schedule_log()` posts one embed field
+per category (not the whole calendar crammed into the embed description as plain markdown-bold text —
+tried first, unreadable for the 13-15 categories a real page typically has) and splits across multiple
+messages at `_CATEGORIES_PER_MESSAGE` (6) fields each, labeled "parte N/M" when there's more than one.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 

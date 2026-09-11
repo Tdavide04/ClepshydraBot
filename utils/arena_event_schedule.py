@@ -295,11 +295,35 @@ async def periodic_event_schedule_check_loop(
         await asyncio.sleep(interval_seconds)
 
 
+# Quante categorie per messaggio Discord. Un embed regge fino a 25 campi,
+# ma un unico messaggio con 15+ categorie (osservato: le pagine reali ne
+# hanno 13-15) risultava un muro di testo poco leggibile nonostante il
+# grassetto markdown. Un campo per categoria (nome in risalto tipografico,
+# non semplice testo in grassetto in un paragrafo) e piu' messaggi invece di
+# uno solo enorme.
+_CATEGORIES_PER_MESSAGE = 6
+
+# Limite Discord per il valore di un singolo campo embed.
+_FIELD_VALUE_LIMIT = 1024
+
+
+def _category_field(category: str, entries: list[str]) -> dict:
+    value = "\n".join(f"• {entry}" for entry in entries[:10])
+    if len(value) > _FIELD_VALUE_LIMIT:
+        value = value[:_FIELD_VALUE_LIMIT - 20] + "\n_...troncato_"
+    return {"name": category[:256], "value": value or "-", "inline": False}
+
+
 async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> None:
     """Posta su Discord (via Logger cog) l'esito del controllo di una singola
     pagina Event Schedule. Esposta come funzione pubblica perche' usata sia
     dal loop automatico sia dal comando admin manuale (stesso formato di
-    log per entrambi i percorsi)."""
+    log per entrambi i percorsi).
+
+    Una categoria per campo embed (non tutto infilato nella description) e
+    diviso in piu' messaggi da _CATEGORIES_PER_MESSAGE categorie l'uno,
+    invece di un unico embed enorme."""
+
     url = result["url"]
     categories = result["categories"]
     prefix = "Controllo manuale forzato" if forced else "Controllo automatico"
@@ -317,19 +341,20 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
         )
         return
 
-    lines = []
-    for category, entries in categories.items():
-        entries_text = "\n".join(f"  • {entry}" for entry in entries[:8])
-        lines.append(f"**{category}**\n{entries_text}")
+    category_items = list(categories.items())
+    chunks = [
+        category_items[i:i + _CATEGORIES_PER_MESSAGE]
+        for i in range(0, len(category_items), _CATEGORIES_PER_MESSAGE)
+    ]
 
-    body = "\n\n".join(lines)
-    # Discord limita la description di un embed a 4096 caratteri.
-    if len(body) > 3500:
-        body = body[:3500] + "\n_...troncato, vedi la pagina originale_"
+    for part_index, chunk in enumerate(chunks, start=1):
+        fields = [_category_field(category, entries) for category, entries in chunk]
+        part_label = f" — parte {part_index}/{len(chunks)}" if len(chunks) > 1 else ""
 
-    await logger.send_log(
-        level="INFO",
-        event="ARENA_EVENT_SCHEDULE_UPDATED",
-        user=user,
-        info=f"{prefix}: {url}\n\n{body}",
-    )
+        await logger.send_log(
+            level="INFO",
+            event="ARENA_EVENT_SCHEDULE_UPDATED",
+            user=user,
+            info=f"{prefix}: {url}{part_label}",
+            fields=fields,
+        )

@@ -246,6 +246,7 @@ settimane.
 | `_pick_latest(entries)` | Tra le pagine trovate, seleziona quella col `lastmod` più alto (confronto lessicografico su timestamp ISO-8601 a larghezza fissa) |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
 | `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
+| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: una categoria per campo embed (non tutto nella description), diviso in più messaggi da `_CATEGORIES_PER_MESSAGE` (6) categorie l'uno invece di un unico embed enorme |
 
 ### Parsing e gestione dei fallimenti
 

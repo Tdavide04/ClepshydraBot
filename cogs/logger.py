@@ -16,13 +16,21 @@ class Logger(commands.Cog):
             "DEBUG": ("🔵", discord.Color.blue())
         }
 
-    async def send_log(self, level, event, user=None, channel=None, info=None):
-        """Metodo universale per inviare log con pattern specifico."""
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None):
+        """Metodo universale per inviare log con pattern specifico.
+
+        fields: lista opzionale di dict {"name", "value", "inline"} aggiunti
+        come campi embed separati (nome in grassetto/risalto, distinto dal
+        corpo della description) invece che infilati come altro testo nella
+        description - usato per contenuti a sezioni (es. il calendario eventi
+        Arena in utils/arena_event_schedule.py) dove il solo grassetto
+        markdown in un paragrafo unico risultava poco leggibile.
+        """
         emoji, color = self.levels.get(level.upper(), self.levels["INFO"])
-        
+
         try:
             log_channel = await self.bot.fetch_channel(self.log_channel_id)
-            
+
             description = ""
             if user:
                 description += f"**User:** {user.mention} ({user.name})\n"
@@ -33,18 +41,25 @@ class Logger(commands.Cog):
                     description += f"{info}\n"
                 else:
                     description += f"**Info:** {info}\n"
-            
+
             embed = discord.Embed(
                 title=f"{emoji} [{level.upper()}] | {event.upper()}",
                 description=description.strip(),
                 color=color,
                 timestamp=datetime.now()
             )
-            
+
+            for field in (fields or []):
+                embed.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field.get("inline", False),
+                )
+
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            
+
             await log_channel.send(embed=embed)
-            
+
         except Exception as e:
             print(f"⚠️ Errore logger: {e}")
 
