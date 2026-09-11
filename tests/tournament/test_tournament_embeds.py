@@ -1,4 +1,3 @@
-import re
 import pytest
 
 try:
@@ -14,7 +13,6 @@ from utils.tournament_embeds import (
     EMBED_COLOR_STANDINGS,
     EMBED_COLOR_PAIRINGS,
     EMBED_COLOR_START,
-    EMBED_COLOR_TOP8,
 )
 
 

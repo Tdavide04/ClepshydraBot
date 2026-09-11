@@ -1,9 +1,12 @@
-from datetime import datetime
-import discord, os
+import discord
+import os
+import sys
 from discord.ext import commands
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db
 from utils.card_cache import periodic_save_loop
+from utils.arena_overrides import periodic_spg_refresh_loop
+from utils.arena_event_schedule import periodic_event_schedule_check_loop
 
 
 class ClepshydraBotte(commands.Bot):
@@ -23,6 +26,8 @@ class ClepshydraBotte(commands.Bot):
             elif os.path.isdir(path) and os.path.exists(os.path.join(path, '__init__.py')):
                 await self.load_extension(f'cogs.{entry}')
         self.loop.create_task(periodic_save_loop())
+        self.loop.create_task(periodic_spg_refresh_loop(self))
+        self.loop.create_task(periodic_event_schedule_check_loop(self))
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
@@ -46,5 +51,15 @@ class ClepshydraBotte(commands.Bot):
     async def close(self):
         await close_db()
         await super().close()
+
+
 bot = ClepshydraBotte()
-bot.run(DISCORD_TOKEN)
+
+try:
+    bot.run(DISCORD_TOKEN)
+except discord.LoginFailure:
+    print("FATAL: token Discord non valido o scaduto. Il bot non puo' avviarsi.", file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f"FATAL: avvio del bot fallito: {e}", file=sys.stderr)
+    sys.exit(1)

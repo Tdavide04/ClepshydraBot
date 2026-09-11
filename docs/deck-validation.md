@@ -120,14 +120,20 @@ utils/
 
 Ordine dei controlli:
 1. **Override locale** → `get_override_rarity(card_name)` → se common/uncommon → legale
-2. **Cache disco** → `artisan_legal` field in `card_cache.json`
-3. **Cache memoria** → `oracle_id` già verificato
+2. **Cache disco** → `artisan_legal` field in `card_cache.json`, **solo se non scaduto**
+   (`is_artisan_legal_stale()`, TTL 30 giorni — vedi `docs/caching.md`); una entry senza
+   `artisan_legal_checked_at` (cacheata prima dell'introduzione del TTL) è considerata scaduta
+3. **Cache memoria** → `oracle_id` già verificato (`_ARENA_LEGAL_CACHE`, per la durata del processo —
+   non soggetta a TTL)
 4. **API Scryfall** → `GET prints_search_uri + ?game=arena`
 
 Nella chiamata API:
 - Filtra `set_type=alchemy` (escluso da Artisan)
 - Controlla se esiste una stampa common/uncommon su Arena
-- Salva risultato in cache (`artisan_legal`)
+- Salva risultato in cache con timestamp (`mark_artisan_legal()`)
+
+Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TTL), l'admin può usare
+`/invalidate_card_cache <carta>`.
 
 ### 5. Conteggio (`validators.py:82-96`)
 
@@ -184,7 +190,7 @@ Flusso rapido:
 1. `get_override_rarity(nome)` controlla `arena_rarity_data.json`
 2. Se trovato come `"common"` o `"uncommon"` → carta legale (salta API)
 3. Contiene ~40 carte del set SPG (Special Guest)
-4. Aggiornabile via `/update_spg_overrides` (admin)
+4. Aggiornato automaticamente ogni settimana (`periodic_spg_refresh_loop`); forzabile subito via `/forced_rarity_refresh` (admin)
 
 ---
 

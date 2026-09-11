@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    image: clepshydrabot:latest
+    container_name: clepshydrabot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - clepshydra-data:/app/data
+
+volumes:
+  clepshydra-data:

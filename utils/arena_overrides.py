@@ -4,16 +4,21 @@ arena_overrides.py
 Gestisce gli override di rarità per le carte che su Arena appaiono
 con rarità più alta rispetto alle loro stampe paper (es. SPG).
 
-BUG CORRETTI:
-- get_override_rarity: non rilegge il JSON da disco ad ogni chiamata
-  (ora usa una cache in-memory con invalidazione esplicita)
-- update_spg_overrides: la logica "skip set già processati" era rotta
-  perché il JSON di default aveva già "SPG" in processed_sets,
-  rendendo il primo run un no-op. Ora processed_sets tiene traccia
-  solo dei set completamente scansionati, e viene aggiornato SOLO
-  a fine run riuscito.
-- Aggiunto rate limiting (110ms tra richieste) coerente con tournament.py
-- La funzione ora è parametrica sul set_code invece di hardcoded "spg"
+BUG CORRETTI (Settembre 2026, vedi docs/roadmap-miglioramenti.md):
+- update_spg_overrides usava processed_sets per marcare un intero set come
+  "fatto per sempre" dopo la prima scansione riuscita. Sbagliato per SPG:
+  Scryfall usa un unico set code "SPG" che cresce continuamente nel tempo
+  (nuove Special Guests escono con quasi ogni set principale, ogni 4-8
+  settimane) - dopo la prima scansione, ogni run successivo (anche manuale)
+  diventava un no-op permanente, senza alcun modo di sbloccarlo se non
+  editando il JSON a mano. Sostituito con checked_cards: un elenco per set
+  code delle singole carte già valutate (aggiunto override o no). Una nuova
+  scansione salta solo le carte già viste, non l'intero set - i run
+  successivi al primo costano solo le carte nuove dall'ultimo controllo,
+  rendendo sicuro schedularli periodicamente (vedi periodic_spg_refresh_loop).
+- _update_lock: la funzione ora gira sia da un comando admin manuale sia da
+  un task periodico automatico - un lock evita che due scansioni concorrenti
+  si sovrascrivano a vicenda sul JSON.
 """
 
 import asyncio
@@ -25,7 +30,15 @@ DATA_PATH = "data/arena_rarity_data.json"
 
 _MIN_REQUEST_INTERVAL = 0.11
 
+# Nuove Special Guests escono con quasi ogni set principale (~4-8 settimane in
+# media, vedi ricerca in docs/roadmap-miglioramenti.md). Settimanale da ampio
+# margine: dopo il primo giro, un controllo costa solo le carte nuove
+# dall'ultimo run (grazie a checked_cards), quindi anche se non cambia mai
+# nulla il costo di un giro a vuoto è trascurabile.
+_SPG_REFRESH_INTERVAL_SECONDS = 7 * 24 * 60 * 60
+
 _override_cache: dict | None = None
+_update_lock = asyncio.Lock()
 
 
 # ==========================================
@@ -42,8 +55,8 @@ def _load_override_data() -> dict:
 
     if not os.path.exists(DATA_PATH):
         _override_cache = {
-            "processed_sets": [],
-            "overrides": {}
+            "overrides": {},
+            "checked_cards": {},
         }
         return _override_cache
 
@@ -158,137 +171,165 @@ async def _scryfall_get(
 
 async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
     """
-    Scansiona tutte le carte del set indicato su Scryfall e aggiunge
-    override per quelle che su Arena hanno rarità rare/mythic ma
+    Scansiona le carte NON ANCORA VALUTATE del set indicato su Scryfall e
+    aggiunge override per quelle che su Arena hanno rarità rare/mythic ma
     su carta (paper) esistono in versione common/uncommon.
 
-    Ritorna la lista di (card_name, rarity) aggiunti in questo run.
+    Incrementale per design: ogni carta valutata (con o senza override
+    aggiunto) viene registrata in checked_cards[set_code] e non viene più
+    ri-scaricata nei run successivi. Sicuro da chiamare ripetutamente (da un
+    comando admin o da un task periodico): il primo run su un set paga il
+    costo pieno, i successivi costano solo le carte apparse nel frattempo.
 
-    BUG CORRETTI:
-    - processed_sets ora è usato solo per evitare di riprocessare set
-      già completamente scansionati in run precedenti. Il controllo
-      è a livello di SET INTERO, non di singola carta nel loop.
-    - Il set viene marcato come "processato" solo a fine run riuscito.
-    - Il JSON iniziale non deve contenere "SPG" in processed_sets,
-      altrimenti il primo run non farà nulla. Se viene trovato,
-      lo rimuoviamo prima di procedere (migrazione automatica).
+    Ritorna la lista di (card_name, rarity) aggiunti in QUESTO run (non
+    l'intero storico).
     """
 
-    set_upper = set_code.upper()
+    async with _update_lock:
+        set_upper = set_code.upper()
 
-    data = _load_override_data()
-    processed_sets: set[str] = set(data.get("processed_sets", []))
-    overrides: dict[str, str] = data.get("overrides", {})
+        data = _load_override_data()
+        overrides: dict[str, str] = data.get("overrides", {})
+        checked_by_set: dict[str, list[str]] = data.get("checked_cards", {})
+        checked: set[str] = set(checked_by_set.get(set_upper, []))
 
-    if set_upper in processed_sets:
-        print(
-            f"[SKIP] Set {set_upper} già processato. "
-            f"Usa invalidate_override_cache() e rimuovi '{set_upper}' "
-            f"da processed_sets per forzare il riscansionamento."
+        added_cards: list[tuple[str, str]] = []
+        newly_checked: list[str] = []
+
+        def _persist() -> None:
+            checked_by_set[set_upper] = sorted(checked | set(newly_checked))
+            _save_override_data({
+                "overrides": overrides,
+                "checked_cards": checked_by_set,
+            })
+
+        encoded_set = set_code.lower()
+        search_url: str | None = (
+            f"https://api.scryfall.com/cards/search"
+            f"?q=set%3A{encoded_set}&unique=prints"
         )
-        return []
 
-    added_cards: list[tuple[str, str]] = []
+        headers = {
+            "User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"
+        }
 
-    encoded_set = set_code.lower()
-    search_url: str | None = (
-        f"https://api.scryfall.com/cards/search"
-        f"?q=set%3A{encoded_set}&unique=prints"
-    )
+        timeout = aiohttp.ClientTimeout(total=120)
 
-    headers = {
-        "User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"
-    }
+        async with aiohttp.ClientSession(
+            headers=headers,
+            timeout=timeout
+        ) as session:
 
-    timeout = aiohttp.ClientTimeout(total=120)
+            while search_url:
 
-    async with aiohttp.ClientSession(
-        headers=headers,
-        timeout=timeout
-    ) as session:
-
-        while search_url:
-
-            result = await _scryfall_get(
-                session, search_url, f"search {set_upper}"
-            )
-
-            if not result:
-                print(f"[ABORT] Impossibile ottenere dati per {set_upper}")
-                return added_cards
-
-            cards = result.get("data", [])
-
-            for card in cards:
-
-                card_name: str = card.get("name", "")
-                prints_uri: str | None = card.get("prints_search_uri")
-
-                if not prints_uri:
-                    continue
-
-                print(f"[CHECKING] {card_name}")
-
-                prints_data = await _scryfall_get(
-                    session,
-                    prints_uri,
-                    f"{card_name} [prints]"
+                result = await _scryfall_get(
+                    session, search_url, f"search {set_upper}"
                 )
 
-                if not prints_data:
-                    continue
+                if not result:
+                    print(f"[ABORT] Impossibile ottenere dati per {set_upper}")
+                    _persist()
+                    return added_cards
 
-                arena_target_rarity: str | None = None
-                paper_lowest: str | None = None
+                cards = result.get("data", [])
 
-                rarity_rank = {"common": 0, "uncommon": 1, "rare": 2, "mythic": 3}
+                for card in cards:
 
-                for printing in prints_data.get("data", []):
+                    card_name: str = card.get("name", "")
 
-                    games: list = printing.get("games", [])
-                    rarity: str = printing.get("rarity", "").lower()
-                    printing_set: str = printing.get("set", "").lower()
+                    if card_name in checked:
+                        continue
 
-                    if "arena" in games and printing_set == set_code.lower():
-                        arena_target_rarity = rarity
+                    prints_uri: str | None = card.get("prints_search_uri")
 
-                    if "paper" in games and rarity in rarity_rank:
-                        if (
-                            paper_lowest is None
-                            or rarity_rank[rarity] < rarity_rank[paper_lowest]
-                        ):
-                            paper_lowest = rarity
+                    if not prints_uri:
+                        continue
 
-                            if paper_lowest == "common":
-                                break
+                    print(f"[CHECKING] {card_name}")
 
-                if (
-                    arena_target_rarity in ("rare", "mythic")
-                    and paper_lowest in ("common", "uncommon")
-                    and card_name not in overrides
-                ):
-
-                    print(
-                        f"[OVERRIDE ADDED] "
-                        f"{card_name} -> {paper_lowest} "
-                        f"(Arena: {arena_target_rarity})"
+                    prints_data = await _scryfall_get(
+                        session,
+                        prints_uri,
+                        f"{card_name} [prints]"
                     )
 
-                    overrides[card_name] = paper_lowest
-                    added_cards.append((card_name, paper_lowest))
+                    if not prints_data:
+                        # Fallito: non marcarla come controllata, ci riproviamo
+                        # al prossimo giro invece di perderla per sempre.
+                        continue
 
-            search_url = result.get("next_page")
+                    arena_target_rarity: str | None = None
+                    paper_lowest: str | None = None
 
-    processed_sets.add(set_upper)
+                    rarity_rank = {"common": 0, "uncommon": 1, "rare": 2, "mythic": 3}
 
-    _save_override_data({
-        "processed_sets": list(processed_sets),
-        "overrides": overrides
-    })
+                    for printing in prints_data.get("data", []):
 
-    print(
-        f"[DONE] {set_upper}: "
-        f"{len(added_cards)} override aggiunti."
-    )
+                        games: list = printing.get("games", [])
+                        rarity: str = printing.get("rarity", "").lower()
+                        printing_set: str = printing.get("set", "").lower()
 
-    return added_cards
+                        if "arena" in games and printing_set == set_code.lower():
+                            arena_target_rarity = rarity
+
+                        if "paper" in games and rarity in rarity_rank:
+                            if (
+                                paper_lowest is None
+                                or rarity_rank[rarity] < rarity_rank[paper_lowest]
+                            ):
+                                paper_lowest = rarity
+
+                                if paper_lowest == "common":
+                                    break
+
+                    if (
+                        arena_target_rarity in ("rare", "mythic")
+                        and paper_lowest in ("common", "uncommon")
+                        and card_name not in overrides
+                    ):
+
+                        print(
+                            f"[OVERRIDE ADDED] "
+                            f"{card_name} -> {paper_lowest} "
+                            f"(Arena: {arena_target_rarity})"
+                        )
+
+                        overrides[card_name] = paper_lowest
+                        added_cards.append((card_name, paper_lowest))
+
+                    newly_checked.append(card_name)
+
+                search_url = result.get("next_page")
+
+        _persist()
+
+        print(
+            f"[DONE] {set_upper}: "
+            f"{len(added_cards)} nuovi override, "
+            f"{len(newly_checked)} carte controllate in questo giro."
+        )
+
+        return added_cards
+
+
+async def periodic_spg_refresh_loop(bot=None, interval_seconds: int = _SPG_REFRESH_INTERVAL_SECONDS) -> None:
+    """Task in background: ricontrolla il set SPG a intervalli regolari senza
+    bisogno che un admin lanci il comando manuale. Il primo giro parte subito
+    all'avvio (non aspetta il primo intervallo) così eventuali carte nuove
+    vengono recuperate appena il bot riparte, non solo una volta a settimana."""
+    while True:
+        try:
+            added = await update_spg_overrides(set_code="spg")
+            if added and bot is not None:
+                logger = bot.get_cog("Logger")
+                if logger:
+                    lines = "\n".join(f"• **{name}** → {rarity}" for name, rarity in added[:20])
+                    await logger.send_log(
+                        level="INFO",
+                        event="SPG_OVERRIDES_UPDATED",
+                        info=f"Controllo automatico: {len(added)} nuovi override trovati\n\n{lines}",
+                    )
+        except Exception as e:
+            print(f"[SPG AUTO-REFRESH] errore: {e}")
+
+        await asyncio.sleep(interval_seconds)

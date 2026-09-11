@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, Float, String, Boolean, DateTime, ForeignKey, Enum as SAEnum,
+    Column, Integer, Float, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 import enum
@@ -106,6 +106,22 @@ class BannedCard(Base):
 
     def __repr__(self):
         return f"<BannedCard id={self.id} name={self.card_name!r} format={self.format}>"
+
+
+class CachedCard(Base):
+    __tablename__ = "cached_cards"
+
+    # card_name e' gia' normalizzato a lowercase dal chiamante (utils/card_cache.py),
+    # stesso key format usato da sempre nel dict in memoria e nel JSON legacy.
+    card_name = Column(String(200), primary_key=True)
+    # Dati Scryfall grezzi (form variabile: card_faces per le doppie facce, ecc.)
+    # piu' artisan_legal/artisan_legal_checked_at, serializzati come un unico blob
+    # JSON invece di colonne dedicate: nessuna query SQL li filtra oggi, e tenerli
+    # come blob evita di duplicare la forma del dizionario in due posti.
+    data = Column(Text, nullable=False)
+
+    def __repr__(self):
+        return f"<CachedCard card_name={self.card_name!r}>"
 
 
 class Match(Base):

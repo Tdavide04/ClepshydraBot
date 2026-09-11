@@ -1,5 +1,4 @@
 import os
-import os
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -47,6 +46,9 @@ async def init_db():
     await _migrate_banlist()
     await _migrate_schema()
 
+    from utils.card_cache import load_cache
+    await load_cache()
+
 
 async def _migrate_banlist():
     if not os.path.exists(BANLIST_FILE):
@@ -66,65 +68,38 @@ async def _migrate_banlist():
         await session.close()
 
 
+# (tabella, colonna, DDL): ogni voce aggiunge una colonna mancante a uno schema
+# esistente. Elenco cumulativo, mai rimosso — vedi database.md "Migrazioni Automatiche".
+_SCHEMA_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("tournament_players", "deck_name", "ALTER TABLE tournament_players ADD COLUMN deck_name VARCHAR(200)"),
+    ("matches", "p1_game_wins", "ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER"),
+    ("matches", "p2_game_wins", "ALTER TABLE matches ADD COLUMN p2_game_wins INTEGER"),
+    ("users", "rating", "ALTER TABLE users ADD COLUMN rating FLOAT DEFAULT 1500.0"),
+    ("users", "rating_deviation", "ALTER TABLE users ADD COLUMN rating_deviation FLOAT DEFAULT 350.0"),
+    ("users", "rating_volatility", "ALTER TABLE users ADD COLUMN rating_volatility FLOAT DEFAULT 0.06"),
+    ("users", "rating_matches", "ALTER TABLE users ADD COLUMN rating_matches INTEGER DEFAULT 0"),
+    ("users", "last_rated_at", "ALTER TABLE users ADD COLUMN last_rated_at TIMESTAMP"),
+]
+
+
+async def _table_columns(conn, table: str) -> set[str]:
+    result = await conn.execute(sa_text(f"PRAGMA table_info({table})"))
+    return {row[1] for row in result.fetchall()}
+
+
 async def _migrate_schema():
     engine = get_engine()
     async with engine.begin() as conn:
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE tournament_players ADD COLUMN deck_name VARCHAR(200)")
-            )
-            print("Migrazione: aggiunta colonna deck_name a tournament_players")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER")
-            )
-            print("Migrazione: aggiunta colonna p1_game_wins a matches")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE matches ADD COLUMN p2_game_wins INTEGER")
-            )
-            print("Migrazione: aggiunta colonna p2_game_wins a matches")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE users ADD COLUMN rating FLOAT DEFAULT 1500.0")
-            )
-            print("Migrazione: aggiunta colonna rating a users")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE users ADD COLUMN rating_deviation FLOAT DEFAULT 350.0")
-            )
-            print("Migrazione: aggiunta colonna rating_deviation a users")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE users ADD COLUMN rating_volatility FLOAT DEFAULT 0.06")
-            )
-            print("Migrazione: aggiunta colonna rating_volatility a users")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE users ADD COLUMN rating_matches INTEGER DEFAULT 0")
-            )
-            print("Migrazione: aggiunta colonna rating_matches a users")
-        except Exception:
-            pass
-        try:
-            await conn.execute(
-                sa_text("ALTER TABLE users ADD COLUMN last_rated_at TIMESTAMP")
-            )
-            print("Migrazione: aggiunta colonna last_rated_at a users")
-        except Exception:
-            pass
+        for table, column, ddl in _SCHEMA_MIGRATIONS:
+            if column in await _table_columns(conn, table):
+                continue
+            try:
+                await conn.execute(sa_text(ddl))
+                print(f"Migrazione: aggiunta colonna {column} a {table}")
+            except Exception as exc:
+                print(
+                    f"ERRORE migrazione: impossibile aggiungere {column} a {table}: {exc}"
+                )
 
 
 async def close_db():

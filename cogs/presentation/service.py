@@ -1,4 +1,4 @@
-import discord, os
+import discord
 from cogs.presentation.models import PresentationData, PRESENTATION_DATA_STORE
 from cogs.presentation.embeds import build_published_embed
 from cogs.presentation.validators import valida_presentazione

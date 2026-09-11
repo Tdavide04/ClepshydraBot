@@ -103,8 +103,8 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 │  │  • tournament_players│                                            │
 │  │  • matches          │  ┌──────────────────────┐                   │
 │  │  • banned_cards     │  │  Discord API          │                   │
-│  └─────────────────────┘  │  • Gateway WebSocket  │                   │
-│                            │  • REST API           │                   │
+│  │  • cached_cards     │  │  • Gateway WebSocket  │                   │
+│  └─────────────────────┘  │  • REST API           │                   │
 │                            └──────────────────────┘                   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -187,3 +187,12 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreaker)
 - **Rate limiting**: semaforo asyncio per rispettare limiti Scryfall
 - **Scrittura atomica**: cache JSON scritta su `.tmp` poi `os.replace()`
 - **Lock asincrono**: `asyncio.Lock()` per salvataggio cache concorrente
+- **Avvio bot**: `main.py` intercetta `discord.LoginFailure` (token invalido/scaduto) e qualunque altra eccezione di startup, stampa un errore esplicito su stderr ed esce con codice diverso da zero, cosi' un supervisore di processo (es. systemd, vedi `deploy/clepshydrabot.service`) puo' rilevare il fallimento invece di un arresto silenzioso
+
+---
+
+## Testing
+
+- `tests/tournament/`: suite pytest per il layer di servizio torneo — `PairingEngine`, `Rating`, `StandingsCalculator`, embed builder, utility, e `TournamentService` (orchestrazione end-to-end: iscrizione, avvio, pairing, submit risultato, round successivo, drop forzato, standings, rating).
+- I test di `TournamentService` non usano mock: eseguono contro un SQLite temporaneo isolato per test (`tmp_path` + monkeypatch su `database.engine.DB_PATH`), incapsulando l'intero ciclo `init_db → logica → close_db` in un unico event loop (richiesto da aiosqlite, che lega le connessioni al loop che le ha create).
+- CI: `.github/workflows/ci.yml` esegue `pytest` ad ogni push/PR come gate bloccante; `ruff` gira in parallelo come step informativo (`continue-on-error`), perche' il codebase ha debito di lint pre-esistente non ancora sanato.

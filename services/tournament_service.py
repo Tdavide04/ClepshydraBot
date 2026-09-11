@@ -1,4 +1,7 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
+
+from sqlalchemy import select
 
 from database import get_session
 from database.models import (
@@ -14,7 +17,7 @@ from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
 from services.standings import StandingsCalculator, StandingsEntry
 from services.rating import Rating, rate_1vs1, rate_draw
-from config.config import TEST_MODE, GUILD_ID
+from config.config import GUILD_ID
 
 
 class TournamentService:
@@ -22,15 +25,21 @@ class TournamentService:
     def __init__(self, bot=None):
         self.bot = bot
 
-    def _get_repos(self):
+    @asynccontextmanager
+    async def _repos(self):
+        """Apre una sessione DB e i repository associati; li chiude sempre all'uscita del blocco,
+        sia in caso di return normale che di eccezione."""
         session = get_session()
-        return (
-            session,
-            TournamentRepository(session),
-            TournamentPlayerRepository(session),
-            MatchRepository(session),
-            UserRepository(session),
-        )
+        try:
+            yield (
+                session,
+                TournamentRepository(session),
+                TournamentPlayerRepository(session),
+                MatchRepository(session),
+                UserRepository(session),
+            )
+        finally:
+            await session.close()
 
     def _resolve_name(self, tp: TournamentPlayer) -> str:
         if tp.user and self.bot:
@@ -47,8 +56,7 @@ class TournamentService:
         format: str = "Artisan",
         max_players: int | None = None,
     ) -> Tournament:
-        session, repo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, repo, _, _, _):
             tournament = Tournament(
                 name=name,
                 format=format,
@@ -56,19 +64,13 @@ class TournamentService:
             )
             result = await repo.add(tournament)
             return result
-        finally:
-            await session.close()
 
     async def list_tournaments(self) -> list[Tournament]:
-        session, repo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, repo, _, _, _):
             return await repo.list_all()
-        finally:
-            await session.close()
 
     async def list_tournaments_with_counts(self) -> list[tuple[Tournament, int]]:
-        session, trepo, tprepo, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, _, _):
             tournaments = await trepo.list_all()
             tournaments.sort(key=lambda t: t.created_at or datetime.min, reverse=True)
             result = []
@@ -76,14 +78,11 @@ class TournamentService:
                 count = await tprepo.count_in_tournament(t.id)
                 result.append((t, count))
             return result
-        finally:
-            await session.close()
 
     async def register_player(
         self, tournament_id: int, discord_id: int, deck_name: str | None = None
     ) -> str:
-        session, trepo, tprepo, _, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -119,12 +118,37 @@ class TournamentService:
             await tprepo.add(tp)
             deck_info = f" con **{deck_name}**" if deck_name else ""
             return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{count + 1}){deck_info}."
-        finally:
-            await session.close()
+
+    async def submit_deck(
+        self, tournament_id: int, discord_id: int, deck_name: str
+    ) -> str:
+        """Registra/aggiorna il mazzo di un giocatore gia' iscritto. A differenza
+        di register_player(), non crea una nuova iscrizione: richiede che il
+        TournamentPlayer esista gia' (e non sia droppato). Richiamabile piu'
+        volte finche' il torneo resta in REGISTRATION: l'ultimo invio valido
+        sovrascrive il precedente."""
+        async with self._repos() as (session, trepo, tprepo, _, urepo):
+            tournament = await trepo.get_by_id(tournament_id)
+            if tournament is None:
+                return "Torneo non trovato."
+            if tournament.status != TournamentStatus.REGISTRATION:
+                return "Il torneo non accetta piu' invii di mazzo."
+
+            user = await urepo.get_by_discord_id(discord_id)
+            tp = (
+                await tprepo.get_by_tournament_and_user(tournament_id, user.id)
+                if user else None
+            )
+            if tp is None or tp.dropped:
+                return "Non sei iscritto a questo torneo: usa /iscriviti prima."
+
+            tp.deck_name = deck_name
+            session.add(tp)
+            await session.commit()
+            return f"Mazzo **{deck_name}** registrato per il torneo **{tournament.name}**."
 
     async def start_tournament(self, tournament_id: int) -> str:
-        session, trepo, tprepo, mrepo, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, mrepo, _):
             tournament = await trepo.get_with_players(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -134,6 +158,14 @@ class TournamentService:
             players = await tprepo.get_by_tournament(tournament_id)
             if len(players) < 2:
                 return "Servono almeno 2 giocatori per iniziare."
+
+            missing_deck = [p for p in players if p.deck_name is None]
+            if missing_deck:
+                names = ", ".join(self._resolve_name(p) for p in missing_deck)
+                return (
+                    f"Impossibile avviare: {len(missing_deck)} giocatore/i non hanno "
+                    f"ancora inviato un mazzo con /invia_deck ({names})."
+                )
 
             round_count = PairingEngine.calculate_rounds(len(players))
             tournament.round_count = round_count
@@ -164,40 +196,28 @@ class TournamentService:
             if bye_count:
                 msg += f"\n{bye_count} giocatore/i prendono il bye al primo turno."
             return msg
-        finally:
-            await session.close()
 
     async def get_latest_tournament(self) -> Tournament | None:
-        session, trepo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, _, _, _):
             tournaments = await trepo.list_all()
             if not tournaments:
                 return None
             return max(tournaments, key=lambda t: t.id)
-        finally:
-            await session.close()
 
     async def find_tournament(self, identifier: str) -> Tournament | None:
-        session, trepo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, _, _, _):
             if identifier.isdigit():
                 return await trepo.get_by_id(int(identifier))
             return await trepo.find_by_name(identifier)
-        finally:
-            await session.close()
 
     async def get_tournament(self, tournament_id: int) -> Tournament | None:
-        session, trepo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, _, _, _):
             return await trepo.get_by_id(tournament_id)
-        finally:
-            await session.close()
 
     async def is_player_registered(
         self, tournament_id: int, discord_id: int
     ) -> bool:
-        session, _, tprepo, _, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, _, tprepo, _, urepo):
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
                 return False
@@ -205,28 +225,22 @@ class TournamentService:
                 tournament_id, user.id
             )
             return existing is not None and not existing.dropped
-        finally:
-            await session.close()
 
     async def get_registered_players(
         self, tournament_id: int
     ) -> list[TournamentPlayer]:
-        session, _, tprepo, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, _, tprepo, _, _):
             return await tprepo.get_by_tournament(tournament_id)
-        finally:
-            await session.close()
 
     async def unregister_player(
         self, tournament_id: int, discord_id: int
     ) -> str:
-        session, trepo, tprepo, _, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
             if tournament.status != TournamentStatus.REGISTRATION:
-                return "Non puoi uscire da un torneo gi\u00e0 iniziato o completato."
+                return "Non puoi uscire da un torneo già iniziato o completato."
 
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
@@ -240,14 +254,11 @@ class TournamentService:
             session.add(tp)
             await session.commit()
             return f"Sei uscito dal torneo **{tournament.name}**."
-        finally:
-            await session.close()
 
     async def force_drop_player(
         self, tournament_id: int, discord_id: int
     ) -> str:
-        session, trepo, tprepo, mrepo, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, mrepo, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -293,12 +304,9 @@ class TournamentService:
                 f"Giocatore **{player_name}** rimosso dal torneo "
                 f"**{tournament.name}**."
             )
-        finally:
-            await session.close()
 
     async def force_conclude_tournament(self, tournament_id: int) -> str:
-        session, trepo, _, _, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, _, _, _):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -313,14 +321,11 @@ class TournamentService:
             await self._update_ratings(tournament_id)
 
             return f"Torneo **{tournament.name}** concluso forzatamente."
-        finally:
-            await session.close()
 
     async def find_pending_match_for_user(
         self, tournament_id: int, discord_id: int
     ) -> Match | None:
-        session, _, tprepo, mrepo, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, _, tprepo, mrepo, urepo):
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
                 return None
@@ -342,8 +347,6 @@ class TournamentService:
                 ):
                     return m
             return None
-        finally:
-            await session.close()
 
     async def submit_result(
         self,
@@ -353,8 +356,7 @@ class TournamentService:
         p1_game_wins: int | None = None,
         p2_game_wins: int | None = None,
     ) -> str:
-        session, _, _, mrepo, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, _, _, mrepo, _):
             match = await mrepo.get_by_id(match_id)
             if match is None:
                 return "Partita non trovata."
@@ -384,12 +386,9 @@ class TournamentService:
             session.add(match)
             await session.commit()
             return "Risultato registrato!"
-        finally:
-            await session.close()
 
     async def _update_ratings(self, tournament_id: int):
-        session, _, tprepo, mrepo, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, _, tprepo, mrepo, urepo):
             tournament = await session.get(Tournament, tournament_id)
             if tournament is None:
                 return
@@ -397,12 +396,11 @@ class TournamentService:
             players = await tprepo.get_by_tournament(tournament_id)
             matches = await mrepo.get_by_tournament(tournament_id)
 
+            user_ids = {tp.user_id for tp in players if tp.user_id}
             user_map: dict[int, User] = {}
-            for tp in players:
-                if tp.user_id:
-                    user = await session.get(User, tp.user_id)
-                    if user:
-                        user_map[tp.user_id] = user
+            if user_ids:
+                result = await session.execute(select(User).where(User.id.in_(user_ids)))
+                user_map = {u.id: u for u in result.scalars()}
 
             for m in matches:
                 if m.player2_id is None or m.result is None:
@@ -446,12 +444,9 @@ class TournamentService:
                 u2.last_rated_at = datetime.now()
 
             await session.commit()
-        finally:
-            await session.close()
 
     async def generate_next_round(self, tournament_id: int) -> str:
-        session, trepo, tprepo, mrepo, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, mrepo, _):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -504,14 +499,11 @@ class TournamentService:
                 f"Round {next_round} generato! "
                 f"{len(pairings)} incontri."
             )
-        finally:
-            await session.close()
 
     async def get_standings(
         self, tournament_id: int
     ) -> list[StandingsEntry] | str:
-        session, trepo, tprepo, mrepo, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, trepo, tprepo, mrepo, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
@@ -536,26 +528,17 @@ class TournamentService:
                 tournament_id, players, matches, get_name, get_deck
             )
             return entries
-        finally:
-            await session.close()
 
     async def get_current_round(self, tournament_id: int) -> int:
-        session, _, _, mrepo, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, _, _, mrepo, _):
             return await mrepo.get_current_round(tournament_id)
-        finally:
-            await session.close()
 
     async def get_matches(self, tournament_id: int) -> list[Match]:
-        session, _, _, mrepo, _ = self._get_repos()
-        try:
+        async with self._repos() as (session, _, _, mrepo, _):
             return await mrepo.get_by_tournament(tournament_id)
-        finally:
-            await session.close()
 
     async def get_leaderboard(self, limit: int = 50) -> list[dict]:
-        session, _, _, _, urepo = self._get_repos()
-        try:
+        async with self._repos() as (session, _, _, _, urepo):
             users = await urepo.get_leaderboard(limit)
             result = []
             for u in users:
@@ -572,5 +555,3 @@ class TournamentService:
                     "lb_rating": round(lb_rating, 1),
                 })
             return result
-        finally:
-            await session.close()

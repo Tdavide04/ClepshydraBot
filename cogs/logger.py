@@ -1,4 +1,4 @@
-import discord, os
+import discord
 from discord.ext import commands
 from datetime import datetime
 
@@ -24,8 +24,10 @@ class Logger(commands.Cog):
             log_channel = await self.bot.fetch_channel(self.log_channel_id)
             
             description = ""
-            if user: description += f"**User:** {user.mention} ({user.name})\n"
-            if channel: description += f"**Channel:** {channel.mention if hasattr(channel, 'mention') else channel}\n"
+            if user:
+                description += f"**User:** {user.mention} ({user.name})\n"
+            if channel:
+                description += f"**Channel:** {channel.mention if hasattr(channel, 'mention') else channel}\n"
             if info:
                 if info.strip().startswith("**"):
                     description += f"{info}\n"

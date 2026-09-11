@@ -19,10 +19,26 @@ ClepshydraBot utilizza **SQLite** come database relazionale, gestito tramite **S
 All'avvio, `init_db()` esegue in ordine:
 
 1. **`_migrate_banlist()`** — importa `cards.txt` in `banned_cards` se il DB è vuoto
-2. **`_migrate_schema()`** — aggiunge colonne mancanti via `ALTER TABLE`:
+2. **`_migrate_schema()`** — aggiunge le colonne mancanti elencate in `_SCHEMA_MIGRATIONS`
+   (tabella, colonna, DDL):
    - `tournament_players.deck_name`
    - `matches.p1_game_wins`, `matches.p2_game_wins`
-   - `users.rating_deviation`, `users.rating_volatility`, `users.rating_matches`, `users.last_rated_at`
+   - `users.rating`, `users.rating_deviation`, `users.rating_volatility`, `users.rating_matches`,
+     `users.last_rated_at`
+
+   Per ogni voce, verifica esplicitamente se la colonna esiste già via `PRAGMA table_info(<tabella>)`
+   prima di eseguire l'`ALTER TABLE` — non si affida più a un `try/except Exception: pass` generico che
+   avrebbe nascosto anche errori reali (permessi, disco pieno, colonna con tipo incompatibile). Se
+   l'`ALTER TABLE` fallisce per un motivo diverso da "colonna già esistente" (che ora non può più
+   verificarsi, essendo controllato a monte), l'errore viene stampato su stdout con prefisso `ERRORE
+   migrazione:` invece di essere ignorato silenziosamente — l'avvio del bot non si interrompe comunque,
+   per non bloccare l'intero servizio per una singola colonna non applicata.
+
+   Per aggiungere una nuova migrazione in futuro, basta aggiungere una tupla `(tabella, colonna, ddl)` a
+   `_SCHEMA_MIGRATIONS` in `database/engine.py` — non serve toccare `_migrate_schema()`.
+3. **`load_cache()`** (`utils/card_cache.py`) — carica la cache carte Scryfall dalla tabella
+   `cached_cards` in memoria; se la tabella è vuota e `data/card_cache.json` esiste ancora, la migra una
+   tantum. Vedi `docs/caching.md` per il dettaglio.
 
 ---
 
@@ -101,6 +117,21 @@ Relazioni: `tournament` → Tournament, `player1/2` → TournamentPlayer
 | `format` | String(50) | DEFAULT 'Artisan' | Formato |
 | `created_at` | DateTime | DEFAULT now | |
 
+### Tabella: `cached_cards`
+
+Cache persistente delle carte Scryfall (dati grezzi + legalità Artisan). Migrata da
+`data/card_cache.json` a SQLite nel Settembre 2026 (Step 4 di `docs/roadmap-miglioramenti.md`) — vedi
+`docs/caching.md` per il dettaglio del funzionamento (load/save incrementali, TTL, migrazione legacy).
+
+| Colonna | Tipo | Vincoli | Descrizione |
+|---|---|---|---|
+| `card_name` | String(200) | PK | Nome carta, lowercase |
+| `data` | Text | NOT NULL | Dizionario Scryfall completo, serializzato JSON (dati base + `artisan_legal` + `artisan_legal_checked_at`) |
+
+Nessuna relazione ORM: gestita direttamente da `utils/card_cache.py`, non da un repository dedicato (la
+cache ha un pattern di accesso — dizionario in memoria con dirty-tracking — diverso dagli altri
+repository CRUD-oriented).
+
 ### Enums
 
 ```python
@@ -173,3 +204,13 @@ Repository generico con CRUD base:
 | `remove_card(card_name)` | Rimuovi per nome esatto |
 | `count()` | Conteggio banlist |
 | `import_from_file(path)` | Bulk import da txt (solo se DB vuoto) |
+
+---
+
+## Testing
+
+`tests/tournament/test_tournament_service.py` esercita l'intero stack DB (engine, sessioni, repository, migrazioni) contro un file SQLite temporaneo, isolato per ogni test:
+
+1. Fixture `isolated_db` (`tmp_path` + `monkeypatch`) punta `database.engine.DB_PATH` a un file temporaneo e azzera i globali `_engine`/`_async_session_maker`.
+2. Ogni test esegue `init_db()` → logica → `close_db()` in un **unico** `asyncio.run()`: `aiosqlite` lega le connessioni al loop che le ha create, quindi non si possono distribuire setup/uso/teardown su piu' event loop separati.
+3. Non ci sono mock: le query SQLAlchemy girano davvero contro SQLite, comprese le migrazioni `ALTER TABLE` di `_migrate_schema()`.

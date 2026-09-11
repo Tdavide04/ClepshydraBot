@@ -1,9 +1,9 @@
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from database.models import (
     Tournament, TournamentPlayer, Match,
-    TournamentStatus, MatchResult,
+    TournamentStatus,
 )
 from repositories.base import BaseRepository
 
@@ -55,7 +55,7 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
         result = await self.session.execute(
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
-            .where(TournamentPlayer.dropped == False)
+            .where(TournamentPlayer.dropped.is_(False))
             .options(joinedload(TournamentPlayer.user))
             .order_by(TournamentPlayer.seed)
         )
@@ -75,7 +75,7 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
         result = await self.session.execute(
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
-            .where(TournamentPlayer.dropped == False)
+            .where(TournamentPlayer.dropped.is_(False))
         )
         return len(result.all())
 

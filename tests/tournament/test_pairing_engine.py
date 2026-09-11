@@ -1,6 +1,5 @@
-import pytest
 from dataclasses import dataclass
-from services.pairing_engine import PairingEngine, PlayerStanding, Pairing
+from services.pairing_engine import PairingEngine
 
 
 @dataclass

@@ -1,0 +1,29 @@
+# Git
+.git
+.github
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.venv
+venv
+env
+*.egg-info
+build
+dist
+
+# Secrets / runtime data — mai nell'immagine, solo a runtime via volume/env_file
+.env
+data
+
+# Non necessari a runtime
+tests
+docs
+legacy
+deploy
+.claude
+*.md
+LICENSE

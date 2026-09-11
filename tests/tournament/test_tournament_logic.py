@@ -1,4 +1,3 @@
-import pytest
 from utils.tournament_logic import (
     omw_bar,
     rank_label,

@@ -3,9 +3,6 @@ from services.rating import (
     Rating,
     rate_1vs1,
     rate_draw,
-    RATING_INITIAL,
-    RD_INITIAL,
-    VOLATILITY_INITIAL,
     RATING_FLOOR,
 )
 

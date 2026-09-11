@@ -5,7 +5,12 @@ import aiohttp
 import urllib.parse
 
 from utils.arena_overrides import get_override_rarity
-from utils.card_cache import load_cache, get_cached_card, set_cached_card
+from utils.card_cache import (
+    get_cached_card,
+    set_cached_card,
+    is_artisan_legal_stale,
+    mark_artisan_legal,
+)
 from utils.deck_image_generator import DeckImageGenerator
 from cogs.deck_validation.models import DeckEntry, DeckValidationResult, ArtisanCard
 from cogs.deck_validation.validators import check_banlist
@@ -20,14 +25,47 @@ _MIN_REQUEST_INTERVAL = 0.11
 _SCRYFALL_SEMAPHORE = asyncio.Semaphore(1)
 _ARENA_LEGAL_CACHE: dict[str, bool] = {}
 
+# Cache banlist condivisa a livello di modulo: il bot istanzia due ArtisanService
+# separate (tournament_system e deck_validation), che devono vedere la stessa
+# banlist, incluse le invalidazioni esplicite dopo add/remove. Un attributo
+# self._banlist per istanza (come in precedenza) lascia stale l'istanza non
+# usata dal comando che ha fatto la modifica.
+_banlist_cache: set[str] | None = None
+
+
+def invalidate_banlist_cache() -> None:
+    """Forza il ricaricamento della banlist dal DB alla prossima validazione."""
+    global _banlist_cache
+    _banlist_cache = None
+
+
+def _expand_double_faced(names: set[str]) -> set[str]:
+    """Aggiunge la sola meta' fronte per ogni carta double-faced ("fronte //
+    retro") gia' presente nel set.
+
+    cards.txt (e quindi banned_cards) salva le double-faced col nome completo,
+    ma parse_decklist() tronca al fronte quando legge il deck dell'utente
+    (mimando il formato di export di MTG Arena) — senza questa espansione,
+    check_banlist() (confronto esatto su set) non fa mai match per queste
+    carte, che quindi non vengono mai catturate come bandite.
+
+    Usata solo per costruire la cache di ArtisanService._load_banlist(), NON
+    dentro BanlistRepository.get_all_for_format(): quel metodo alimenta anche
+    /banlist (comando pubblico), che deve elencare solo le carte davvero
+    salvate nel DB, non varianti sintetiche derivate.
+    """
+    expanded = set(names)
+    for name in names:
+        if " // " in name:
+            expanded.add(name.split(" // ")[0].strip())
+    return expanded
+
 
 class ArtisanService:
 
     def __init__(self, bot=None):
         self.bot = bot
         self._logger = None
-        self._banlist: set[str] = set()
-        load_cache()
 
     def _get_logger(self):
         if self._logger is None and self.bot:
@@ -35,15 +73,27 @@ class ArtisanService:
         return self._logger
 
     async def _load_banlist(self) -> set[str]:
+        global _banlist_cache
         session = get_session()
         if session is None:
-            return set()
+            return _banlist_cache or set()
         try:
             repo = BanlistRepository(session)
-            self._banlist = await repo.get_all_for_format()
-            return self._banlist
+            raw = await repo.get_all_for_format()
+            _banlist_cache = _expand_double_faced(raw)
+            return _banlist_cache
         finally:
             await session.close()
+
+    async def reload_banlist(self) -> set[str]:
+        """Invalida la cache di modulo e ricarica subito la banlist dal DB.
+
+        Chiamata da /banlist_aggiungi e /banlist_rimuovi: essendo la cache
+        condivisa a livello di modulo, l'effetto e' visibile immediatamente
+        anche dall'altra istanza di ArtisanService (cogs/deck_validation).
+        """
+        invalidate_banlist_cache()
+        return await self._load_banlist()
 
     async def validate_deck(
         self,
@@ -51,10 +101,10 @@ class ArtisanService:
         deck_name: str,
         total_cards: int,
     ) -> DeckValidationResult:
-        if not self._banlist:
+        if _banlist_cache is None:
             await self._load_banlist()
 
-        banned = check_banlist(entries, self._banlist)
+        banned = check_banlist(entries, _banlist_cache or set())
         if banned:
             return DeckValidationResult(
                 deck_name=deck_name,
@@ -275,7 +325,8 @@ class ArtisanService:
 
         cached_entry = get_cached_card(card_name)
         if cached_entry is not None and "artisan_legal" in cached_entry:
-            if cached_entry["artisan_legal"] or card_name.startswith("A-"):
+            fresh = not is_artisan_legal_stale(cached_entry)
+            if fresh and (cached_entry["artisan_legal"] or card_name.startswith("A-")):
                 return cached_entry["artisan_legal"]
 
         oracle_id = card_data.get("oracle_id", "")
@@ -304,8 +355,7 @@ class ArtisanService:
                 break
 
         if cached_entry is not None:
-            cached_entry["artisan_legal"] = legal
-            set_cached_card(card_name, cached_entry)
+            mark_artisan_legal(card_name, cached_entry, legal)
 
         if oracle_id:
             _ARENA_LEGAL_CACHE[oracle_id] = legal

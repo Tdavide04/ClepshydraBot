@@ -9,6 +9,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 - **Swiss Tournaments** — Full tournament lifecycle: registration, pairing, results, standings
 - **Deck Image Generator** — Dynamic PNG showcase with color-identity backgrounds
 - **Rarity Override System** — Automatic SPG card rarity correction via Scryfall
+- **Arena Event Schedule Monitor** — Detects new/updated MTG Arena "Event Schedule" pages (Quick Draft rotation, Arena Direct, etc.) and posts a summary to Discord
 - **Centralized Logging** — All events logged to a Discord channel with colored embeds
 
 ## Commands
@@ -20,11 +21,13 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 | `/torneo crea` | Create tournament | Admin |
 | `/torneo avvia` | Start tournament | Admin |
 | `/torneo prossimo_turno` | Generate next round | Admin |
-| `/iscriviti` | Register for tournament | All |
+| `/iscriviti` | Register for tournament (deck sent separately) | All |
+| `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
 | `/risultato` | Submit match result | All |
 | `/classifica` | View standings | All |
 | `/turni` | View current pairings | All |
-| `/update_spg_overrides` | Update rarity overrides | Admin |
+| `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
+| `/forced_event_schedule_check` | Force an immediate check of Arena "Event Schedule" pages (also runs automatically every day) | Admin |
 
 ## Tech Stack
 
@@ -72,7 +75,8 @@ ClepsydraBot/
 │   ├── tournament/          # Artisan deck validation
 │   ├── tournament_system/   # Swiss tournament management
 │   ├── logger.py            # Centralized logging
-│   └── spg_override_updater.py
+│   ├── spg_override_updater.py
+│   └── arena_event_schedule_updater.py
 ├── services/                # Business logic
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
@@ -112,6 +116,19 @@ python main.py
 - Python 3.12+
 - Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
 - Discord server with appropriate intents enabled (Member, Message Content)
+
+### Docker (alternative)
+
+```bash
+cp .env.example .env
+# Edit .env with your Discord token and channel IDs
+docker compose up -d --build
+docker compose logs -f bot
+```
+
+Data (SQLite DB, card cache) persists in a named Docker volume across restarts. See
+`docs/infrastruttura.md` for details — production currently runs via `pm2`, not Docker, but the image is
+validated and ready to use.
 
 ## Development
 

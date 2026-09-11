@@ -80,8 +80,8 @@ class BannedCard(Base):
 ### 5. Validazione Deck — `cogs/deck_validation/service.py:48-65`
 
 `ArtisanService.validate_deck()`:
-1. Alla prima chiamata, carica la banlist in memoria via `_load_banlist()` → `BanlistRepository.get_all_for_format()`
-2. Chiama `check_banlist(entries, self._banlist)` (da `cogs/deck_validation/validators.py:72-79`)
+1. Alla prima chiamata, carica la banlist nella cache di modulo `_banlist_cache` via `_load_banlist()` → `BanlistRepository.get_all_for_format()`, poi espande le carte double-faced con `_expand_double_faced()` (aggiunge la sola metà fronte accanto al nome completo — vedi "Problemi Noti" punto 1)
+2. Chiama `check_banlist(entries, _banlist_cache)` (da `cogs/deck_validation/validators.py:72-79`)
 3. Se trova carte bandite, restituisce subito `DeckValidationResult(banned_cards=[...])` → deck **invalido**
 4. Se nessuna carta bandita, prosegue con la validazione rarità (API Scryfall)
 
@@ -128,7 +128,15 @@ Se il deck ha carte bandite, l'embed mostra:
 
 ### 10. Caching
 
-La banlist non ha un caching esplicito oltre al campo `self._banlist: set[str]` in `ArtisanService`. Viene caricata dal DB alla prima validazione e tenuta in memoria per l'intera vita dell'istanza.
+La banlist è cacheata in memoria nella variabile di modulo `_banlist_cache: set[str] | None` in
+`cogs/deck_validation/service.py`, condivisa da tutte le istanze di `ArtisanService`. Viene caricata dal
+DB alla prima validazione (o dopo un'invalidazione) e tenuta in memoria finché non viene invalidata.
+
+Il metodo `ArtisanService.reload_banlist()` forza il refresh: viene chiamato da `/banlist_aggiungi` e
+`/banlist_rimuovi` subito dopo la scrittura sul DB. Essendo la cache condivisa a livello di modulo
+(invece che un attributo per istanza), l'invalidazione è visibile immediatamente da **entrambe** le
+istanze di `ArtisanService` che il bot crea (`tournament_system/cog.py` e `cogs/deck_validation/__init__.py`)
+— non solo da quella su cui viene chiamato il metodo.
 
 ---
 
@@ -202,10 +210,11 @@ Dopo aver superato il controllo banlist, ogni carta del deck viene verificata co
 | Funzione | Ruolo |
 |---|---|
 | `get_override_rarity(card_name)` | API pubblica: restituisce `"common"`/`"uncommon"` o `None` |
-| `update_spg_overrides(set_code="spg")` | Scansione Scryfall: trova carte stampate su Arena a rarità alta ma con versioni paper a rarità bassa |
+| `update_spg_overrides(set_code="spg")` | Scansiona solo le carte non ancora valutate del set: trova quelle stampate su Arena a rarità alta ma con versioni paper a rarità bassa. Incrementale (vedi `checked_cards` sotto) — sicuro da chiamare ripetutamente |
+| `periodic_spg_refresh_loop(bot)` | Task avviato da `main.py`: chiama `update_spg_overrides()` ogni 7 giorni senza intervento admin |
 | `invalidate_override_cache()` | Forza il ricaricamento del JSON al prossimo accesso |
 
-**Caching**: Il JSON viene caricato una volta in `_override_cache` (variabile globale) e tenuto in memoria. `_save_override_data()` aggiorna sia il file su disco che la cache.
+**Caching**: Il JSON viene caricato una volta in `_override_cache` (variabile globale) e tenuto in memoria. `_save_override_data()` aggiorna sia il file su disco che la cache. `_update_lock` evita scritture concorrenti tra il task automatico e `/forced_rarity_refresh` (admin, invocazione manuale).
 
 **Utilizzo nel flusso** (`_is_arena_artisan_legal()` in `service.py:266-312`):
 1. Chiama `get_override_rarity(card_name)`
@@ -218,25 +227,30 @@ Dopo aver superato il controllo banlist, ogni carta del deck viene verificata co
 
 ```json
 {
-    "processed_sets": ["SPG"],
     "overrides": {
         "Swords to Plowshares": "uncommon",
         "Lightning Bolt": "common",
         "Sylvan Library": "uncommon",
         ...
+    },
+    "checked_cards": {
+        "SPG": ["Swords to Plowshares", "Lightning Bolt", "Sylvan Library", "..."]
     }
 }
 ```
 
 | Campo | Descrizione |
 |---|---|
-| `processed_sets` | Set già scansionati da `update_spg_overrides()`. Un set presente qui non verrà riscansionato. |
 | `overrides` | Dizionario `nome_carta → rarità_forzata`. Contiene attualmente ~40 carte del set SPG (Special Guest). |
+| `checked_cards` | Per ogni set code, **ogni** carta già valutata — con o senza override aggiunto. Una nuova scansione salta solo le carte già qui, non l'intero set. |
 
-**Attenzione**: Se all'avvio il JSON contiene già `"SPG"` in `processed_sets`, `update_spg_overrides()` salterà la scansione. Per forzare una nuova scansione:
-1. Chiamare `invalidate_override_cache()`
-2. Rimuovere `"SPG"` da `processed_sets` nel JSON
-3. Eseguire `update_spg_overrides()`
+**Storia (Settembre 2026)**: fino a questo cambio il campo era `processed_sets: ["SPG"]` — un flag "tutto il
+set fatto per sempre", sbagliato perché Scryfall usa un unico set code `SPG` che cresce nel tempo (nuove
+Special Guests con quasi ogni set principale). Dopo la prima scansione riuscita, ogni run successivo
+diventava un no-op permanente, senza modo di sbloccarlo se non editando il JSON a mano — bug confermato in
+produzione (`processed_sets: ["SPG"]` già presente nel file del repo). Risolto passando al tracking
+per-carta (`checked_cards`); un file nel vecchio formato non blocca più nulla, viene semplicemente
+ri-scansionato una volta per intero.
 
 ---
 
@@ -327,9 +341,13 @@ Utente invia deck
 
 ## Problemi Noti / Potenziali
 
-1. **Double-faced cards**: La banlist in `cards.txt` include già il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`). Il `check_banlist()` si basa sul nome così come viene parsato dal deck — a sua volta, `parse_decklist()` tronca al ` // ` e prende solo il fronte. **Se un utente scrive il nome completo nel deck, il confronto potrebbe fallire** e la carta bannata passare inosservata.
+1. ~~**Double-faced cards**: la banlist in `cards.txt`/`banned_cards` salva il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`), ma `parse_decklist()` tronca sempre al fronte quando legge il deck dell'utente (mimando il formato di export di MTG Arena) — non solo "se l'utente scrive il nome completo": il confronto falliva **sempre** per queste carte, indipendentemente da cosa scrivesse l'utente, perché `check_banlist()` confrontava un nome tronco contro un nome completo mai presente nel set.~~
+   **Risolto**: `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) espande la banlist con
+   `_expand_double_faced()` — per ogni entry contenente ` // `, aggiunge anche la sola metà fronte al set
+   usato da `check_banlist()`. Applicato **solo** alla cache di validazione, non a
+   `BanlistRepository.get_all_for_format()`: quel metodo alimenta anche `/banlist` (comando pubblico), che
+   deve elencare solo le carte davvero salvate nel DB, non varianti sintetiche.
 
-2. **Aggiornamento live**: Se un admin aggiunge/rimuove una carta via slash command, il `self._banlist` in `ArtisanService` non viene invalidato. La nuova carta non sarà considerata fino al prossimo riavvio del bot (o finché `_load_banlist()` non viene richiamato).  
-   **Fix suggerito**: Dopo `add_card`/`remove_card`, fare `self._banlist = await repo.get_all_for_format()` nel service.
+2. ~~**Aggiornamento live**: il `self._banlist` in `ArtisanService` non veniva invalidato dopo add/remove via slash command.~~ **Risolto**: `/banlist_aggiungi` e `/banlist_rimuovi` chiamano `ArtisanService.reload_banlist()` subito dopo la scrittura sul DB (vedi `cogs/tournament_system/cog.py`). La cache è a livello di modulo (`_banlist_cache`), quindi l'invalidazione copre anche la seconda istanza di `ArtisanService` usata da `cogs/deck_validation/__init__.py` — un primo tentativo di fix con cache per istanza avrebbe lasciato quella seconda istanza stale.
 
 3. **Case sensitivity**: Tutto è normalizzato in lowercase, quindi non ci sono problemi.

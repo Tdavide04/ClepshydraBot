@@ -153,11 +153,16 @@ class PresentationCog(commands.Cog):
             else:
                 has_file = True
 
-        if has_gif: types.add("GIF")
-        if has_image: types.add("Immagine")
-        if has_video: types.add("Video")
-        if has_audio: types.add("Audio")
-        if has_file: types.add("File")
+        if has_gif:
+            types.add("GIF")
+        if has_image:
+            types.add("Immagine")
+        if has_video:
+            types.add("Video")
+        if has_audio:
+            types.add("Audio")
+        if has_file:
+            types.add("File")
 
         if message.stickers:
             types.add("Sticker")

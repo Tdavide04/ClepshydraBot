@@ -62,16 +62,33 @@ Caricate da `.env` tramite `python-dotenv`:
 
 ## Deployment
 
-### Avvio Manuale (attuale)
+### Avvio con pm2 (attuale)
 
 ```bash
 source .venv/bin/activate
-python main.py
+pm2 start main.py --name clepshydrabot --interpreter .venv/bin/python
 ```
 
-Processo gestito via `screen` o `tmux`.
+`pm2` gestisce il processo e lo riavvia automaticamente in caso di crash. Comandi utili:
 
-### Avvio con systemd (consigliato)
+```bash
+pm2 status              # stato del processo
+pm2 logs clepshydrabot  # log in tempo reale
+pm2 restart clepshydrabot
+pm2 save                # persiste la process list
+pm2 startup             # riavvia pm2 (e i processi salvati) al boot della VM
+```
+
+`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e
+stampa un errore esplicito su stderr — visibile in `pm2 logs clepshydrabot`. Da notare: se il token è
+genuinamente scaduto/invalido, `pm2` riavvierà comunque il processo (`Restart=on-failure`-style), che
+fallirà di nuovo allo stesso modo finché non si aggiorna manualmente il token — il riavvio automatico
+non "risolve" un problema di credenziali, dà solo visibilità continua nei log.
+
+### Avvio con systemd (alternativa non in uso)
+
+Il unit file e' disponibile in `deploy/clepshydrabot.service` (da copiare in `/etc/systemd/system/`),
+mantenuto come alternativa nel repository ma non installato sulla VM di produzione (dove si usa `pm2`):
 
 ```
 [Unit]
@@ -91,6 +108,8 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
+Con systemd, lo stesso comportamento di `main.py` (uscita non-zero su errori di startup) sarebbe visibile in `journalctl -u clepshydrabot` invece che in `pm2 logs`.
+
 ---
 
 ## Dipendenze (`requirements.txt`)
@@ -104,13 +123,21 @@ sqlalchemy[asyncio]
 aiosqlite
 ```
 
-Installazione:
+Installazione (produzione):
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Installazione (sviluppo, aggiunge `pytest` e `ruff`):
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+`pytest.ini` (`pythonpath = .`) aggiunge esplicitamente la root del repo a `sys.path`: senza, l'invocazione nuda `pytest tests/` (usata dalla CI, a differenza di `python -m pytest` che aggiunge la cwd automaticamente) fallisce con `ModuleNotFoundError` sui moduli di primo livello (`services`, `database`, `utils`), perché non esiste un `tests/__init__.py` a catena fino alla root.
 
 ---
 
@@ -129,32 +156,42 @@ Tutti gli eventi vengono loggati su un canale Discord dedicato tramite embed:
 
 ### Log su Console
 
-Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH.
+Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I fallimenti di avvio (token invalido, eccezioni non gestite in `setup_hook`) vengono sempre scritti su stderr con prefisso `FATAL:`, anche quando il canale Discord di log non e' raggiungibile.
 
 ---
 
 ## Roadmap Infrastrutturale
 
-### Sprint 7 — Docker (da fare)
+### Sprint 7 — Docker (completato)
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["python", "main.py"]
+`Dockerfile` multi-stage: uno stage `builder` installa le dipendenze in un venv isolato
+(`/opt/venv`), lo stage finale copia solo il venv già pronto + il codice applicativo, gira come utente
+non-root (`clepshydra`, uid 1000). `.dockerignore` esclude `.git`, `data/` (mai bakato nell'immagine —
+contiene solo dati runtime/cache, ricreato a ogni avvio dal volume), `.env` (mai nell'immagine, iniettato
+a runtime), test/docs/legacy.
+
+`docker-compose.yml`:
+- `restart: unless-stopped`
+- `env_file: .env` (letto dall'host all'avvio, non copiato nell'immagine)
+- volume Docker nominato `clepshydra-data` montato su `/app/data` — persiste tra i riavvii del container
+
+```bash
+docker compose up -d --build   # build + avvio
+docker compose logs -f bot     # log in tempo reale
+docker compose down            # ferma (il volume dati resta)
 ```
 
-`docker-compose.yml` con:
-- Volume persistente per `data/`
-- `restart: unless-stopped`
-- Bind mount per `.env`
+Questa è un'opzione di deployment **aggiuntiva**, non sostituisce `pm2` (sezione "Deployment" sopra),
+che resta il metodo effettivamente in uso in produzione finché non si decide di migrare.
 
-### Sprint 8 — CI/CD (da fare)
+### Sprint 8 — CI/CD (completato)
 
-GitHub Actions:
-- `ruff` lint su ogni push
-- `pytest` su ogni push e PR
-- `build` check Docker
+`.github/workflows/ci.yml`, attivo su push/PR:
+- `pytest` su ogni push e PR — **gate bloccante**
+- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`, `legacy/` escluso — vedi CLAUDE.md "Legacy code") —
+  **gate bloccante**: il debito di lint pre-esistente (~54 problemi) è stato sanato nello Step 8 di
+  `docs/roadmap-miglioramenti.md`
+
+Ancora da fare:
+- `build` check Docker in CI (verifica che l'immagine si costruisca ad ogni push, senza deploy)
 - Deploy automatico su OCI via SSH/deploy key
