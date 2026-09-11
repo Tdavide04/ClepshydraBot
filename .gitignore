@@ -28,6 +28,12 @@ Thumbs.db
 # SQLite
 *.db
 
+# Cache carte Scryfall: dalla migrazione a SQLite (Step 4 roadmap-miglioramenti.md)
+# vive nel DB, non serve piu' tracciare il JSON legacy. Puo' restare su disco
+# come backup locale/fallback di migrazione: non viene piu' letto ne' scritto
+# dal bot una volta popolata la tabella cached_cards.
+data/card_cache.json
+
 # Coverage
 .coverage
 htmlcov/

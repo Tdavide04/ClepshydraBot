@@ -36,6 +36,9 @@ All'avvio, `init_db()` esegue in ordine:
 
    Per aggiungere una nuova migrazione in futuro, basta aggiungere una tupla `(tabella, colonna, ddl)` a
    `_SCHEMA_MIGRATIONS` in `database/engine.py` — non serve toccare `_migrate_schema()`.
+3. **`load_cache()`** (`utils/card_cache.py`) — carica la cache carte Scryfall dalla tabella
+   `cached_cards` in memoria; se la tabella è vuota e `data/card_cache.json` esiste ancora, la migra una
+   tantum. Vedi `docs/caching.md` per il dettaglio.
 
 ---
 
@@ -113,6 +116,21 @@ Relazioni: `tournament` → Tournament, `player1/2` → TournamentPlayer
 | `card_name` | String(200) | UNIQUE, NOT NULL, INDEX | Nome carta |
 | `format` | String(50) | DEFAULT 'Artisan' | Formato |
 | `created_at` | DateTime | DEFAULT now | |
+
+### Tabella: `cached_cards`
+
+Cache persistente delle carte Scryfall (dati grezzi + legalità Artisan). Migrata da
+`data/card_cache.json` a SQLite nel Settembre 2026 (Step 4 di `docs/roadmap-miglioramenti.md`) — vedi
+`docs/caching.md` per il dettaglio del funzionamento (load/save incrementali, TTL, migrazione legacy).
+
+| Colonna | Tipo | Vincoli | Descrizione |
+|---|---|---|---|
+| `card_name` | String(200) | PK | Nome carta, lowercase |
+| `data` | Text | NOT NULL | Dizionario Scryfall completo, serializzato JSON (dati base + `artisan_legal` + `artisan_legal_checked_at`) |
+
+Nessuna relazione ORM: gestita direttamente da `utils/card_cache.py`, non da un repository dedicato (la
+cache ha un pattern di accesso — dizionario in memoria con dirty-tracking — diverso dagli altri
+repository CRUD-oriented).
 
 ### Enums
 

@@ -6,7 +6,6 @@ import urllib.parse
 
 from utils.arena_overrides import get_override_rarity
 from utils.card_cache import (
-    load_cache,
     get_cached_card,
     set_cached_card,
     is_artisan_legal_stale,
@@ -45,7 +44,6 @@ class ArtisanService:
     def __init__(self, bot=None):
         self.bot = bot
         self._logger = None
-        load_cache()
 
     def _get_logger(self):
         if self._logger is None and self.bot:

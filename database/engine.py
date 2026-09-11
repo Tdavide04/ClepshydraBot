@@ -46,6 +46,9 @@ async def init_db():
     await _migrate_banlist()
     await _migrate_schema()
 
+    from utils.card_cache import load_cache
+    await load_cache()
+
 
 async def _migrate_banlist():
     if not os.path.exists(BANLIST_FILE):

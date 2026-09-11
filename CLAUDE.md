@@ -47,13 +47,22 @@ directory stays runnable in isolation) that `services/__init__.py` needs at impo
 imports `TournamentService`, which requires `config.config` to be populated) — any test importing even a
 pure-logic module like `services.pairing_engine` transitively needs these, and so does anything importing
 `cogs.deck_validation.service` (it imports `database`, which imports `database.engine` → `config.config`).
-Suite: 93 tests total, no `pytest-asyncio` — async integration tests
-(`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`) instead
-wrap each scenario in a single `asyncio.run()` call, since aiosqlite connections are bound to the event
-loop that created them. `ArtisanService` tests mock `_post_with_retry`/`_get_with_retry` (swap them for
-plain async functions on the instance) instead of touching `aiohttp.ClientSession` — no real network
-calls, and it doubles as a regression test for the module-level banlist cache (Step 1) and the
-`artisan_legal` TTL (Step 3).
+Note the env var seeding in a conftest.py must run **before** any application import in that same file —
+`database.engine`/`utils.card_cache`/`cogs.deck_validation.service` all transitively import
+`config.config` at module load time. Within `tests/deck_validation/`, `isolated_db` / `isolated_card_cache`
+/ `isolated_banlist_cache` fixtures live in `conftest.py` (shared across `test_artisan_service.py` and
+`test_card_cache.py`, unlike the env vars) and reset `utils.card_cache`'s module globals
+(`_card_cache`, `_loaded`, `_dirty_upserts`, `_dirty_deletes`) each test — required since Step 4 made
+`_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
+a fresh per-test temp DB.
+
+Suite: 101 tests total, no `pytest-asyncio` — async integration tests
+(`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
+`tests/deck_validation/test_card_cache.py`) instead wrap each scenario in a single `asyncio.run()` call,
+since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
+`_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
+touching `aiohttp.ClientSession` — no real network calls, and it doubles as a regression test for the
+module-level banlist cache (Step 1) and the `artisan_legal` TTL (Step 3).
 
 ## Architecture
 
@@ -115,8 +124,8 @@ assume systemd when writing deployment-related docs or scripts.
    `/banlist_aggiungi`/`/banlist_rimuovi` call `ArtisanService.reload_banlist()`, which invalidates the
    shared module cache (`invalidate_banlist_cache()`) so both instances reload on the next validation —
    no restart needed.
-3. Fetch card data from Scryfall (`POST /cards/collection`, batches of 75), checking
-   `card_cache.json` first.
+3. Fetch card data from Scryfall (`POST /cards/collection`, batches of 75), checking the SQLite-backed
+   cache (`cached_cards` table, loaded into the in-memory `_card_cache` dict at startup) first.
 4. Determine Artisan legality per card: SPG rarity override (`arena_overrides.py`) first, then the
    cached `artisan_legal` flag if not stale (`is_artisan_legal_stale()`, 30-day TTL via
    `artisan_legal_checked_at` — entries cached before the TTL existed count as stale), then a live
@@ -127,10 +136,14 @@ assume systemd when writing deployment-related docs or scripts.
 6. On success, generate a showcase PNG (`DeckImageGenerator`) and post embeds to the log/deck channels.
 
 Scryfall calls are serialized through an `asyncio.Semaphore(1)` with a ~110ms delay and exponential
-backoff retry on HTTP 429. Both caches (`data/card_cache.json`, `data/arena_rarity_data.json`) are
-written atomically (write to `.tmp`, then `os.replace()`) under an `asyncio.Lock()`. `data/card_cache.json`
-is tracked in git despite being a pure, ever-growing cache (2+ MB) — see
-`docs/roadmap-miglioramenti.md` Step 4 for the planned move to a SQLite-backed cache.
+backoff retry on HTTP 429. The card cache (`utils/card_cache.py`) persists to the `cached_cards` SQLite
+table with incremental UPSERT/DELETE (`save_cache()`, tracking dirty card names — not a full-table
+rewrite) every 60s via `periodic_save_loop()`; `load_cache()` is called once from
+`database/engine.py:init_db()`, not per `ArtisanService` instance. `data/card_cache.json` (the pre-Step-4
+format) is no longer read or written once the table is populated — it's migrated once automatically if
+found on an empty table, then left inert on disk (gitignored, no longer tracked). The rarity-override
+cache (`data/arena_rarity_data.json`, `utils/arena_overrides.py`) is unrelated and still file-backed with
+atomic `.tmp` + `os.replace()` writes — only the card cache moved to SQLite.
 
 ### Tournament lifecycle
 

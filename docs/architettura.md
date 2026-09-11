@@ -103,8 +103,8 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 │  │  • tournament_players│                                            │
 │  │  • matches          │  ┌──────────────────────┐                   │
 │  │  • banned_cards     │  │  Discord API          │                   │
-│  └─────────────────────┘  │  • Gateway WebSocket  │                   │
-│                            │  • REST API           │                   │
+│  │  • cached_cards     │  │  • Gateway WebSocket  │                   │
+│  └─────────────────────┘  │  • REST API           │                   │
 │                            └──────────────────────┘                   │
 └─────────────────────────────────────────────────────────────────────┘
 ```

@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.6.0 (2026-09-11)
+
+### Changed
+- Cache carte Scryfall (`utils/card_cache.py`): migrata da `data/card_cache.json` (riscritto per intero
+  ogni 60s anche per una sola carta modificata) a una tabella SQLite (`cached_cards`,
+  `database/models.py:CachedCard`) con scritture incrementali — `save_cache()` traccia i nomi carta
+  modificati/rimossi (`_dirty_upserts`/`_dirty_deletes`) e fa UPSERT/DELETE mirati invece di un dump
+  completo. `load_cache()` è ora `async` e chiamata una volta da `database/engine.py:init_db()` invece
+  che da ogni `ArtisanService.__init__()`. Le funzioni sul percorso caldo
+  (`get_cached_card`/`set_cached_card`) restano sincrone e operano sul dict in memoria come prima — nessun
+  cambiamento al codice di validazione deck oltre alla rimozione della chiamata a `load_cache()`
+  dall'`__init__`
+- Se la tabella `cached_cards` è vuota e `data/card_cache.json` esiste ancora, viene migrato
+  automaticamente una tantum al primo avvio dopo l'aggiornamento
+- `data/card_cache.json` non è più tracciato in git (`git rm --cached`, aggiunto a `.gitignore`): 2.2MB
+  già cresciuti per 8 commit senza alcun valore come storico versionato. Resta sul disco locale come file
+  inerte (non più letto né scritto dal bot una volta popolata la tabella)
+
+### Added
+- `tests/deck_validation/test_card_cache.py`: 8 test diretti su `utils/card_cache.py` (caricamento,
+  migrazione legacy, upsert/delete incrementali, no-op senza modifiche, reload dopo "riavvio" simulato).
+  Suite totale: 93 → 101 test
+
 ## 1.5.1 (2026-09-11)
 
 ### Added

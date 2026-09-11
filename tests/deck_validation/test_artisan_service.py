@@ -1,43 +1,14 @@
 import asyncio
 import urllib.parse
 
-import pytest
-
-import database.engine as db_engine
 import utils.card_cache as card_cache
 from cogs.deck_validation.models import DeckEntry
-from cogs.deck_validation.service import ArtisanService, invalidate_banlist_cache
+from cogs.deck_validation.service import ArtisanService
 from database import init_db, close_db, get_session
 from repositories.banlist_repository import BanlistRepository
 
-
-@pytest.fixture
-def isolated_db(tmp_path, monkeypatch):
-    """Ogni test riceve un DB SQLite temporaneo e isolato (stesso pattern di
-    tests/tournament/test_tournament_service.py)."""
-    monkeypatch.setattr(db_engine, "DB_PATH", str(tmp_path / "artisan_service_test.db"))
-    db_engine._engine = None
-    db_engine._async_session_maker = None
-    yield
-
-
-@pytest.fixture(autouse=True)
-def isolated_card_cache(tmp_path, monkeypatch):
-    """Evita di leggere/scrivere il card_cache.json reale del repository durante i test."""
-    monkeypatch.setattr(card_cache, "CACHE_PATH", str(tmp_path / "card_cache_test.json"))
-    monkeypatch.setattr(card_cache, "_card_cache", {})
-    monkeypatch.setattr(card_cache, "_dirty", False)
-    yield
-
-
-@pytest.fixture(autouse=True)
-def isolated_banlist_cache():
-    """_banlist_cache e' condivisa a livello di modulo (fix dello Step 1): senza
-    reset esplicito, il valore caricato da un test 'sopravviverebbe' al DB
-    temporaneo del test successivo."""
-    invalidate_banlist_cache()
-    yield
-    invalidate_banlist_cache()
+# isolated_db, isolated_card_cache, isolated_banlist_cache sono definite in
+# conftest.py (condivise con test_card_cache.py).
 
 
 def run_with_db(scenario):

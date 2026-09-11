@@ -167,7 +167,7 @@ stale (fail-open); `invalidate_card()` rimuove una entry esistente e ritorna `Fa
 
 ## Step 4 — Card cache: da JSON a tabella SQLite
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** `save_cache()` riscrive per intero `data/card_cache.json` ogni 60s se `_dirty`, anche per
 una sola carta modificata. La cache cresce senza pulizia (nessun limite di dimensione) — su una VM da
@@ -193,6 +193,34 @@ alcun valore storico) — da valutare se rimuoverlo dal tracking indipendentemen
 **Nota:** step a rischio più alto degli altri (tocca lo schema DB e un componente usato da ogni
 validazione deck) — farlo dopo lo Step 7 (test `ArtisanService`), non prima, per validarlo con test reali
 invece che a occhio.
+
+**Implementazione effettiva (design discusso prima di scrivere codice, vedi conversazione):** invece di
+rendere l'intera cache `async` (avrebbe richiesto propagare `await` in ~15 punti di
+`cogs/deck_validation/service.py`), solo il livello di persistenza è cambiato:
+- `get_cached_card()`/`set_cached_card()` restano **sincrone**, operano sul dict `_card_cache` in
+  memoria esattamente come prima — zero modifiche al percorso caldo di `validate_deck()`.
+- `save_cache()` traccia `_dirty_upserts`/`_dirty_deletes` (due `set[str]` di nomi carta) invece di un
+  flag booleano globale, e scrive su SQLite solo le entry cambiate (UPSERT/DELETE mirati), non l'intero
+  dizionario.
+- `load_cache()` è diventata `async` e si è spostata da "chiamata in `ArtisanService.__init__()`" (una
+  volta per istanza, quindi in teoria più volte per processo) a "chiamata una tantum in
+  `database/engine.py:init_db()`", accanto a `_migrate_banlist()`/`_migrate_schema()` — il caricamento
+  cache è un concern di avvio bot, non di istanza del service.
+- Migrazione una tantum: se `cached_cards` è vuota e `data/card_cache.json` esiste ancora, `load_cache()`
+  importa tutto in un'unica transazione.
+- `data/card_cache.json` rimosso dal tracking git (`git rm --cached`) e aggiunto a `.gitignore`; resta
+  sul disco locale come file inerte (non più letto né scritto dal bot una volta popolata la tabella).
+- `periodic_save_loop()` invariata nella forma (chiama ancora `save_cache()` ogni 60s), cambia solo cosa
+  fa `save_cache()` internamente.
+
+**Validazione:** `python -m pytest tests/ -v` — 101/101 verdi (93 → 101, +8 nuovi test diretti su
+`utils/card_cache.py` in `tests/deck_validation/test_card_cache.py`: caricamento a tabella vuota,
+migrazione legacy, upsert incrementale, no-op senza modifiche, update di una riga esistente,
+invalidazione con delete al salvataggio successivo, invalidazione di una entry mai persistita
+(nessun errore), reload dopo un "restart" simulato). In più, verifica manuale mirata contro il vero
+`data/card_cache.json` del repository (407 entry, 2.2MB, incluse carte double-faced): migrazione
+completa, dati identici byte-per-byte su un campione, nessuna riga duplicata su un secondo "riavvio"
+simulato — script temporaneo, rimosso dopo il check, non è nel repository.
 
 ---
 
@@ -327,7 +355,7 @@ eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run(
 
 ## Ordine consigliato
 
-Step 0 (fatto) → 1 (fatto) → 2 → 5 → 6 → 3 → 7 → 4 → 8 (chiusura lint) → 9.
+Step 0 → 1 → 2 → 5 → 6 → 3 → 7 → 4 (tutti fatti) → 8 (chiusura lint, da fare) → 9 (da fare).
 
 Motivazione: prima i fix di correttezza a basso rischio e isolati (2, 5), poi i refactor interni senza
 cambi di comportamento visibile (6) — entrambi appoggiati alla suite `test_tournament_service.py` già

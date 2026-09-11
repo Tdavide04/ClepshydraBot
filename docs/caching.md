@@ -29,8 +29,10 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
               ┌────────────────────────────────────────────────┐
               │  Livello 2: Cache Scryfall (card_cache.py)     │
               │  • Cache in-memory (_card_cache dict)          │
-              │  • card_cache.json (persistente, 60s save)     │
-              │  • artisan_legal field già calcolato           │
+              │  • Persistita su SQLite (tabella cached_cards) │
+              │    con UPSERT/DELETE incrementali, non su un   │
+              │    JSON riscritto per intero ogni volta        │
+              │  • artisan_legal field già calcolato (con TTL) │
               └──────────────────┬─────────────────────────────┘
                                  │
                             ┌────┴────┐
@@ -51,25 +53,47 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
 
 ## 1. Cache Carte Scryfall (`utils/card_cache.py`)
 
+Fino a Settembre 2026 la cache era persistita su `data/card_cache.json`, riscritto per intero ogni 60
+secondi se qualcosa era cambiato — anche per una singola carta modificata su migliaia. Il file era
+inoltre tracciato in git, crescendo senza pulizia ad ogni commit (2.2MB, zero valore come storico
+versionato). Dalla migrazione (Step 4 di `docs/roadmap-miglioramenti.md`), la cache vive nella tabella
+SQLite `cached_cards` (`database/models.py:CachedCard`), con scritture incrementali (UPSERT/DELETE solo
+sulle entry cambiate). `data/card_cache.json` non è più tracciato in git (resta come file locale inerte,
+utile solo per la migrazione una tantum descritta sotto) e non viene più scritto dal bot.
+
 ### Funzioni
 
 | Funzione | Descrizione |
 |---|---|
-| `load_cache()` | Carica `data/card_cache.json` in `_card_cache` (una volta all'avvio) |
-| `save_cache()` | Scrittura atomica su disco: `.tmp` + `os.replace()` |
-| `get_cached_card(name)` | Restituisce dati Scryfall di una carta o `None` |
-| `set_cached_card(name, data)` | Aggiunge/aggiorna carta; marca `_dirty = True` |
+| `load_cache()` (async) | Carica `cached_cards` in `_card_cache`; se la tabella è vuota e `data/card_cache.json` esiste ancora, migra il JSON legacy una tantum |
+| `save_cache()` (async) | UPSERT/DELETE solo delle entry in `_dirty_upserts`/`_dirty_deletes`, non l'intera cache |
+| `get_cached_card(name)` | Restituisce dati Scryfall di una carta o `None` (legge solo `_card_cache`, sincrono) |
+| `set_cached_card(name, data)` | Aggiunge/aggiorna carta in memoria; la segna per il prossimo `save_cache()` |
 | `mark_artisan_legal(name, entry, legal)` | Imposta `artisan_legal` + `artisan_legal_checked_at` e salva la entry |
 | `is_artisan_legal_stale(entry)` | `True` se manca il timestamp o è oltre `ARTISAN_LEGAL_TTL_DAYS` (30 giorni) |
-| `invalidate_card(name)` | Rimuove una carta dalla cache (usato da `/invalidate_card_cache`) |
-| `periodic_save_loop(delay=60)` | Task asincrono che salva ogni 60s se `_dirty` |
+| `invalidate_card(name)` | Rimuove una carta dalla cache, in memoria e (al prossimo save) dal DB (usato da `/invalidate_card_cache`) |
+| `periodic_save_loop(delay=60)` | Task asincrono che chiama `save_cache()` ogni 60s |
 
 ### Dettagli Implementativi
 
-- `_dirty`: flag booleano che evita scritture su disco senza modifiche
+- `_dirty_upserts` / `_dirty_deletes`: due `set[str]` di nomi carta invece di un flag booleano globale —
+  `save_cache()` sa esattamente quali righe scrivere/cancellare, senza toccare quelle invariate
 - `_save_lock`: `asyncio.Lock()` per prevenire race-condition su scritture concorrenti
-- Scrittura atomica: `json.dump` su file `.tmp`, poi `os.replace()` → file mai corrotto
-- `_periodic_save_task`: avviato in `main.py:setup_hook()`
+- `_loaded`: flag che garantisce un solo caricamento per avvio del bot; `load_cache()` viene chiamata da
+  `database/engine.py:init_db()` (non più da `ArtisanService.__init__()` — il caricamento è un concern di
+  avvio, non di istanza del service)
+- Import di `database`/`database.models` **locali alle funzioni** (non a livello di modulo) per evitare
+  un import circolare: `database/engine.py` chiama `card_cache.load_cache()`, che a sua volta ha bisogno
+  di `database.get_session` — stesso pattern già usato da `database/engine.py:_migrate_banlist()` per
+  `repositories.banlist_repository`
+
+### Migrazione da JSON a SQLite
+
+Se all'avvio la tabella `cached_cards` è vuota e `data/card_cache.json` esiste ancora, `load_cache()`
+importa tutte le entry nel DB in un'unica transazione e stampa `Cache carte: migrate N entry da
+data/card_cache.json a SQLite`. Da quel momento il file JSON non viene più letto né scritto — verificato
+manualmente contro il file reale del repository (407 entry, incluse carte double-faced): migrazione
+completa, dati identici byte-per-byte, nessuna riga duplicata su un secondo "riavvio" simulato.
 
 ### TTL su `artisan_legal`
 
@@ -85,28 +109,27 @@ Per correggere una singola carta senza aspettare il TTL, l'admin può usare `/in
 <carta>`, che rimuove l'intera entry (non solo `artisan_legal`): la prossima validazione rifà anche il
 fetch dei dati base da Scryfall.
 
-### Struttura JSON (`data/card_cache.json`)
+### Struttura (tabella `cached_cards`)
+
+| Colonna | Tipo | Descrizione |
+|---|---|---|
+| `card_name` | String(200), PK | Nome carta lowercase — stesso key format del vecchio JSON |
+| `data` | Text | L'intero dizionario Scryfall (dati base + `artisan_legal` + `artisan_legal_checked_at`) serializzato come JSON |
+
+Un unico blob JSON per riga invece di colonne dedicate per `artisan_legal`/`cmc`/ecc.: nessuna query SQL
+li filtra oggi, e tenerli come blob evita di duplicare la forma variabile dei dati Scryfall (le carte
+double-faced hanno `card_faces` invece di `image_uris` diretto) in due posti. Contenuto tipico del blob
+per `"lightning bolt"`:
 
 ```json
 {
-  "lightning bolt": {
-    "name": "Lightning Bolt",
-    "type_line": "Instant",
-    "cmc": 1.0,
-    "image_uris": { "small": "https://...", "normal": "https://..." },
-    "prints_search_uri": "https://api.scryfall.com/cards/search?q=...",
-    "artisan_legal": true,
-    "artisan_legal_checked_at": "2026-09-11T12:00:00+00:00"
-  },
-  "doubling season": {
-    "name": "Doubling Season",
-    "type_line": "Enchantment",
-    "cmc": 5.0,
-    "image_uris": { "small": "https://...", "normal": "https://..." },
-    "prints_search_uri": "https://api.scryfall.com/cards/search?q=...",
-    "artisan_legal": false,
-    "artisan_legal_checked_at": "2026-09-11T12:00:00+00:00"
-  }
+  "name": "Lightning Bolt",
+  "type_line": "Instant",
+  "cmc": 1.0,
+  "image_uris": { "small": "https://...", "normal": "https://..." },
+  "prints_search_uri": "https://api.scryfall.com/cards/search?q=...",
+  "artisan_legal": true,
+  "artisan_legal_checked_at": "2026-09-11T12:00:00+00:00"
 }
 ```
 
@@ -195,6 +218,6 @@ di `ArtisanService`.
 
 | Cache | Location | Persistenza | Invalidation |
 |---|---|---|---|
-| Carte Scryfall | `card_cache.json` | 60s (atomica) | Nessuna (crescita organica) |
+| Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
 | Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |
