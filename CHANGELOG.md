@@ -1,5 +1,51 @@
 # Changelog
 
+## Versioning
+
+A partire dalla 3.0.0: `MAJOR.MINOR.PATCH`, dove una nuova feature incrementa **MINOR** e un bug fix
+incrementa **PATCH**. `MAJOR` resta fermo salvo cambi importanti decisi esplicitamente. Le versioni
+precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La versione attiva è impostata
+tramite la variabile d'ambiente `VERSION` (`.env`, non nel repo) — aggiornarla manualmente ad ogni
+release, non è derivata automaticamente da git.
+
+## 3.0.0 (2026-09-11)
+
+### Fixed
+- **Bug confermato in produzione (n.1)**: al primo avvio dopo il deploy di 1.10.0,
+  `check_event_schedule_updates()` ha notificato su Discord **tutte e 4** le pagine "Event Schedule"
+  ancora presenti sul sitemap (The Hobbit, Marvel Super Heroes, Secrets of Strixhaven, TMNT) invece della
+  sola pagina del set attualmente attivo. Causa: Wizards non rimuove dal sitemap le pagine dei set
+  passati, e con lo stato salvato vuoto (prima esecuzione su una macchina nuova) ognuna risultava "mai
+  vista" rispetto a `None`
+- `utils/arena_event_schedule.py`: `check_event_schedule_updates()` ora individua e considera **solo** la
+  pagina con il `lastmod` più recente (nuova `_pick_latest()`, confronto lessicografico sui timestamp
+  ISO-8601 a larghezza fissa) — le pagine di set conclusi, anche se ancora sul sitemap, non vengono più
+  ne' scaricate ne' notificate. Stato salvato semplificato da `{"known": {url: lastmod, ...}}` (un'entry
+  per pagina mai vista) a `{"latest_url", "latest_lastmod"}` (solo l'ultima pagina processata)
+- `/forced_event_schedule_check` (`cogs/arena_event_schedule_updater.py`) e messaggi di risposta
+  aggiornati di conseguenza: ricontrolla e riporta la sola pagina più recente, non più "N pagine"
+- **Bug confermato in produzione (n.2)**: `update_spg_overrides()` faceva una richiesta `prints_search_uri`
+  per OGNI carta non ancora valutata. Innocuo sugli aggiornamenti incrementali settimanali, ma il primo
+  run dopo la migrazione `processed_sets` → `checked_cards` (1.9.0) doveva ricontrollare l'intero set SPG
+  in un colpo solo: osservato in produzione, ~175 carte da valutare hanno prodotto decine di risposte 429
+  consecutive
+- `utils/arena_overrides.py`: nuova `_fetch_prints_by_oracle_ids()`, raggruppa le carte non valutate in
+  batch di 25 (`_PRINTS_BATCH_SIZE`) e recupera le stampe di tutto il gruppo con un'unica query Scryfall
+  combinata (`oracleid:X or oracleid:Y or ...`, paginata) invece di una richiesta a carta. Verificato dal
+  vivo: 175 carte, da centinaia di richieste + retry su 429 a 7 batch in ~12 secondi, zero 429
+- **Bug scoperto durante la verifica dal vivo (non ancora in produzione)**: una query Scryfall con
+  `oracleid:` ripetuti (`oracleid:X or oracleid:X`) restituisce risultati **incompleti** (alcune carte
+  mancanti, senza errore esplicito) invece di un errore o di un risultato corretto. I duplicati capitano
+  sempre in pratica: la ricerca `set:spg unique=prints` a monte elenca una riga per stampa, non per carta.
+  `_fetch_prints_by_oracle_ids()` deduplica sempre la lista di oracle_id prima di costruire la query
+- `tests/utils/test_arena_event_schedule.py`: riscritti i test di `TestCheckEventScheduleUpdates` sulla
+  nuova semantica "solo la pagina più recente", incluso un test di regressione diretto per il flood
+  osservato in produzione. Nuova classe `TestPickLatest`
+- `tests/deck_validation/test_arena_overrides.py`: riscritti per il fetch batch (mock a livello di
+  `_fetch_prints_by_oracle_ids`, non più su singole `prints_search_uri`); nuove classi `TestPrintsBatching`
+  (dimensione batch, batch fallito non segna le carte come controllate) e `TestFetchPrintsByOracleIds`
+  (raggruppamento multi-pagina, deduplicazione oracle_id, fallimento rete). Suite totale: 124 → 133
+
 ## 1.10.0 (2026-09-11)
 
 ### Added

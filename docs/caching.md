@@ -151,6 +151,7 @@ Dizionario di override che forza una rarità più bassa per queste carte, aggior
 |---|---|
 | `get_override_rarity(card_name)` | Restituisce `"common"`, `"uncommon"` o `None` |
 | `update_spg_overrides(set_code="spg")` | Scansiona solo le carte **non ancora valutate** del set, aggiorna JSON — incrementale, sicuro da chiamare ripetutamente |
+| `_fetch_prints_by_oracle_ids(session, oracle_ids)` | Recupera le stampe di più carte in una query combinata (`oracleid:X or oracleid:Y or ...`, paginata), a gruppi di `_PRINTS_BATCH_SIZE` (25) invece di una `prints_search_uri` per carta |
 | `periodic_spg_refresh_loop(bot)` | Task in background: chiama `update_spg_overrides()` ogni 7 giorni (primo giro subito all'avvio), logga su Discord se trova qualcosa di nuovo |
 | `invalidate_override_cache()` | Forza ricarica del JSON al prossimo accesso |
 
@@ -159,6 +160,32 @@ Dizionario di override che forza una rarità più bassa per queste carte, aggior
 `_override_cache`: variabile globale popolata al primo accesso, invalidabile esplicitamente. `_update_lock`
 (`asyncio.Lock()`) evita che il task automatico e un `/forced_rarity_refresh` manuale sovrascrivano il
 JSON contemporaneamente se capitano nello stesso momento.
+
+### Batching delle richieste Scryfall
+
+Fino a Settembre 2026 `update_spg_overrides()` faceva una richiesta `prints_search_uri` per OGNI carta non
+ancora valutata (pattern N+1) — innocuo per i run incrementali settimanali (poche carte nuove), ma il
+primo run dopo la migrazione da `processed_sets` a `checked_cards` deve ricontrollare l'intero set in un
+colpo solo: osservato in produzione, ~175 carte da valutare hanno prodotto decine di risposte 429
+consecutive, ogni scan rallentato dal backoff esponenziale (`_scryfall_get`).
+
+Sostituito con `_fetch_prints_by_oracle_ids()`: raggruppa le carte non valutate in blocchi di 25
+(`_PRINTS_BATCH_SIZE`) e recupera le stampe di tutto il blocco con un'unica query combinata
+(`q=oracleid:X or oracleid:Y or ...&unique=prints`, paginata se il blocco produce più risultati di una
+pagina). 175 carte: da 175 richieste individuali a 7 batch, da ~diversi minuti (con retry su 429) a ~12
+secondi, verificato dal vivo contro Scryfall.
+
+**Deduplicazione obbligatoria, non solo ottimizzazione**: la ricerca `set:spg unique=prints` a monte
+elenca una riga per **stampa**, non per carta — una carta con più stampe SPG appare più volte, quindi
+l'elenco di `oracle_id` da raggruppare contiene sempre duplicati. Verificato dal vivo che una query
+Scryfall con termini `oracleid:` ripetuti (`oracleid:X or oracleid:X`) restituisce risultati
+**incompleti** (alcune carte mancanti dal risultato, senza errore esplicito) invece di un errore o di un
+risultato corretto — `_fetch_prints_by_oracle_ids()` deduplica sempre la lista prima di costruire la
+query (`list(dict.fromkeys(oracle_ids))`).
+
+Un batch fallito (query Scryfall senza risposta valida) non segna nessuna delle sue carte come
+controllata — vengono ritentate tutte insieme al prossimo giro, stesso principio di "non perdere una
+carta per sempre" già in uso per i singoli fallimenti prima del redesign.
 
 ### Struttura JSON (`data/arena_rarity_data.json`)
 
@@ -203,16 +230,22 @@ pubblicazione).
 
 `magic.wizards.com/en/sitemap.xml` è un sitemap XML standard con `<lastmod>` per ogni pagina del sito.
 Un task in background scarica quotidianamente il sitemap (richiesta economica, file statico), filtra le
-URL `*-event-schedule` sotto `/en/news/mtg-arena/` e le confronta con l'ultimo `lastmod` salvato. Solo per
-le pagine nuove o con `lastmod` cambiato viene scaricata e interpretata la pagina vera e propria (fetch +
-parsing HTML, più costoso e fragile) — la maggior parte dei check giornalieri non fa nulla oltre alla GET
-sul sitemap, perché il contenuto reale cambia solo ogni 6-9 settimane.
+URL `*-event-schedule` sotto `/en/news/mtg-arena/` e individua quella con il `lastmod` **più recente** —
+il set attualmente attivo. Wizards non rimuove dal sitemap le pagine dei set passati: senza questo filtro,
+a un dato momento il sitemap ne contiene sempre diverse (osservato in produzione: 4 pagine
+contemporaneamente), e la prima esecuzione su una macchina con stato vuoto le segnalerebbe tutte come
+"nuove" in un colpo solo, producendo un flood di notifiche per eventi ormai conclusi. Solo se quella più
+recente è nuova o ha un `lastmod` cambiato rispetto allo stato salvato viene scaricata e interpretata la
+pagina vera e propria (fetch + parsing HTML, più costoso e fragile) — la maggior parte dei check
+giornalieri non fa nulla oltre alla GET sul sitemap, perché il contenuto reale cambia solo ogni 6-9
+settimane.
 
 | Funzione | Descrizione |
 |---|---|
-| `check_event_schedule_updates(force=False)` | Confronta sitemap e stato salvato, scarica+interpreta solo le pagine nuove/cambiate (tutte se `force=True`); ritorna `[{url, lastmod, categories}]` |
+| `check_event_schedule_updates(force=False)` | Individua la pagina più recente sul sitemap; se nuova/cambiata (o sempre, se `force=True`) la scarica+interpreta; ritorna `[]` o `[{url, lastmod, categories}]` |
+| `_pick_latest(entries)` | Tra le pagine trovate, seleziona quella col `lastmod` più alto (confronto lessicografico su timestamp ISO-8601 a larghezza fissa) |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
-| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord ogni pagina nuova/aggiornata |
+| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
 
 ### Parsing e gestione dei fallimenti
 
@@ -232,17 +265,17 @@ come "già visto".
 
 ```json
 {
-  "known": {
-    "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule": "2026-09-02T16:05:08.364Z"
-  }
+  "latest_url": "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule",
+  "latest_lastmod": "2026-09-02T16:05:08.364Z"
 }
 ```
 
-Puro bookkeeping operativo (ultimo `lastmod` visto per URL) — a differenza di `arena_rarity_data.json`
-non contiene dati curati/editoriali, quindi non è tracciato in git (vedi `.gitignore`).
+Traccia solo l'ultima pagina (più recente) effettivamente processata, non l'intero storico — puro
+bookkeeping operativo, a differenza di `arena_rarity_data.json` non contiene dati curati/editoriali,
+quindi non è tracciato in git (vedi `.gitignore`).
 
-Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla tutte le
-pagine note): `/forced_event_schedule_check`.
+Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla comunque la
+pagina più recente sul sitemap): `/forced_event_schedule_check`.
 
 ---
 

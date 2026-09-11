@@ -21,7 +21,7 @@ class ArenaEventScheduleUpdater(commands.Cog):
 
     @app_commands.command(
         name="forced_event_schedule_check",
-        description="Forza subito un controllo delle pagine Event Schedule Arena (gira anche da solo ogni giorno)"
+        description="Forza subito un ricontrollo della pagina Event Schedule Arena piu' recente (gira anche da solo ogni giorno)"
     )
     @is_admin()
     async def forced_event_schedule_check_command(
@@ -43,15 +43,14 @@ class ArenaEventScheduleUpdater(commands.Cog):
                 return
 
             logger = self.bot.get_cog("Logger")
+            result = results[0]
 
-            for result in results:
-                if logger:
-                    await send_event_schedule_log(logger, result, user=interaction.user, forced=True)
+            if logger:
+                await send_event_schedule_log(logger, result, user=interaction.user, forced=True)
 
-            parsed = sum(1 for r in results if r["categories"] is not None)
+            esito = "interpretata correttamente" if result["categories"] is not None else "NON interpretabile, vedi WARN nel canale log"
             await interaction.followup.send(
-                f"✅ Controllate {len(results)} pagine Event Schedule "
-                f"({parsed} interpretate correttamente). Dettagli nel canale log.",
+                f"✅ Ricontrollata {result['url']} ({esito}). Dettagli nel canale log.",
                 ephemeral=True
             )
 

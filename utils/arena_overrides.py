@@ -19,16 +19,35 @@ BUG CORRETTI (Settembre 2026, vedi docs/roadmap-miglioramenti.md):
 - _update_lock: la funzione ora gira sia da un comando admin manuale sia da
   un task periodico automatico - un lock evita che due scansioni concorrenti
   si sovrascrivano a vicenda sul JSON.
+
+BATCHING (Settembre 2026): update_spg_overrides faceva una richiesta
+prints_search_uri per OGNI carta non ancora valutata (pattern N+1). Innocuo
+per i run incrementali (poche carte nuove a settimana), ma il primo run dopo
+la migrazione da processed_sets a checked_cards deve ricontrollare l'intero
+set in un colpo solo (centinaia di carte) - osservato in produzione: decine
+di 429 consecutivi, ogni scan rallentato dal backoff esponenziale. Sostituito
+con _fetch_prints_by_oracle_ids: una query combinata (`oracleid:X or
+oracleid:Y or ...`) per gruppi di _PRINTS_BATCH_SIZE carte, che restituisce
+tutte le stampe di piu' carte in una sola chiamata (paginata se necessario).
 """
 
 import asyncio
 import json
 import os
+from urllib.parse import quote
+
 import aiohttp
 
 DATA_PATH = "data/arena_rarity_data.json"
 
 _MIN_REQUEST_INTERVAL = 0.11
+
+# Quante carte per query combinata in _fetch_prints_by_oracle_ids. Piu' alto
+# riduce il numero di richieste ma allunga la query (e le pagine di risultati
+# da scaricare, essendo la somma delle stampe di tutte le carte nel batch);
+# 25 e' un compromesso prudente, ben sotto i limiti di lunghezza URL e senza
+# rischiare risposte multi-pagina enormi per un singolo batch.
+_PRINTS_BATCH_SIZE = 25
 
 # Nuove Special Guests escono con quasi ogni set principale (~4-8 settimane in
 # media, vedi ricerca in docs/roadmap-miglioramenti.md). Settimanale da ampio
@@ -166,6 +185,59 @@ async def _scryfall_get(
 
 
 # ==========================================
+# BATCH PRINTS FETCH
+# ==========================================
+
+async def _fetch_prints_by_oracle_ids(
+    session: aiohttp.ClientSession,
+    oracle_ids: list[str],
+) -> dict[str, list[dict]]:
+    """Recupera TUTTE le stampe di piu' carte in una sola query combinata
+    (`oracleid:X or oracleid:Y or ...`, paginata se il gruppo ne produce piu'
+    di una pagina), invece di una prints_search_uri per carta. Ritorna
+    {oracle_id: [printing, ...]}; un oracle_id assente dal dict o con lista
+    vuota significa che la query e' fallita per l'intero batch (il chiamante
+    deve trattarlo come 'da riprovare', non come 'nessuna stampa')."""
+
+    if not oracle_ids:
+        return {}
+
+    # Deduplicare e' necessario, non solo un'ottimizzazione: verificato dal
+    # vivo che una query con oracleid ripetuti (`oracleid:X or oracleid:X`,
+    # che capita sempre - la ricerca 'set:spg unique=prints' a monte elenca
+    # una riga per stampa, quindi una carta con piu' stampe SPG appare piu'
+    # volte) fa tornare a Scryfall risultati INCOMPLETI (alcune carte
+    # mancanti dal risultato, silenziosamente) invece di un errore esplicito.
+    unique_oracle_ids = list(dict.fromkeys(oracle_ids))
+
+    query = " or ".join(f"oracleid:{oid}" for oid in unique_oracle_ids)
+    search_url: str | None = (
+        f"https://api.scryfall.com/cards/search?q={quote(query)}&unique=prints"
+    )
+
+    grouped: dict[str, list[dict]] = {}
+
+    while search_url:
+        result = await _scryfall_get(
+            session, search_url, f"prints batch ({len(oracle_ids)} carte)"
+        )
+
+        if not result:
+            # Batch fallito: nessuna carta del gruppo va segnata come
+            # controllata, ci si riprova tutte insieme al prossimo giro.
+            return {}
+
+        for printing in result.get("data", []):
+            oid = printing.get("oracle_id")
+            if oid:
+                grouped.setdefault(oid, []).append(printing)
+
+        search_url = result.get("next_page")
+
+    return grouped
+
+
+# ==========================================
 # UPDATE SPG OVERRIDES
 # ==========================================
 
@@ -180,6 +252,9 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
     ri-scaricata nei run successivi. Sicuro da chiamare ripetutamente (da un
     comando admin o da un task periodico): il primo run su un set paga il
     costo pieno, i successivi costano solo le carte apparse nel frattempo.
+    Le stampe delle carte non valutate vengono recuperate in batch
+    (_fetch_prints_by_oracle_ids, gruppi di _PRINTS_BATCH_SIZE), non una
+    richiesta per carta.
 
     Ritorna la lista di (card_name, rarity) aggiunti in QUESTO run (non
     l'intero storico).
@@ -215,10 +290,15 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
 
         timeout = aiohttp.ClientTimeout(total=120)
 
+        rarity_rank = {"common": 0, "uncommon": 1, "rare": 2, "mythic": 3}
+
         async with aiohttp.ClientSession(
             headers=headers,
             timeout=timeout
         ) as session:
+
+            # 1. Elenca tutte le carte del set (nome + oracle_id), paginando.
+            unchecked: list[tuple[str, str | None]] = []
 
             while search_url:
 
@@ -231,75 +311,75 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
                     _persist()
                     return added_cards
 
-                cards = result.get("data", [])
-
-                for card in cards:
-
+                for card in result.get("data", []):
                     card_name: str = card.get("name", "")
-
-                    if card_name in checked:
-                        continue
-
-                    prints_uri: str | None = card.get("prints_search_uri")
-
-                    if not prints_uri:
-                        continue
-
-                    print(f"[CHECKING] {card_name}")
-
-                    prints_data = await _scryfall_get(
-                        session,
-                        prints_uri,
-                        f"{card_name} [prints]"
-                    )
-
-                    if not prints_data:
-                        # Fallito: non marcarla come controllata, ci riproviamo
-                        # al prossimo giro invece di perderla per sempre.
-                        continue
-
-                    arena_target_rarity: str | None = None
-                    paper_lowest: str | None = None
-
-                    rarity_rank = {"common": 0, "uncommon": 1, "rare": 2, "mythic": 3}
-
-                    for printing in prints_data.get("data", []):
-
-                        games: list = printing.get("games", [])
-                        rarity: str = printing.get("rarity", "").lower()
-                        printing_set: str = printing.get("set", "").lower()
-
-                        if "arena" in games and printing_set == set_code.lower():
-                            arena_target_rarity = rarity
-
-                        if "paper" in games and rarity in rarity_rank:
-                            if (
-                                paper_lowest is None
-                                or rarity_rank[rarity] < rarity_rank[paper_lowest]
-                            ):
-                                paper_lowest = rarity
-
-                                if paper_lowest == "common":
-                                    break
-
-                    if (
-                        arena_target_rarity in ("rare", "mythic")
-                        and paper_lowest in ("common", "uncommon")
-                        and card_name not in overrides
-                    ):
-
-                        print(
-                            f"[OVERRIDE ADDED] "
-                            f"{card_name} -> {paper_lowest} "
-                            f"(Arena: {arena_target_rarity})"
-                        )
-
-                        overrides[card_name] = paper_lowest
-                        added_cards.append((card_name, paper_lowest))
-
-                    newly_checked.append(card_name)
+                    if card_name and card_name not in checked:
+                        unchecked.append((card_name, card.get("oracle_id")))
 
                 search_url = result.get("next_page")
+
+            print(f"[{set_upper}] {len(unchecked)} carte da valutare")
+
+            # 2. Recupera le stampe delle carte non valutate in batch.
+            oracle_ids = [oid for _, oid in unchecked if oid]
+            prints_by_oracle: dict[str, list[dict]] = {}
+
+            for batch_start in range(0, len(oracle_ids), _PRINTS_BATCH_SIZE):
+                batch = oracle_ids[batch_start:batch_start + _PRINTS_BATCH_SIZE]
+                print(f"[BATCH] {batch_start + 1}-{batch_start + len(batch)} di {len(oracle_ids)}")
+                prints_by_oracle.update(
+                    await _fetch_prints_by_oracle_ids(session, batch)
+                )
+
+            # 3. Valuta ogni carta con le stampe recuperate al passo 2.
+            for card_name, oracle_id in unchecked:
+
+                printings = prints_by_oracle.get(oracle_id) if oracle_id else None
+
+                if not printings:
+                    # Nessuna stampa recuperata (oracle_id mancante o batch
+                    # fallito): non segnarla come controllata, ci si riprova
+                    # al prossimo giro invece di perderla per sempre.
+                    continue
+
+                arena_target_rarity: str | None = None
+                paper_lowest: str | None = None
+
+                for printing in printings:
+
+                    games: list = printing.get("games", [])
+                    rarity: str = printing.get("rarity", "").lower()
+                    printing_set: str = printing.get("set", "").lower()
+
+                    if "arena" in games and printing_set == set_code.lower():
+                        arena_target_rarity = rarity
+
+                    if "paper" in games and rarity in rarity_rank:
+                        if (
+                            paper_lowest is None
+                            or rarity_rank[rarity] < rarity_rank[paper_lowest]
+                        ):
+                            paper_lowest = rarity
+
+                            if paper_lowest == "common":
+                                break
+
+                if (
+                    arena_target_rarity in ("rare", "mythic")
+                    and paper_lowest in ("common", "uncommon")
+                    and card_name not in overrides
+                ):
+
+                    print(
+                        f"[OVERRIDE ADDED] "
+                        f"{card_name} -> {paper_lowest} "
+                        f"(Arena: {arena_target_rarity})"
+                    )
+
+                    overrides[card_name] = paper_lowest
+                    added_cards.append((card_name, paper_lowest))
+
+                newly_checked.append(card_name)
 
         _persist()
 

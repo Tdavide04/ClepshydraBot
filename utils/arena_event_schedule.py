@@ -15,6 +15,14 @@ Approccio:
   vita del set (es. per aggiungere le settimane successive di rotazione
   Quick Draft), non solo pubblicate una volta: per questo si confronta il
   lastmod, non solo la presenza dell'URL.
+- Wizards NON rimuove dal sitemap le pagine dei set passati: a un dato
+  momento il sitemap ne contiene sempre diverse (una per ogni set recente).
+  Interessa solo quella del set ATTUALMENTE attivo, non l'intero storico -
+  per questo si guarda solo la pagina con il lastmod piu' recente, non tutte
+  quelle trovate. Senza questo filtro, la prima esecuzione su una macchina
+  nuova (stato vuoto) segnalerebbe come "nuove" anche pagine di set gia'
+  conclusi da mesi, producendo un flood di notifiche per eventi non piu'
+  rilevanti.
 - Il check del sitemap e' economico (una GET su un file statico) e viene
   fatto quotidianamente; il fetch+parsing della singola pagina (piu'
   costoso e fragile, essendo HTML non un formato dati) scatta solo per le
@@ -80,7 +88,7 @@ def _load_state() -> dict:
         return _state_cache
 
     if not os.path.exists(STATE_PATH):
-        _state_cache = {"known": {}}
+        _state_cache = {"latest_url": None, "latest_lastmod": None}
         return _state_cache
 
     with open(STATE_PATH, "r", encoding="utf-8") as f:
@@ -188,6 +196,19 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
     return categories or None
 
 
+def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
+    """Tra le pagine Event Schedule trovate sul sitemap, individua quella con
+    il lastmod piu' recente - in pratica il set attualmente attivo. I lastmod
+    sono timestamp ISO-8601 a larghezza fissa (es. '2026-09-02T16:05:08.364Z'),
+    quindi il confronto lessicografico tra stringhe coincide con l'ordine
+    cronologico, senza dover fare parsing di date."""
+
+    if not entries:
+        return None
+
+    return max(entries.items(), key=lambda item: item[1])
+
+
 async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | None:
     async with session.get(url) as response:
         if response.status != 200:
@@ -201,54 +222,53 @@ async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | No
 # ==========================================
 
 async def check_event_schedule_updates(force: bool = False) -> list[dict]:
-    """Confronta il sitemap con lo stato salvato e, per ogni pagina
-    Event Schedule nuova o con lastmod cambiato (o tutte, se force=True),
-    scarica e prova a interpretare la sezione 'Full Event Calendar'.
+    """Individua la pagina Event Schedule PIU' RECENTE (per lastmod) sul
+    sitemap e, se e' nuova o cambiata rispetto all'ultima nota (o comunque,
+    se force=True), la scarica e prova a interpretare la sezione
+    'Full Event Calendar'. Le pagine di set passati ancora presenti sul
+    sitemap vengono ignorate (vedi _pick_latest).
 
-    Ritorna una lista di dict con url, lastmod, e categories (None se il
-    parsing e' fallito - il chiamante deve segnalarlo come tale, non
-    ignorarlo silenziosamente). Aggiorna e salva lo stato solo per le pagine
-    effettivamente processate in questa chiamata.
+    Ritorna una lista con zero o un elemento {url, lastmod, categories}
+    (categories None se il parsing e' fallito - il chiamante deve segnalarlo
+    come tale, non ignorarlo silenziosamente) - la forma a lista resta per
+    compatibilita' con i chiamanti che iterano sul risultato. Aggiorna e
+    salva lo stato solo se la pagina e' stata effettivamente processata in
+    questa chiamata.
     """
 
     headers = {"User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"}
     timeout = aiohttp.ClientTimeout(total=60)
 
     state = _load_state()
-    known: dict[str, str] = state.get("known", {})
-
-    results: list[dict] = []
 
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
         current = await _fetch_sitemap_event_schedule_urls(session)
 
-        to_process = [
-            url for url, lastmod in current.items()
-            if force or known.get(url) != lastmod
-        ]
+        latest = _pick_latest(current)
+        if latest is None:
+            return []
 
-        for url in to_process:
-            page_html = await _fetch_page_html(session, url)
+        url, lastmod = latest
 
-            if page_html is None:
-                # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
-                # prossimo giro invece di marcarla come vista.
-                continue
+        already_seen = (
+            state.get("latest_url") == url
+            and state.get("latest_lastmod") == lastmod
+        )
+        if already_seen and not force:
+            return []
 
-            categories = parse_full_event_calendar(page_html)
+        page_html = await _fetch_page_html(session, url)
 
-            results.append({
-                "url": url,
-                "lastmod": current[url],
-                "categories": categories,
-            })
+        if page_html is None:
+            # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
+            # prossimo giro invece di marcarla come vista.
+            return []
 
-            known[url] = current[url]
+        categories = parse_full_event_calendar(page_html)
 
-    if results:
-        _save_state({"known": known})
+    _save_state({"latest_url": url, "latest_lastmod": lastmod})
 
-    return results
+    return [{"url": url, "lastmod": lastmod, "categories": categories}]
 
 
 async def periodic_event_schedule_check_loop(
