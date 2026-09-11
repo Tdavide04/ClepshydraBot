@@ -120,14 +120,20 @@ utils/
 
 Ordine dei controlli:
 1. **Override locale** → `get_override_rarity(card_name)` → se common/uncommon → legale
-2. **Cache disco** → `artisan_legal` field in `card_cache.json`
-3. **Cache memoria** → `oracle_id` già verificato
+2. **Cache disco** → `artisan_legal` field in `card_cache.json`, **solo se non scaduto**
+   (`is_artisan_legal_stale()`, TTL 30 giorni — vedi `docs/caching.md`); una entry senza
+   `artisan_legal_checked_at` (cacheata prima dell'introduzione del TTL) è considerata scaduta
+3. **Cache memoria** → `oracle_id` già verificato (`_ARENA_LEGAL_CACHE`, per la durata del processo —
+   non soggetta a TTL)
 4. **API Scryfall** → `GET prints_search_uri + ?game=arena`
 
 Nella chiamata API:
 - Filtra `set_type=alchemy` (escluso da Artisan)
 - Controlla se esiste una stampa common/uncommon su Arena
-- Salva risultato in cache (`artisan_legal`)
+- Salva risultato in cache con timestamp (`mark_artisan_legal()`)
+
+Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TTL), l'admin può usare
+`/invalidate_card_cache <carta>`.
 
 ### 5. Conteggio (`validators.py:82-96`)
 

@@ -5,7 +5,13 @@ import aiohttp
 import urllib.parse
 
 from utils.arena_overrides import get_override_rarity
-from utils.card_cache import load_cache, get_cached_card, set_cached_card
+from utils.card_cache import (
+    load_cache,
+    get_cached_card,
+    set_cached_card,
+    is_artisan_legal_stale,
+    mark_artisan_legal,
+)
 from utils.deck_image_generator import DeckImageGenerator
 from cogs.deck_validation.models import DeckEntry, DeckValidationResult, ArtisanCard
 from cogs.deck_validation.validators import check_banlist
@@ -298,7 +304,8 @@ class ArtisanService:
 
         cached_entry = get_cached_card(card_name)
         if cached_entry is not None and "artisan_legal" in cached_entry:
-            if cached_entry["artisan_legal"] or card_name.startswith("A-"):
+            fresh = not is_artisan_legal_stale(cached_entry)
+            if fresh and (cached_entry["artisan_legal"] or card_name.startswith("A-")):
                 return cached_entry["artisan_legal"]
 
         oracle_id = card_data.get("oracle_id", "")
@@ -327,8 +334,7 @@ class ArtisanService:
                 break
 
         if cached_entry is not None:
-            cached_entry["artisan_legal"] = legal
-            set_cached_card(card_name, cached_entry)
+            mark_artisan_legal(card_name, cached_entry, legal)
 
         if oracle_id:
             _ARENA_LEGAL_CACHE[oracle_id] = legal

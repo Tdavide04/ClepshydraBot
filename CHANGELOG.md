@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0 (2026-09-11)
+
+### Added
+- TTL di 30 giorni sul flag `artisan_legal` in cache (`utils/card_cache.py`): `mark_artisan_legal()`
+  salva anche un timestamp (`artisan_legal_checked_at`); `is_artisan_legal_stale()` lo considera scaduto
+  oltre il TTL o se il timestamp manca (entry cacheate prima di questa modifica). Una carta con flag
+  scaduto viene ri-verificata via Scryfall invece di fidarsi ciecamente della cache — copre il caso di
+  una carta la cui legalità Artisan cambia dopo una nuova stampa su Arena
+- `/invalidate_card_cache <carta>` (admin): rimuove una carta dalla cache Scryfall, forzando un
+  ricontrollo completo (dati + legalità Artisan) alla prossima validazione, senza aspettare il TTL
+
 ## 1.4.3 (2026-09-11)
 
 ### Refactored

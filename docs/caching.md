@@ -59,6 +59,9 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
 | `save_cache()` | Scrittura atomica su disco: `.tmp` + `os.replace()` |
 | `get_cached_card(name)` | Restituisce dati Scryfall di una carta o `None` |
 | `set_cached_card(name, data)` | Aggiunge/aggiorna carta; marca `_dirty = True` |
+| `mark_artisan_legal(name, entry, legal)` | Imposta `artisan_legal` + `artisan_legal_checked_at` e salva la entry |
+| `is_artisan_legal_stale(entry)` | `True` se manca il timestamp o è oltre `ARTISAN_LEGAL_TTL_DAYS` (30 giorni) |
+| `invalidate_card(name)` | Rimuove una carta dalla cache (usato da `/invalidate_card_cache`) |
 | `periodic_save_loop(delay=60)` | Task asincrono che salva ogni 60s se `_dirty` |
 
 ### Dettagli Implementativi
@@ -67,6 +70,20 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
 - `_save_lock`: `asyncio.Lock()` per prevenire race-condition su scritture concorrenti
 - Scrittura atomica: `json.dump` su file `.tmp`, poi `os.replace()` → file mai corrotto
 - `_periodic_save_task`: avviato in `main.py:setup_hook()`
+
+### TTL su `artisan_legal`
+
+Il flag `artisan_legal` non è più considerato valido a tempo indeterminato. Ogni volta che
+`_is_arena_artisan_legal()` (`cogs/deck_validation/service.py`) lo calcola, chiama
+`mark_artisan_legal()` che salva anche `artisan_legal_checked_at` (timestamp ISO, UTC). Al check
+successivo, se la entry cacheata ha `artisan_legal_checked_at` più vecchio di `ARTISAN_LEGAL_TTL_DAYS`
+(30 giorni) o non ce l'ha affatto (entry cacheata prima dell'introduzione del TTL), il flag viene
+considerato scaduto e la carta viene ri-verificata via Scryfall invece di fidarsi ciecamente della
+cache — copre il caso di una carta la cui legalità Artisan cambia dopo una nuova stampa su Arena.
+
+Per correggere una singola carta senza aspettare il TTL, l'admin può usare `/invalidate_card_cache
+<carta>`, che rimuove l'intera entry (non solo `artisan_legal`): la prossima validazione rifà anche il
+fetch dei dati base da Scryfall.
 
 ### Struttura JSON (`data/card_cache.json`)
 
@@ -78,7 +95,8 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
     "cmc": 1.0,
     "image_uris": { "small": "https://...", "normal": "https://..." },
     "prints_search_uri": "https://api.scryfall.com/cards/search?q=...",
-    "artisan_legal": true
+    "artisan_legal": true,
+    "artisan_legal_checked_at": "2026-09-11T12:00:00+00:00"
   },
   "doubling season": {
     "name": "Doubling Season",
@@ -86,7 +104,8 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
     "cmc": 5.0,
     "image_uris": { "small": "https://...", "normal": "https://..." },
     "prints_search_uri": "https://api.scryfall.com/cards/search?q=...",
-    "artisan_legal": false
+    "artisan_legal": false,
+    "artisan_legal_checked_at": "2026-09-11T12:00:00+00:00"
   }
 }
 ```

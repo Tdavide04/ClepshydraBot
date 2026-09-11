@@ -8,6 +8,7 @@ from utils.arena_overrides import (
     update_spg_overrides,
     invalidate_override_cache
 )
+from utils.card_cache import invalidate_card
 from utils.permissions import is_admin
 
 # ==========================================
@@ -70,6 +71,37 @@ class SPGOverrideUpdater(commands.Cog):
 
             await interaction.followup.send(
                 f"❌ Errore durante l'update:\n`{e}`",
+                ephemeral=True
+            )
+
+    # ======================================
+    # INVALIDATE SINGLE CARD COMMAND
+    # ======================================
+
+    @app_commands.command(
+        name="invalidate_card_cache",
+        description="Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo"
+    )
+    @is_admin()
+    @app_commands.describe(carta="Nome esatto della carta da rimuovere dalla cache")
+    async def invalidate_card_cache_command(
+        self,
+        interaction: discord.Interaction,
+        carta: str
+    ):
+        await interaction.response.defer(ephemeral=True)
+
+        removed = invalidate_card(carta)
+
+        if removed:
+            await interaction.followup.send(
+                f"✅ **{carta}** rimossa dalla cache. Verrà ricontrollata da zero "
+                f"(dati + legalità Artisan) alla prossima validazione.",
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                f"⚠️ **{carta}** non era presente in cache (nessuna azione necessaria).",
                 ephemeral=True
             )
 

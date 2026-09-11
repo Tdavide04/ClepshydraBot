@@ -129,7 +129,7 @@ ALTER ridondanti. Script rimosso dopo la verifica, non è nel repository.
 
 ## Step 3 — Invalidazione/TTL per `artisan_legal` nella cache carte
 
-**Stato:** da fare
+**Stato:** fatto (2026-09-11)
 
 **Problema:** il campo `artisan_legal` in `data/card_cache.json` (`utils/card_cache.py`) non scade mai.
 Se una carta diventa legale/illegale in Artisan dopo una nuova stampa Arena, il bot continuerà a usare
@@ -147,6 +147,21 @@ il valore calcolato al primo check, senza alcun modo di correggerlo se non edita
 - `docs/deck-validation.md` — punto 4 "Verifica Legalità Arena": aggiornare l'ordine dei controlli.
 - `docs/comandi.md` — se aggiunto il nuovo comando admin.
 - `CHANGELOG.md` — nuova voce `Added`/`Fixed`.
+
+**Implementazione effettiva:** TTL di 30 giorni (`ARTISAN_LEGAL_TTL_DAYS`), timestamp salvato come ISO
+8601 UTC (`artisan_legal_checked_at`). Entry cacheate prima di questa modifica non hanno il campo →
+trattate come scadute (fail-open verso il ricontrollo, non verso la fiducia illimitata). Aggiunto anche
+`/invalidate_card_cache <carta>` (admin, in `cogs/spg_override_updater.py` insieme a
+`/update_spg_overrides`) per correggere singole carte senza aspettare il TTL — rimuove l'intera entry,
+non solo il flag, quindi rifà anche il fetch dei dati base. La cache in-memoria per processo
+(`_ARENA_LEGAL_CACHE`, keyed su `oracle_id`) **non** è soggetta a TTL: si azzera comunque ad ogni riavvio
+del bot, quindi il rischio di staleness lì è minore e resta fuori scope per questo step.
+
+**Validazione:** `pytest tests/ -v` — 88/88 verdi (nessun test esistente copre `card_cache.py` o
+`ArtisanService`, invariato). Ho scritto ed eseguito uno script manuale temporaneo (rimosso dopo il
+check, non è nel repository) che verifica: entry senza timestamp → stale; entry fresca appena marcata →
+non stale; entry oltre 30 giorni → stale; entry entro 30 giorni → non stale; timestamp malformato →
+stale (fail-open); `invalidate_card()` rimuove una entry esistente e ritorna `False` se già assente.
 
 ---
 

@@ -110,10 +110,12 @@ assume systemd when writing deployment-related docs or scripts.
    no restart needed.
 3. Fetch card data from Scryfall (`POST /cards/collection`, batches of 75), checking
    `card_cache.json` first.
-4. Determine Artisan legality per card: SPG rarity override (`arena_overrides.py`) first, then cached
-   `artisan_legal` flag (never expires — tracked as debt in `docs/roadmap-miglioramenti.md` Step 3), then
-   a live `prints_search_uri + game:arena` lookup (excluding `alchemy` set_type prints), caching the
-   result.
+4. Determine Artisan legality per card: SPG rarity override (`arena_overrides.py`) first, then the
+   cached `artisan_legal` flag if not stale (`is_artisan_legal_stale()`, 30-day TTL via
+   `artisan_legal_checked_at` — entries cached before the TTL existed count as stale), then a live
+   `prints_search_uri + game:arena` lookup (excluding `alchemy` set_type prints), caching the result with
+   `mark_artisan_legal()`. Admin `/invalidate_card_cache <carta>` forces a full re-check of one card
+   without waiting for the TTL.
 5. Validate mainboard ≥ 60 / sideboard ≤ 15 counts.
 6. On success, generate a showcase PNG (`DeckImageGenerator`) and post embeds to the log/deck channels.
 
