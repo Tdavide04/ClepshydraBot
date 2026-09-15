@@ -16,15 +16,19 @@ class Logger(commands.Cog):
             "DEBUG": ("🔵", discord.Color.blue())
         }
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None):
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None):
         """Metodo universale per inviare log con pattern specifico.
 
         fields: lista opzionale di dict {"name", "value", "inline"} aggiunti
         come campi embed separati (nome in grassetto/risalto, distinto dal
         corpo della description) invece che infilati come altro testo nella
-        description - usato per contenuti a sezioni (es. il calendario eventi
-        Arena in utils/arena_event_schedule.py) dove il solo grassetto
+        description - usato per contenuti a sezioni dove il solo grassetto
         markdown in un paragrafo unico risultava poco leggibile.
+
+        files: lista opzionale di discord.File allegati allo stesso messaggio
+        dell'embed - usata dal calendario eventi Arena
+        (utils/arena_event_schedule.py) per allegare le immagini calendario
+        generate invece di descrivere gli eventi solo a parole.
         """
         emoji, color = self.levels.get(level.upper(), self.levels["INFO"])
 
@@ -58,7 +62,7 @@ class Logger(commands.Cog):
 
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-            await log_channel.send(embed=embed)
+            await log_channel.send(embed=embed, files=files or None)
 
         except Exception as e:
             print(f"⚠️ Errore logger: {e}")

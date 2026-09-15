@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 138 tests total, no `pytest-asyncio` — async integration tests
+Suite: 147 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`) instead
@@ -78,7 +78,10 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `presentation/` (onboarding wizard), `deck_validation/` (Artisan deck legality checks, formerly named
   `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with ~14
   slash commands). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
-  `send_log(level, event, info)` on, to post colored embeds to a central log channel.
+  `send_log(level, event, info)` on, to post colored embeds to a central log channel — `send_log()` also
+  takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields) and
+  `files` (list of `discord.File`, attached to the same message) kwargs, used by the Arena Event Schedule
+  monitor to attach calendar images (see below).
 - **`services/`** — Business logic, stateless where possible. `tournament_service.py` orchestrates the
   tournament lifecycle; `pairing_engine.py` generates Swiss pairings (bye handling, anti-rematch);
   `standings.py` computes standings (3/1/0 scoring + tiebreakers); `rating.py` implements Glicko-2.
@@ -96,7 +99,8 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `_migrate_banlist()`, but only if the table is empty.
 - **`utils/`** — Cross-cutting helpers: `card_cache.py` (Scryfall response cache), `arena_overrides.py`
   (SPG rarity overrides), `arena_event_schedule.py` (monitors Wizards' "[Set] MTG Arena Event Schedule"
-  pages via the site's `sitemap.xml`, see below), `deck_image_generator.py` (Pillow-based deck showcase
+  pages via the site's `sitemap.xml`, see below), `event_calendar_image_generator.py` (Pillow-based
+  calendar image for the Event Schedule, see below), `deck_image_generator.py` (Pillow-based deck showcase
   PNGs), `permissions.py` (`@is_admin()` app-command check based on a configured Discord role name),
   `tournament_embeds.py`, `tournament_logic.py`.
 
@@ -211,10 +215,39 @@ section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
 so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
 summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate re-check of
-the current latest page, ignoring the saved `lastmod`. `send_event_schedule_log()` posts one embed field
-per category (not the whole calendar crammed into the embed description as plain markdown-bold text —
-tried first, unreadable for the 13-15 categories a real page typically has) and splits across multiple
-messages at `_CATEGORIES_PER_MESSAGE` (6) fields each, labeled "parte N/M" when there's more than one.
+the current latest page, ignoring the saved `lastmod`.
+
+`send_event_schedule_log()` posts a calendar **image** per month, not text: each category entry (e.g.
+`"August 11-19: Duskmourn: House of Horror"`) is parsed by `parse_event_entry()` into a date range, and
+`build_month_calendar()` groups entries into `{(year, month): {category: [(day_start, day_end, name)]}}`,
+splitting any range crossing a month boundary into one clipped segment per month it touches. Missing year
+is inferred from the current date (`_infer_start_year()` — if a range's start month is more than ~6 months
+"behind" the current month, it's assumed to be next year, to handle a page published near year-end
+referencing January). `utils/event_calendar_image_generator.py`'s `EventCalendarImageGenerator` then
+renders each `(year, month)` as a Gantt (one row per category, colored by *family* — Premier Draft/Quick
+Draft/Flashback/Sealed & Cube/Metagame/Community, a keyword heuristic on the category name in
+`_classify_family()`, not data from the Wizards page) plus a detailed text list below it (full event
+names, no truncation, category shown in parentheses) — this two-part layout is the result of several
+design iterations against real data: a plain day-grid calendar is unreadable because long-running
+categories (Premier Draft, Sealed...) repeat identically across dozens of day cells; a family-only Gantt
+(6 rows) loses the "is this really two distinct queues or one drawn twice" signal a reader wants; the
+final design keeps one row per category (so nothing is silently merged) but relies on the text list below
+for anything a bar is too narrow to show a name for. `_clean_name()` strips the redundant
+`"Magic: The Gathering | "` and `"Arena Direct for "` prefixes from event names before rendering, since
+the row's family color already conveys the category. `create_month_panel()` (an earlier per-category
+Gantt with no family grouping) and `create_multi_month_calendar()` (stitches several months' panels plus
+ONE merged detail list into a single image) both remain in the module, unused by the current flow, kept
+in case that layout is wanted again.
+
+`send_event_schedule_log()` uses this to attach one `discord.File` image per month to a single Discord
+log message (via `Logger.send_log()`'s `files` kwarg) — used by both the automatic daily check and
+`/forced_event_schedule_check`, so both now post images instead of the field-per-category embeds used
+before 3.2.0. If the page's categories were parsed but none of their entries match the expected date
+format, `build_month_calendar()` returns empty and a dedicated `WARN` (`ARENA_EVENT_SCHEDULE_NO_DATES`) is
+logged instead of generating an empty image. Admin `/preview_calendario_eventi` (separate from
+`/forced_event_schedule_check`) re-runs the same check and posts the images as a normal (non-ephemeral)
+message in the invoking channel, without touching the log channel — a manual preview tool, not wired into
+`send_event_schedule_log()`.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 

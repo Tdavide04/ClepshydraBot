@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import date
 
 import pytest
 
@@ -115,6 +116,107 @@ class TestParseFullEventCalendar:
 
     def test_returns_none_when_calendar_heading_missing(self):
         assert arena_event_schedule.parse_full_event_calendar(NO_CALENDAR_HTML) is None
+
+
+class TestParseEventEntry:
+
+    def test_parses_range_spanning_two_months(self):
+        parsed = arena_event_schedule.parse_event_entry(
+            "August 11–September 29: Magic: The Gathering | The Hobbit"
+        )
+        assert parsed == {
+            "start_month": 8, "start_day": 11,
+            "end_month": 9, "end_day": 29,
+            "name": "Magic: The Gathering | The Hobbit",
+        }
+
+    def test_parses_range_within_a_single_month_without_repeating_month_name(self):
+        parsed = arena_event_schedule.parse_event_entry(
+            "August 11–19: Duskmourn: House of Horror"
+        )
+        assert parsed["start_month"] == 8
+        assert parsed["end_month"] == 8
+        assert parsed["start_day"] == 11
+        assert parsed["end_day"] == 19
+        # Il nome puo' contenere altri ':' oltre a quello che separa la data
+        assert parsed["name"] == "Duskmourn: House of Horror"
+
+    def test_accepts_plain_hyphen_as_well_as_en_dash(self):
+        parsed = arena_event_schedule.parse_event_entry("August 11-19: Set")
+        assert parsed is not None
+
+    def test_returns_none_for_text_without_a_recognizable_date(self):
+        assert arena_event_schedule.parse_event_entry("Evento senza data") is None
+
+
+class TestBuildMonthCalendar:
+
+    def test_splits_a_multi_month_range_at_month_boundaries(self):
+        categories = {
+            "Premier Draft": ["August 11–September 29: The Hobbit"],
+        }
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+
+        assert result[(2026, 8)]["Premier Draft"] == [(11, 31, "The Hobbit")]
+        assert result[(2026, 9)]["Premier Draft"] == [(1, 29, "The Hobbit")]
+
+    def test_single_month_range_is_not_split(self):
+        categories = {"Quick Draft": ["August 11–19: Duskmourn"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+
+        assert list(result.keys()) == [(2026, 8)]
+        assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
+
+    def test_unparseable_entry_is_silently_excluded(self):
+        categories = {"Quick Draft": ["Evento senza data", "August 11–19: Duskmourn"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+
+        assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
+
+    def test_range_crossing_december_into_january_bumps_the_year(self):
+        categories = {"Quick Draft": ["December 28–January 4: New Year Set"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 12, 1)
+        )
+
+        assert result[(2026, 12)]["Quick Draft"] == [(28, 31, "New Year Set")]
+        assert result[(2027, 1)]["Quick Draft"] == [(1, 4, "New Year Set")]
+
+    def test_entry_referencing_january_while_checking_in_december_is_next_year(self):
+        """Una voce (es. Flashback) che ricade a Gennaio mentre il check
+        avviene a Dicembre appartiene all'anno prossimo, non a uno gia'
+        passato di 11 mesi - copre l'euristica di _infer_start_year."""
+        categories = {"Quick Draft": ["January 5–11: Some Set"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 12, 20)
+        )
+
+        assert list(result.keys()) == [(2027, 1)]
+
+    def test_recent_past_month_stays_in_the_current_year(self):
+        """Una voce Flashback che si riferisce a un mese recente (non
+        undici mesi indietro) deve restare nell'anno corrente, non essere
+        spinta erroneamente all'anno prossimo."""
+        categories = {"Flashback Premier Draft": ["August 25–September 7: LOTR"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+
+        assert (2026, 8) in result
+        assert (2027, 8) not in result
+
+    def test_no_parseable_entries_returns_empty_dict(self):
+        categories = {"Quick Draft": ["Evento senza data"]}
+        result = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+        assert result == {}
 
 
 class TestPickLatest:
@@ -284,30 +386,16 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None):
-        self.calls.append({"level": level, "event": event, "info": info, "fields": fields or []})
-
-
-class TestCategoryField:
-
-    def test_builds_bulleted_field_from_entries(self):
-        field = arena_event_schedule._category_field("Quick Draft", ["A", "B"])
-        assert field == {"name": "Quick Draft", "value": "• A\n• B", "inline": False}
-
-    def test_truncates_value_over_discord_field_limit(self):
-        # Solo 10 entries vengono usate (limite della funzione): per superare
-        # il limite di 1024 caratteri del campo serve testo lungo per entry,
-        # non tante entry brevi.
-        long_entry = "Evento con una descrizione volutamente molto lunga per superare il limite " * 3
-        entries = [long_entry] * 10
-        field = arena_event_schedule._category_field("Categoria", entries)
-        assert len(field["value"]) <= arena_event_schedule._FIELD_VALUE_LIMIT
-        assert field["value"].endswith("_...troncato_")
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None):
+        self.calls.append({
+            "level": level, "event": event, "info": info,
+            "fields": fields or [], "files": files or [],
+        })
 
 
 class TestSendEventScheduleLog:
 
-    def test_unparseable_page_sends_a_single_warn_with_no_fields(self):
+    def test_unparseable_page_sends_a_single_warn_with_no_files(self):
         logger = FakeLogger()
         result = {"url": SET_A_URL, "lastmod": "2026-08-03T00:00:00Z", "categories": None}
 
@@ -315,33 +403,45 @@ class TestSendEventScheduleLog:
 
         assert len(logger.calls) == 1
         assert logger.calls[0]["level"] == "WARN"
-        assert logger.calls[0]["fields"] == []
+        assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_UNPARSEABLE"
+        assert logger.calls[0]["files"] == []
 
-    def test_few_categories_fit_in_a_single_message(self):
+    def test_categories_without_parseable_dates_send_a_warn_with_no_files(self):
+        """Le categorie sono state interpretate (categories non e' None) ma
+        nessuna voce segue il formato data atteso: build_month_calendar()
+        torna vuoto, e non c'e' nulla da disegnare - deve arrivare un WARN
+        distinto invece di un'immagine vuota o un errore."""
         logger = FakeLogger()
-        categories = {f"Categoria {i}": [f"Evento {i}"] for i in range(3)}
+        categories = {"Premier Draft": ["Evento senza data riconoscibile"]}
         result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
 
         run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
 
         assert len(logger.calls) == 1
-        assert len(logger.calls[0]["fields"]) == 3
-        assert "parte" not in logger.calls[0]["info"]
+        assert logger.calls[0]["level"] == "WARN"
+        assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_NO_DATES"
+        assert logger.calls[0]["files"] == []
 
-    def test_many_categories_are_split_across_multiple_messages(self):
-        """Regressione per la richiesta di spezzare il muro di testo unico:
-        con piu' categorie di quante ne stiano in un messaggio, deve arrivare
-        piu' di un log, ciascuno con al piu' _CATEGORIES_PER_MESSAGE campi."""
+    def test_valid_categories_attach_one_image_per_month(self):
+        """Sostituisce il vecchio design a campi embed di testo: un'immagine
+        calendario per mese coinvolto, allegata allo stesso messaggio INFO,
+        invece di descrivere gli eventi a parole."""
         logger = FakeLogger()
-        n_categories = arena_event_schedule._CATEGORIES_PER_MESSAGE * 2 + 1
-        categories = {f"Categoria {i}": [f"Evento {i}"] for i in range(n_categories)}
+        categories = {
+            "Premier Draft": ["August 11-19: Duskmourn: House of Horror"],
+            "Quick Draft": ["September 1-7: Secrets of Strixhaven"],
+        }
         result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
 
         run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
 
-        assert len(logger.calls) == 3
-        assert all(len(call["fields"]) <= arena_event_schedule._CATEGORIES_PER_MESSAGE for call in logger.calls)
-        total_fields = sum(len(call["fields"]) for call in logger.calls)
-        assert total_fields == n_categories
-        assert "parte 1/3" in logger.calls[0]["info"]
-        assert "parte 3/3" in logger.calls[2]["info"]
+        # Stesso default (nessun reference_date esplicito) usato dal codice
+        # sotto test, cosi' l'aspettativa non dipende dalla data reale in
+        # cui gira il test.
+        expected_months = arena_event_schedule.build_month_calendar(categories)
+
+        assert len(logger.calls) == 1
+        assert logger.calls[0]["level"] == "INFO"
+        assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_UPDATED"
+        assert len(logger.calls[0]["files"]) == len(expected_months)
+        assert all(f.filename.startswith("calendario_") for f in logger.calls[0]["files"])

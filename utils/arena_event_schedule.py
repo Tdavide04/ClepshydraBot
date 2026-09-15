@@ -36,13 +36,16 @@ Approccio:
 """
 
 import asyncio
+import calendar
 import json
 import os
 import re
 import html as html_module
 import xml.etree.ElementTree as ET
+from datetime import date
 
 import aiohttp
+import discord
 
 STATE_PATH = "data/arena_event_schedule_state.json"
 
@@ -73,6 +76,28 @@ _LI_RE = re.compile(r"<li>(.*?)</li>", re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
 _CALENDAR_HEADING_RE = re.compile(r"<h[234]>\s*Full Event Calendar\s*</h[234]>")
 _ARTICLE_END_RE = re.compile(r"</article>")
+
+# Ogni voce della "Full Event Calendar" ha il formato osservato dal vivo
+# "Mese Giorno[-Mese] Giorno: Nome evento" (es. "August 11-September 29: ...",
+# "August 11-19: ..."), senza anno esplicito - il mese di fine e' opzionale
+# quando il range resta nello stesso mese. Il trattino puo' essere un en dash
+# "-" (quello effettivamente usato dal sito) o un normale "-".
+_ENTRY_DATE_RE = re.compile(
+    r"^(?P<m1>[A-Za-z]+)\s+(?P<d1>\d{1,2})\s*[–-]\s*"
+    r"(?:(?P<m2>[A-Za-z]+)\s+)?(?P<d2>\d{1,2})\s*:\s*(?P<name>.+)$"
+)
+
+_MONTH_NUMBERS = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+}
+
+MONTHS_IT = {
+    1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+    5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
+    9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre",
+}
 
 _state_cache: dict | None = None
 
@@ -196,6 +221,110 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
     return categories or None
 
 
+# ==========================================
+# PARSING DATE VOCE + RAGGRUPPAMENTO PER MESE
+# ==========================================
+
+def parse_event_entry(text: str) -> dict | None:
+    """Estrae mese/giorno di inizio e fine da una voce testuale della
+    'Full Event Calendar' (es. 'August 11-September 29: Nome evento' o
+    'August 11-19: Nome evento'). Restituisce None se il testo non segue il
+    formato atteso - il chiamante deve escludere la voce dal calendario a
+    immagine invece di inventare una data, ma puo' comunque mostrarla intatta
+    negli embed testuali (che non dipendono da questo parsing)."""
+
+    match = _ENTRY_DATE_RE.match(text.strip())
+    if not match:
+        return None
+
+    m1 = _MONTH_NUMBERS.get(match.group("m1").lower())
+    m2_raw = match.group("m2")
+    m2 = _MONTH_NUMBERS.get(m2_raw.lower()) if m2_raw else m1
+
+    if m1 is None or m2 is None:
+        return None
+
+    try:
+        d1 = int(match.group("d1"))
+        d2 = int(match.group("d2"))
+    except ValueError:
+        return None
+
+    return {
+        "start_month": m1,
+        "start_day": d1,
+        "end_month": m2,
+        "end_day": d2,
+        "name": match.group("name").strip(),
+    }
+
+
+def _infer_start_year(start_month: int, reference: date) -> int:
+    """Assume l'anno corrente al momento del check; se il mese di inizio
+    risulta molto "indietro" rispetto al mese corrente (es. Gennaio quando il
+    check avviene a Dicembre), lo si considera dell'anno prossimo invece che
+    di uno gia' passato - copre il turno di anno per un range pubblicato a
+    fine anno. La soglia (6 mesi) evita falsi positivi sulle voci "Flashback"
+    che si riferiscono correttamente a un mese recente dello stesso anno."""
+
+    diff = start_month - reference.month
+    if diff <= -6:
+        return reference.year + 1
+    return reference.year
+
+
+def build_month_calendar(
+    categories: dict[str, list[str]],
+    reference_date: date | None = None,
+) -> dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]]:
+    """Trasforma {categoria: [voci testuali]} in
+    {(anno, mese): {categoria: [(giorno_inizio, giorno_fine, nome), ...]}},
+    spezzando ogni range che attraversa piu' mesi in un segmento per mese
+    toccato (i giorni vengono ritagliati ai limiti del mese). Voci non
+    parsabili (formato data imprevisto) vengono escluse silenziosamente -
+    restano visibili solo negli embed testuali, che non passano da qui."""
+
+    if reference_date is None:
+        reference_date = date.today()
+
+    result: dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]] = {}
+
+    for category, entries in categories.items():
+        for entry_text in entries:
+            parsed = parse_event_entry(entry_text)
+            if parsed is None:
+                continue
+
+            start_year = _infer_start_year(parsed["start_month"], reference_date)
+            end_year = start_year
+            if parsed["end_month"] < parsed["start_month"]:
+                end_year = start_year + 1
+
+            cur_year, cur_month = start_year, parsed["start_month"]
+            while (cur_year, cur_month) <= (end_year, parsed["end_month"]):
+                if (cur_year, cur_month) == (start_year, parsed["start_month"]):
+                    seg_start = parsed["start_day"]
+                else:
+                    seg_start = 1
+
+                if (cur_year, cur_month) == (end_year, parsed["end_month"]):
+                    seg_end = parsed["end_day"]
+                else:
+                    seg_end = calendar.monthrange(cur_year, cur_month)[1]
+
+                month_key = (cur_year, cur_month)
+                result.setdefault(month_key, {}).setdefault(category, []).append(
+                    (seg_start, seg_end, parsed["name"])
+                )
+
+                if cur_month == 12:
+                    cur_year, cur_month = cur_year + 1, 1
+                else:
+                    cur_month += 1
+
+    return result
+
+
 def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
     """Tra le pagine Event Schedule trovate sul sitemap, individua quella con
     il lastmod piu' recente - in pratica il set attualmente attivo. I lastmod
@@ -305,34 +434,18 @@ async def periodic_event_schedule_check_loop(
         await asyncio.sleep(interval_seconds)
 
 
-# Quante categorie per messaggio Discord. Un embed regge fino a 25 campi,
-# ma un unico messaggio con 15+ categorie (osservato: le pagine reali ne
-# hanno 13-15) risultava un muro di testo poco leggibile nonostante il
-# grassetto markdown. Un campo per categoria (nome in risalto tipografico,
-# non semplice testo in grassetto in un paragrafo) e piu' messaggi invece di
-# uno solo enorme.
-_CATEGORIES_PER_MESSAGE = 6
-
-# Limite Discord per il valore di un singolo campo embed.
-_FIELD_VALUE_LIMIT = 1024
-
-
-def _category_field(category: str, entries: list[str]) -> dict:
-    value = "\n".join(f"• {entry}" for entry in entries[:10])
-    if len(value) > _FIELD_VALUE_LIMIT:
-        value = value[:_FIELD_VALUE_LIMIT - 20] + "\n_...troncato_"
-    return {"name": category[:256], "value": value or "-", "inline": False}
-
-
 async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> None:
     """Posta su Discord (via Logger cog) l'esito del controllo di una singola
     pagina Event Schedule. Esposta come funzione pubblica perche' usata sia
     dal loop automatico sia dal comando admin manuale (stesso formato di
     log per entrambi i percorsi).
 
-    Una categoria per campo embed (non tutto infilato nella description) e
-    diviso in piu' messaggi da _CATEGORIES_PER_MESSAGE categorie l'uno,
-    invece di un unico embed enorme."""
+    Genera e allega un'immagine calendario per mese (EventCalendarImageGenerator)
+    invece di descrivere gli eventi a parole in campi embed - sostituisce il
+    design precedente (un campo per categoria, diviso in piu' messaggi),
+    poco leggibile con le 13-15 categorie reali. Import di
+    EventCalendarImageGenerator locale alla funzione (non in cima al modulo)
+    per evitare un import circolare: quel modulo importa MONTHS_IT da qui."""
 
     url = result["url"]
     categories = result["categories"]
@@ -351,20 +464,35 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
         )
         return
 
-    category_items = list(categories.items())
-    chunks = [
-        category_items[i:i + _CATEGORIES_PER_MESSAGE]
-        for i in range(0, len(category_items), _CATEGORIES_PER_MESSAGE)
+    month_calendar = build_month_calendar(categories)
+
+    if not month_calendar:
+        await logger.send_log(
+            level="WARN",
+            event="ARENA_EVENT_SCHEDULE_NO_DATES",
+            user=user,
+            info=(
+                f"{prefix}: {url} interpretata ma nessuna voce aveva un "
+                f"formato data riconoscibile - calendario non generato, "
+                f"controllo manuale consigliato."
+            ),
+        )
+        return
+
+    from utils.event_calendar_image_generator import EventCalendarImageGenerator
+
+    files = [
+        discord.File(
+            EventCalendarImageGenerator.create_month_calendar(year, month, category_entries),
+            filename=f"calendario_{year}_{month:02d}.png",
+        )
+        for (year, month), category_entries in sorted(month_calendar.items())
     ]
 
-    for part_index, chunk in enumerate(chunks, start=1):
-        fields = [_category_field(category, entries) for category, entries in chunk]
-        part_label = f" — parte {part_index}/{len(chunks)}" if len(chunks) > 1 else ""
-
-        await logger.send_log(
-            level="INFO",
-            event="ARENA_EVENT_SCHEDULE_UPDATED",
-            user=user,
-            info=f"{prefix}: {url}{part_label}",
-            fields=fields,
-        )
+    await logger.send_log(
+        level="INFO",
+        event="ARENA_EVENT_SCHEDULE_UPDATED",
+        user=user,
+        info=f"{prefix}: {url}",
+        files=files,
+    )

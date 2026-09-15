@@ -8,6 +8,60 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.2.0 (2026-09-16)
+
+### Added
+- `utils/event_calendar_image_generator.py`: nuovo modulo (Pillow) che genera, per l'Arena Event Schedule,
+  un'immagine calendario mensile invece del solo testo — `EventCalendarImageGenerator.create_month_calendar()`
+  disegna un Gantt con una riga per categoria (come le pagine Wizards le elencano, 13-15 righe) colorata per
+  FAMIGLIA di categoria (Premier Draft/Quick Draft/Flashback/Sealed & Cube/Metagame/Community — euristica su
+  parole chiave nel nome categoria, non un dato della pagina), seguito da un elenco testuale dettagliato con
+  i nomi completi degli eventi (nessun troncamento, categoria originale tra parentesi). I nomi vengono ripuliti
+  dai prefissi ridondanti "Magic: The Gathering | " e "Arena Direct for " prima del rendering, dato che il
+  colore della riga comunica gia' il tipo di evento. Risultato di piu' giri di iterazione su mock-up con dati
+  reali: una griglia calendario classica risultava illeggibile (categorie lunghe settimane ripetute identiche
+  in ogni cella giorno), uno swimlane con una riga per famiglia (6 righe) perdeva la distinzione tra categorie
+  diverse della stessa famiglia. `create_month_panel()` (Gantt senza raggruppamento famiglia) e
+  `create_multi_month_calendar()` (piu' mesi + un solo elenco dettagliato unito) restano nel modulo,
+  disponibili ma non usati dal flusso attuale
+- `utils/arena_event_schedule.py`: nuove `parse_event_entry()` (estrae mese/giorno di inizio e fine da una
+  voce testuale, formato "Mese Giorno[-Mese] Giorno: Nome evento") e `build_month_calendar()` (raggruppa le
+  voci per mese, spezzando i range che attraversano piu' mesi in un segmento per mese toccato; anno mancante
+  inferito dalla data corrente, con gestione del turno di anno per pagine pubblicate a fine anno)
+- `/preview_calendario_eventi` (admin, `cogs/arena_event_schedule_updater.py`): ricontrolla la pagina Event
+  Schedule piu' recente e pubblica un'immagine calendario per mese come messaggio normale (non ephemeral) nel
+  canale in cui viene invocato, con un breve testo (mesi coperti + link alla fonte)
+- `cogs/logger.py`: `Logger.send_log()` accetta ora anche un parametro opzionale `files` (lista di
+  `discord.File`), allegati allo stesso messaggio dell'embed — usato dal calendario eventi Arena
+
+### Changed
+- **`send_event_schedule_log()` ora allega immagini calendario invece di descrivere gli eventi a parole** —
+  sostituisce il design a campo-embed-per-categoria introdotto in 3.1.0 (poco leggibile con le 13-15
+  categorie reali di una pagina tipica). Usata sia dal check automatico giornaliero
+  (`periodic_event_schedule_check_loop()`) sia da `/forced_event_schedule_check`, quindi entrambi i percorsi
+  ora pubblicano immagini nel canale log invece del vecchio testo. Nuovo caso gestito: pagina interpretata ma
+  senza voci con un formato data riconoscibile → `WARN` dedicato (`ARENA_EVENT_SCHEDULE_NO_DATES`) invece di
+  generare un'immagine vuota o fallire
+
+### Removed
+- `_category_field()`, `_CATEGORIES_PER_MESSAGE`, `_FIELD_VALUE_LIMIT` (`utils/arena_event_schedule.py`) — il
+  design a campi embed testuali introdotto in 3.1.0, sostituito dal calendario a immagine
+
+### Docs
+- `CLAUDE.md`: sezione "Arena Event Schedule monitor" riscritta per il nuovo design a immagine (parsing date,
+  classificazione famiglia, pulizia nomi, generatore immagini); elenco `utils/` aggiornato
+- `README.md`: feature, tabella comandi (`/preview_calendario_eventi`), struttura progetto e tech stack
+  aggiornati per il calendario a immagine
+- `docs/caching.md`: tabella funzioni di `arena_event_schedule.py` aggiornata (`parse_event_entry`,
+  `build_month_calendar`, nuovo comportamento di `send_event_schedule_log`); aggiunto `/preview_calendario_eventi`
+- `docs/comandi.md`: aggiunto `/preview_calendario_eventi` (descrizione + tabella "Location File"); corretta
+  la riga stale di `/forced_event_schedule_check` (22 → 28, disallineata da modifiche precedenti al file)
+
+- `tests/utils/test_arena_event_schedule.py`: nuove classi `TestParseEventEntry` e `TestBuildMonthCalendar`;
+  `TestSendEventScheduleLog` riscritta per il nuovo comportamento a immagini (allegati `files` invece di
+  `fields`, nuovo caso "nessuna data riconoscibile"); rimossa `TestCategoryField` (testava codice rimosso).
+  Suite totale: 138 → 147
+
 ## 3.1.1 (2026-09-11)
 
 ### Fixed

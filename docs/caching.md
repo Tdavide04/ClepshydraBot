@@ -246,7 +246,9 @@ settimane.
 | `_pick_latest(entries)` | Tra le pagine trovate, seleziona quella col `lastmod` più alto (confronto lessicografico su timestamp ISO-8601 a larghezza fissa) |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
 | `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
-| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: una categoria per campo embed (non tutto nella description), diviso in più messaggi da `_CATEGORIES_PER_MESSAGE` (6) categorie l'uno invece di un unico embed enorme |
+| `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
+| `build_month_calendar(categories)` | Raggruppa le voci per `(anno, mese)`, spezzando i range multi-mese ai confini del mese; anno mancante inferito dalla data corrente |
+| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: un'immagine calendario per mese (Gantt per categoria colorato per famiglia + elenco dettagliato, generata da `EventCalendarImageGenerator`), allegata allo stesso messaggio invece di descrivere gli eventi a parole — vedi `CLAUDE.md` "Arena Event Schedule monitor" per il design completo |
 
 `check_event_schedule_updates()` stampa sempre un esito in console (`[EVENT SCHEDULE] ...`) — nessun
 cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta — anche quando non c'è nulla
@@ -283,7 +285,10 @@ bookkeeping operativo, a differenza di `arena_rarity_data.json` non contiene dat
 quindi non è tracciato in git (vedi `.gitignore`).
 
 Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla comunque la
-pagina più recente sul sitemap): `/forced_event_schedule_check`.
+pagina più recente sul sitemap): `/forced_event_schedule_check`. `/preview_calendario_eventi` fa lo stesso
+controllo ma pubblica le immagini calendario come messaggio normale (non ephemeral) nel canale in cui viene
+invocato, invece che nel canale log — strumento manuale di anteprima, non tocca lo stato salvato ai fini
+del confronto `lastmod` in modo diverso dagli altri due percorsi.
 
 ---
 
