@@ -292,6 +292,59 @@ del confronto `lastmod` in modo diverso dagli altri due percorsi.
 
 ---
 
+## 3b. Monitoraggio Banned and Restricted Announcement (`utils/ban_announcement.py`)
+
+### Problema
+
+Wizards pubblica un "**Banned and Restricted Announcement**" a cadenza fissa (circa ogni 6 settimane,
+sempre di lunedì — URL tipo `magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026`)
+che copre tutti i formati costruito ufficiali (Standard, Pioneer, Modern, Legacy, Vintage, Pauper, Alchemy,
+Historic, Timeless, Brawl, Competitive Brawl). Nessuno di questi è l'**Artisan** homebrew di questa
+community: la banlist del bot (`banned_cards`, vedi `docs/banlist-system.md`) è un elenco curato a mano,
+indipendente dalle decisioni ufficiali Wizards. Questo monitor serve solo a **notificare** che è uscito un
+nuovo annuncio — non scrive mai sulla banlist.
+
+### Soluzione
+
+Stesso schema del monitor Event Schedule: queste pagine sono anch'esse elencate in
+`magic.wizards.com/en/sitemap.xml` con `<lastmod>`, e Wizards non rimuove gli annunci passati dal sitemap,
+quindi si considera solo quello con `lastmod` più recente (`_pick_latest()`). Il check del sitemap gira
+quotidianamente (economico); il fetch+parsing della pagina vera e propria scatta solo se il `lastmod`
+dell'annuncio più recente è cambiato.
+
+A differenza dell'Event Schedule, la pagina non ha una sezione a elenco date ma prosa libera per formato.
+Ogni sezione `<h2>Formato</h2>` è però seguita da un riepilogo affidabile e strutturato:
+`<p style="padding-left: 30px;">Carta X è bannata.<br/>Carta Y è sbannata.</p>` (oppure letteralmente
+`"No changes"` quando il formato non cambia) — verificato dal vivo sugli annunci di agosto/giugno/marzo
+2026. `parse_ban_announcement()` estrae solo questo riepilogo, mai la prosa di analisi circostante o le
+decklist di esempio (troppo poco strutturate per un'estrazione affidabile, e comunque fuori scopo per un
+bot che deve solo notificare).
+
+| Funzione | Descrizione |
+|---|---|
+| `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes}]` |
+| `_pick_latest(entries)` | Stessa selezione per `lastmod` più recente del monitor Event Schedule |
+| `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
+| `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`), con nota esplicita che la banlist Artisan del bot non viene toccata |
+
+### Stato (`data/ban_announcement_state.json`, non tracciato in git)
+
+```json
+{
+  "latest_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026",
+  "latest_lastmod": "2026-08-21T18:02:33.573Z"
+}
+```
+
+Stesso bookkeeping operativo (non dati curati) dello stato Event Schedule — non tracciato in git.
+
+Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`):
+`/forced_ban_announcement_check`. Nessun equivalente di `/preview_calendario_eventi` qui — non c'è
+un'immagine da generare in anteprima, solo un embed testuale.
+
+---
+
 ## 4. Scryfall API — Strategia
 
 ### Endpoint
@@ -341,4 +394,5 @@ di `ArtisanService`.
 | Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
 | Event Schedule Arena | `arena_event_schedule_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
+| Banned and Restricted | `ban_announcement_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_ban_announcement_check` (ignora `lastmod`) |
 | Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |

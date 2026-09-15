@@ -67,6 +67,7 @@
 | `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
 | `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); posta l'immagine calendario nel canale log |
 | `/preview_calendario_eventi` | Ricontrolla la pagina "Event Schedule" Arena più recente e pubblica le immagini calendario come messaggio normale (non ephemeral) nel canale in cui viene invocato, senza toccare il canale log |
+| `/forced_ban_announcement_check` | Forza subito un ricontrollo dell'ultimo Banned and Restricted Announcement, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); solo notifica, non tocca mai la banlist Artisan |
 | `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
 
 ---
@@ -99,6 +100,7 @@
 | `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 26 |
 | `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 28 |
 | `/preview_calendario_eventi` | `cogs/arena_event_schedule_updater.py` | 77 |
+| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 22 |
 | `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 97 |
 
 ---

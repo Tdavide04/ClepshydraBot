@@ -7,6 +7,7 @@ from database import init_db, close_db
 from utils.card_cache import periodic_save_loop
 from utils.arena_overrides import periodic_spg_refresh_loop
 from utils.arena_event_schedule import periodic_event_schedule_check_loop
+from utils.ban_announcement import periodic_ban_announcement_check_loop
 
 
 class ClepshydraBotte(commands.Bot):
@@ -54,6 +55,7 @@ class ClepshydraBotte(commands.Bot):
         self.loop.create_task(periodic_save_loop())
         self.loop.create_task(periodic_spg_refresh_loop(self))
         self.loop.create_task(periodic_event_schedule_check_loop(self))
+        self.loop.create_task(periodic_ban_announcement_check_loop(self))
 
     async def close(self):
         await close_db()

@@ -40,6 +40,10 @@ data/card_cache.json
 # curati manualmente).
 data/arena_event_schedule_state.json
 
+# Stesso discorso per lo stato "ultimo lastmod visto" dei Banned and Restricted Announcement
+# (utils/ban_announcement.py) - puro bookkeeping, nessun valore editoriale.
+data/ban_announcement_state.json
+
 # Coverage
 .coverage
 htmlcov/

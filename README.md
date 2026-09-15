@@ -10,6 +10,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 - **Deck Image Generator** — Dynamic PNG showcase with color-identity backgrounds
 - **Rarity Override System** — Automatic SPG card rarity correction via Scryfall
 - **Arena Event Schedule Monitor** — Detects when the current MTG Arena "Event Schedule" page (Quick Draft rotation, Arena Direct, etc.) is new or updated and posts a monthly calendar image to Discord, one row per category color-coded by family (Draft, Flashback, Sealed & Cube, Metagame, Community)
+- **Ban Announcement Monitor** — Detects new official "Banned and Restricted Announcement" posts and notifies Discord with per-format changes (notification only — the bot's own Artisan banlist stays manually curated)
 - **Centralized Logging** — All events logged to a Discord channel with colored embeds
 
 ## Commands
@@ -29,6 +30,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 | `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
 | `/forced_event_schedule_check` | Force an immediate re-check of the latest Arena "Event Schedule" page (also runs automatically every day) | Admin |
 | `/preview_calendario_eventi` | Re-check the latest Arena "Event Schedule" page and post the calendar images in the current channel | Admin |
+| `/forced_ban_announcement_check` | Force an immediate re-check of the latest Banned and Restricted Announcement (also runs automatically every day) | Admin |
 
 ## Tech Stack
 
@@ -77,7 +79,8 @@ ClepsydraBot/
 │   ├── tournament_system/   # Swiss tournament management
 │   ├── logger.py            # Centralized logging
 │   ├── spg_override_updater.py
-│   └── arena_event_schedule_updater.py
+│   ├── arena_event_schedule_updater.py
+│   └── ban_announcement_updater.py
 ├── services/                # Business logic
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
@@ -94,6 +97,7 @@ ClepsydraBot/
 │   ├── arena_overrides.py
 │   ├── arena_event_schedule.py
 │   ├── event_calendar_image_generator.py
+│   ├── ban_announcement.py
 │   └── deck_image_generator.py
 ├── config/
 │   └── config.py

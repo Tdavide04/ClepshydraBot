@@ -8,6 +8,39 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.3.0 (2026-09-16)
+
+### Added
+- `utils/ban_announcement.py`: nuovo modulo che monitora i post "Banned and Restricted Announcement"
+  ufficiali di Wizards (`magic.wizards.com/en/news/announcements/banned-and-restricted-*`, cadenza fissa
+  di circa 6 settimane, sempre di lunedi'). Stesso schema del monitor Event Schedule: le pagine sono
+  elencate nel sitemap `magic.wizards.com/en/sitemap.xml` con `<lastmod>`, Wizards non rimuove gli annunci
+  passati quindi si considera solo il piu' recente (`_pick_latest()`), check giornaliero economico sul
+  sitemap e fetch+parsing della pagina solo su `lastmod` cambiato. A differenza dell'Event Schedule la
+  pagina e' prosa libera per formato, ma ogni sezione ha un riepilogo affidabile subito sotto l'heading
+  (`<p style="padding-left: 30px;">Carta X e' bannata.<br/>...</p>`, o "No changes") — `parse_ban_announcement()`
+  estrae solo quel riepilogo, verificato dal vivo sugli annunci di marzo/giugno/agosto 2026, ignorando la
+  prosa di analisi e le decklist di esempio circostanti
+- `/forced_ban_announcement_check` (admin, `cogs/ban_announcement_updater.py`): forza subito un ricontrollo
+  dell'ultimo annuncio, ignorando il `lastmod` salvato
+- `periodic_ban_announcement_check_loop()`: quarto task in background avviato da `main.py`, stesso pattern
+  e cadenza (24h) degli altri tre
+
+### Notes
+- **Solo notifica**: nessuno dei formati ufficiali coperti da questi annunci (Standard, Pioneer, Modern,
+  Legacy, Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) e' l'Artisan homebrew di
+  questa community — `send_ban_announcement_log()` non scrive mai su `banned_cards`, la banlist resta
+  curata a mano via `/banlist_aggiungi`/`/banlist_rimuovi` come prima. Un annuncio con zero formati
+  modificati e' un esito valido (`BAN_ANNOUNCEMENT_NO_CHANGES`, non un errore), distinto dal caso in cui il
+  riepilogo strutturato non viene trovato affatto (`BAN_ANNOUNCEMENT_UNPARSEABLE`)
+
+### Docs
+- Aggiornati `CLAUDE.md` (nuova sezione "Banned and Restricted Announcement monitor", quarto task in
+  `main.py`, elenco `utils/`, conteggio test), `README.md` (feature, comando, struttura progetto),
+  `docs/caching.md` (nuova sezione 3b + riga tabella riepilogo cache), `docs/comandi.md`
+  (`/forced_ban_announcement_check` in entrambe le tabelle), `docs/banlist-system.md` (nota sul monitor
+  notify-only)
+
 ## 3.2.0 (2026-09-16)
 
 ### Added
