@@ -39,8 +39,6 @@ Approccio (stesso schema di arena_event_schedule.py):
 
 import asyncio
 import html as html_module
-import json
-import os
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -48,25 +46,23 @@ from datetime import datetime
 import aiohttp
 
 from utils.arena_event_schedule import MONTHS_IT
+from utils.sitemap_monitor import (
+    _CHECK_INTERVAL_SECONDS,
+    _SITEMAP_NS,
+    fetch_page_html,
+    fetch_sitemap_xml,
+    load_json_state,
+    pick_latest_by_lastmod,
+    save_json_state,
+)
 
 STATE_PATH = "data/ban_announcement_state.json"
-
-SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
 
 _ANNOUNCEMENTS_URL_PREFIX = "https://magic.wizards.com/en/news/announcements/banned-and-restricted-"
 
 _BAN_ANNOUNCEMENT_URL_RE = re.compile(
     re.escape(_ANNOUNCEMENTS_URL_PREFIX) + r"[a-z0-9-]+$"
 )
-
-_SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-
-# Gli annunci escono a cadenza fissa (circa ogni 6 settimane, sempre di
-# lunedi'), piu' rada del ciclo di un singolo set, ma vale lo stesso
-# ragionamento di arena_event_schedule.py: il check del sitemap costa
-# pochissimo, quindi girare quotidianamente riduce la latenza di notifica
-# senza dover conoscere in anticipo la prossima data esatta.
-_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
 
 _H2_RE = re.compile(r"<h2[^>]*>\s*([^<]+?)\s*</h2>")
 
@@ -93,26 +89,14 @@ def _load_state() -> dict:
     if _state_cache is not None:
         return _state_cache
 
-    if not os.path.exists(STATE_PATH):
-        _state_cache = {"latest_url": None, "latest_lastmod": None}
-        return _state_cache
-
-    with open(STATE_PATH, "r", encoding="utf-8") as f:
-        _state_cache = json.load(f)
-
+    _state_cache = load_json_state(STATE_PATH, {"latest_url": None, "latest_lastmod": None})
     return _state_cache
 
 
 def _save_state(data: dict) -> None:
     global _state_cache
 
-    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-
-    tmp_path = STATE_PATH + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-    os.replace(tmp_path, STATE_PATH)
-
+    save_json_state(STATE_PATH, data)
     _state_cache = data
 
 
@@ -167,11 +151,9 @@ async def _fetch_sitemap_ban_urls(session: aiohttp.ClientSession) -> dict[str, s
     """Scarica il sitemap e restituisce {url: lastmod} per le sole pagine
     'banned-and-restricted-*' sotto /en/news/announcements/."""
 
-    async with session.get(SITEMAP_URL) as response:
-        if response.status != 200:
-            print(f"[SITEMAP FAIL] {SITEMAP_URL} -> {response.status}")
-            return {}
-        body = await response.text()
+    body = await fetch_sitemap_xml(session)
+    if body is None:
+        return {}
 
     return _parse_sitemap_xml(body)
 
@@ -243,23 +225,13 @@ def format_lastmod(lastmod: str) -> str:
     return f"{dt.day} {MONTHS_IT[dt.month]} {dt.year}, {dt.strftime('%H:%M')} UTC"
 
 
-def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
-    """Tra le pagine annuncio trovate sul sitemap, individua quella con il
-    lastmod piu' recente. Stesso confronto lessicografico su timestamp
-    ISO-8601 a larghezza fissa di arena_event_schedule.py."""
-
-    if not entries:
-        return None
-
-    return max(entries.items(), key=lambda item: item[1])
+# Stessa selezione per lastmod piu' recente di arena_event_schedule.py -
+# vedi pick_latest_by_lastmod() in utils/sitemap_monitor.py.
+_pick_latest = pick_latest_by_lastmod
 
 
 async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | None:
-    async with session.get(url) as response:
-        if response.status != 200:
-            print(f"[BAN ANNOUNCEMENT FETCH FAIL] {url} -> {response.status}")
-            return None
-        return await response.text()
+    return await fetch_page_html(session, url, log_prefix="BAN ANNOUNCEMENT")
 
 
 # ==========================================

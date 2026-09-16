@@ -97,6 +97,7 @@ ClepsydraBot/
 │   ├── arena_event_schedule.py
 │   ├── event_calendar_image_generator.py
 │   ├── ban_announcement.py
+│   ├── sitemap_monitor.py
 │   └── deck_image_generator.py
 ├── config/
 │   └── config.py

@@ -37,8 +37,6 @@ Approccio:
 
 import asyncio
 import calendar
-import json
-import os
 import re
 import html as html_module
 import xml.etree.ElementTree as ET
@@ -47,9 +45,17 @@ from datetime import date
 import aiohttp
 import discord
 
-STATE_PATH = "data/arena_event_schedule_state.json"
+from utils.sitemap_monitor import (
+    _CHECK_INTERVAL_SECONDS,
+    _SITEMAP_NS,
+    fetch_page_html,
+    fetch_sitemap_xml,
+    load_json_state,
+    pick_latest_by_lastmod,
+    save_json_state,
+)
 
-SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
+STATE_PATH = "data/arena_event_schedule_state.json"
 
 # Sotto-percorso su cui vivono sia i post settimanali "announcements-*" sia
 # le pagine dedicate "*-event-schedule" che questo modulo osserva.
@@ -58,15 +64,6 @@ _NEWS_URL_PREFIX = "https://magic.wizards.com/en/news/mtg-arena/"
 _EVENT_SCHEDULE_URL_RE = re.compile(
     re.escape(_NEWS_URL_PREFIX) + r"[a-z0-9-]+-event-schedule$"
 )
-
-_SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-
-# Il sitemap e la pagina cambiano raramente (nuovo set ogni 6-9 settimane, con
-# eventuali aggiornamenti in-place a meta' ciclo), ma il check e' una singola
-# GET economica su un file statico: girare spesso costa pochissimo e riduce
-# la latenza con cui la community viene informata, a differenza del parsing
-# della singola pagina (piu' fragile) che scatta solo sui cambiamenti reali.
-_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
 
 _HEADING_LIST_RE = re.compile(
     r"<h[234]>\s*([^<]+?)\s*</h[234]>\s*<ul>(.*?)</ul>",
@@ -112,26 +109,14 @@ def _load_state() -> dict:
     if _state_cache is not None:
         return _state_cache
 
-    if not os.path.exists(STATE_PATH):
-        _state_cache = {"latest_url": None, "latest_lastmod": None}
-        return _state_cache
-
-    with open(STATE_PATH, "r", encoding="utf-8") as f:
-        _state_cache = json.load(f)
-
+    _state_cache = load_json_state(STATE_PATH, {"latest_url": None, "latest_lastmod": None})
     return _state_cache
 
 
 def _save_state(data: dict) -> None:
     global _state_cache
 
-    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-
-    tmp_path = STATE_PATH + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-    os.replace(tmp_path, STATE_PATH)
-
+    save_json_state(STATE_PATH, data)
     _state_cache = data
 
 
@@ -189,11 +174,9 @@ async def _fetch_sitemap_event_schedule_urls(
     """Scarica il sitemap e restituisce {url: lastmod} per le sole pagine
     '*-event-schedule' sotto /en/news/mtg-arena/."""
 
-    async with session.get(SITEMAP_URL) as response:
-        if response.status != 200:
-            print(f"[SITEMAP FAIL] {SITEMAP_URL} -> {response.status}")
-            return {}
-        body = await response.text()
+    body = await fetch_sitemap_xml(session)
+    if body is None:
+        return {}
 
     return _parse_sitemap_xml(body)
 
@@ -389,25 +372,13 @@ def format_period_covered(
     )
 
 
-def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
-    """Tra le pagine Event Schedule trovate sul sitemap, individua quella con
-    il lastmod piu' recente - in pratica il set attualmente attivo. I lastmod
-    sono timestamp ISO-8601 a larghezza fissa (es. '2026-09-02T16:05:08.364Z'),
-    quindi il confronto lessicografico tra stringhe coincide con l'ordine
-    cronologico, senza dover fare parsing di date."""
-
-    if not entries:
-        return None
-
-    return max(entries.items(), key=lambda item: item[1])
+# In pratica seleziona il set attualmente attivo - vedi
+# pick_latest_by_lastmod() in utils/sitemap_monitor.py per il razionale.
+_pick_latest = pick_latest_by_lastmod
 
 
 async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | None:
-    async with session.get(url) as response:
-        if response.status != 200:
-            print(f"[EVENT SCHEDULE FETCH FAIL] {url} -> {response.status}")
-            return None
-        return await response.text()
+    return await fetch_page_html(session, url, log_prefix="EVENT SCHEDULE")
 
 
 # ==========================================

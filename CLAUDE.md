@@ -56,10 +56,11 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 174 tests total, no `pytest-asyncio` — async integration tests
+Suite: 186 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
-`tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`) instead
+`tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
+`tests/utils/test_sitemap_monitor.py`) instead
 wrap each scenario in a single `asyncio.run()` call,
 since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
 `_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
@@ -107,6 +108,10 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   pages via the site's `sitemap.xml`, see below), `event_calendar_image_generator.py` (Pillow-based
   calendar image for the Event Schedule, see below), `ban_announcement.py` (monitors Wizards' "Banned and
   Restricted Announcement" posts via the same `sitemap.xml`, notify-only — see below),
+  `sitemap_monitor.py` (shared by the two monitors above: JSON state load/save with atomic writes,
+  `lastmod`-based "pick the newest page" selection, generic sitemap/page GET — extracted once
+  `ban_announcement.py` duplicated `arena_event_schedule.py`'s version of this byte-for-byte; each
+  domain module still owns its own URL filtering and HTML parsing, the only genuinely different part),
   `deck_image_generator.py` (Pillow-based deck showcase PNGs), `permissions.py` (`@is_admin()` app-command
   check based on a configured Discord role name), `tournament_embeds.py`, `tournament_logic.py`.
 

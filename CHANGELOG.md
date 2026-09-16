@@ -8,6 +8,21 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.1 (2026-09-17)
+
+### Changed
+- **Estratta in `utils/sitemap_monitor.py` la logica duplicata tra `utils/arena_event_schedule.py` e
+  `utils/ban_announcement.py`**: caricamento/salvataggio dello stato JSON (scrittura atomica via `.tmp` +
+  `os.replace`), selezione della pagina piu' recente per `lastmod`, fetch generico del sitemap e di una
+  singola pagina — erano ~90 righe identiche byte-per-byte, duplicate quando `ban_announcement.py` ha
+  ricalcato `arena_event_schedule.py`. Nessun cambio di comportamento: verificato sia con la suite di test
+  (nessuna modifica richiesta ai test esistenti, grazie a come Python risolve i nomi importati) sia con
+  uno smoke test dal vivo contro i dati reali di Wizards, output identico a prima del refactor. Il filtro
+  delle URL di interesse e il parsing HTML restano in ciascun modulo — l'unica parte davvero diversa tra
+  i due monitor
+- `tests/utils/test_sitemap_monitor.py`: nuovo file, 12 test diretti sul modulo condiviso (prima la
+  logica era testata solo indirettamente tramite i due monitor)
+
 ## 3.5.0 (2026-09-16)
 
 ### Added

@@ -243,7 +243,7 @@ settimane.
 | Funzione | Descrizione |
 |---|---|
 | `check_event_schedule_updates(force=False)` | Individua la pagina più recente sul sitemap; se nuova/cambiata (o sempre, se `force=True`) la scarica+interpreta; ritorna `[]` o `[{url, lastmod, categories}]` |
-| `_pick_latest(entries)` | Tra le pagine trovate, seleziona quella col `lastmod` più alto (confronto lessicografico su timestamp ISO-8601 a larghezza fissa) |
+| `_pick_latest(entries)` | Alias locale di `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (condivisa con il monitor Ban Announcement) — tra le pagine trovate, seleziona quella col `lastmod` più alto |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
 | `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
 | `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
@@ -329,7 +329,7 @@ bot che deve solo notificare).
 | Funzione | Descrizione |
 |---|---|
 | `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes}]` |
-| `_pick_latest(entries)` | Stessa selezione per `lastmod` più recente del monitor Event Schedule |
+| `_pick_latest(entries)` | Stesso alias di `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) usato dal monitor Event Schedule |
 | `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
 | `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
 | `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
