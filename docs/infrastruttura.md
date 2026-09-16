@@ -171,7 +171,7 @@ Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I
 (`/opt/venv`), lo stage finale copia solo il venv già pronto + il codice applicativo, gira come utente
 non-root (`clepshydra`, uid 1000). `.dockerignore` esclude `.git`, `data/` (mai bakato nell'immagine —
 contiene solo dati runtime/cache, ricreato a ogni avvio dal volume), `.env` (mai nell'immagine, iniettato
-a runtime), test/docs/legacy.
+a runtime), test/docs.
 
 `docker-compose.yml`:
 - `restart: unless-stopped`
@@ -191,9 +191,9 @@ che resta il metodo effettivamente in uso in produzione finché non si decide di
 
 `.github/workflows/ci.yml`, attivo su push/PR:
 - `pytest` su ogni push e PR — **gate bloccante**
-- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`, `legacy/` escluso — vedi CLAUDE.md "Legacy code") —
-  **gate bloccante**: il debito di lint pre-esistente (~54 problemi) è stato sanato nello Step 8 di
-  `docs/roadmap-miglioramenti.md`
+- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`) — **gate bloccante**: il debito di lint
+  pre-esistente (~54 problemi) è stato sanato nello Step 8 di `docs/roadmap-miglioramenti.md` (allora
+  in parte escludendo `legacy/`, poi rimosso dal repository — vedi `CHANGELOG.md`)
 
 Ancora da fare:
 - `build` check Docker in CI (verifica che l'immagine si costruisca ad ogni push, senza deploy)

@@ -133,6 +133,18 @@ class TestParseBanAnnouncement:
         assert ban_announcement.parse_ban_announcement(NO_STRUCTURE_HTML) is None
 
 
+class TestFormatLastmod:
+
+    def test_formats_an_iso8601_utc_timestamp_in_italian(self):
+        formatted = ban_announcement.format_lastmod("2026-08-21T18:02:33.573Z")
+        assert formatted == "21 Agosto 2026, 18:02 UTC"
+
+    def test_returns_the_original_string_unchanged_on_unexpected_format(self):
+        """Un dettaglio cosmetico rotto non deve far fallire la notifica -
+        stessa filosofia 'degrada, non crasha' del resto del modulo."""
+        assert ban_announcement.format_lastmod("non-un-timestamp") == "non-un-timestamp"
+
+
 class TestPickLatest:
 
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
@@ -235,11 +247,13 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None, extra_channel_id=None):
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
+                        extra_channel_id=None, community_title=None, community_info=None):
         self.calls.append({
             "level": level, "event": event, "info": info,
             "fields": fields or [], "files": files or [],
             "extra_channel_id": extra_channel_id,
+            "community_title": community_title, "community_info": community_info,
         })
 
 
@@ -278,7 +292,7 @@ class TestSendBanAnnouncementLog:
             "Standard": ["Badgermole Cub is banned."],
             "Brawl": ["Some Card is banned.", "Other Card is unbanned."],
         }
-        result = {"url": ANNOUNCEMENT_A_URL, "lastmod": "x", "changes": changes}
+        result = {"url": ANNOUNCEMENT_A_URL, "lastmod": "2026-08-21T18:02:33.573Z", "changes": changes}
 
         run(ban_announcement.send_ban_announcement_log(logger, result, user=None, forced=False))
 
@@ -294,3 +308,16 @@ class TestSendBanAnnouncementLog:
         assert field_names == {"Standard", "Brawl"}
         brawl_field = next(f for f in logger.calls[0]["fields"] if f["name"] == "Brawl")
         assert brawl_field["value"] == "Some Card is banned.\nOther Card is unbanned."
+
+        # Il canale community e' pubblico (si fa anche @everyone): il suo
+        # embed dedicato non deve contenere gergo da staff ("Controllo
+        # manuale/automatico") ne' l'URL grezzo senza contesto - solo un
+        # titolo e un testo puliti, distinti dall'`info` del canale log.
+        community_title = logger.calls[0]["community_title"]
+        community_info = logger.calls[0]["community_info"]
+        assert community_title and "banned" in community_title.lower()
+        assert "controllo" not in community_info.lower()
+        assert ANNOUNCEMENT_A_URL in community_info
+
+        # Data/ora dell'annuncio (dal lastmod formattato) nel titolo.
+        assert community_title == "📋 Nuovo Banned and Restricted Announcement — 21 Agosto 2026, 18:02 UTC"

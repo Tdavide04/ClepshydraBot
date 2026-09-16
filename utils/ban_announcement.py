@@ -43,8 +43,11 @@ import json
 import os
 import re
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import aiohttp
+
+from utils.arena_event_schedule import MONTHS_IT
 
 STATE_PATH = "data/ban_announcement_state.json"
 
@@ -116,6 +119,16 @@ def _save_state(data: dict) -> None:
 def invalidate_state_cache() -> None:
     global _state_cache
     _state_cache = None
+
+
+def get_latest_known_ban_announcement() -> dict:
+    """Ritorna l'ultimo Banned and Restricted Announcement noto da stato
+    salvato su disco - {"url": str | None, "lastmod": str | None} - senza
+    alcuna richiesta di rete. Stesso ruolo di get_latest_known_event_schedule()
+    in arena_event_schedule.py: usata dal log di stato all'avvio del bot."""
+
+    state = _load_state()
+    return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
 
 
 # ==========================================
@@ -210,6 +223,24 @@ def parse_ban_announcement(page_html: str) -> dict[str, list[str]] | None:
         return None
 
     return changes
+
+
+def format_lastmod(lastmod: str) -> str:
+    """Formatta in italiano il timestamp ISO-8601 del sitemap (es.
+    '2026-08-21T18:02:33.573Z' -> '21 Agosto 2026, 18:02 UTC'). E' l'unico
+    dato data+ora disponibile per l'annuncio: la pagina mostra un <time> con
+    solo il giorno (es. 'Aug 10, 2026'), senza orario, e comunque riflette
+    l'ultima modifica della pagina secondo Wizards, non necessariamente
+    l'istante di prima pubblicazione. Ritorna la stringa originale invariata
+    se il formato non è quello atteso, invece di far fallire la notifica per
+    un dettaglio cosmetico."""
+
+    try:
+        dt = datetime.fromisoformat(lastmod.replace("Z", "+00:00"))
+    except ValueError:
+        return lastmod
+
+    return f"{dt.day} {MONTHS_IT[dt.month]} {dt.year}, {dt.strftime('%H:%M')} UTC"
 
 
 def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
@@ -333,7 +364,13 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
     l'embed viene postato anche in COMUNICATION_CHANNEL_ID (import differito,
     come utils/permissions.py, per restare importabile nei test senza un
     .env completo) oltre che nel canale log - riguarda tutta la community,
-    non solo lo staff."""
+    non solo lo staff. Il canale community e' un canale pubblico dove si fa
+    anche @everyone: usa `community_title`/`community_info` di
+    Logger.send_log() per un embed dedicato senza il gergo da staff
+    ("Controllo manuale forzato", l'utente che ha invocato il comando) che
+    invece resta nell'`info` del canale log - solo i `fields` (le carte
+    bannate/sbannate per formato) sono condivisi tra i due, sono contenuto
+    genuino anche per la community."""
 
     url = result["url"]
     changes = result["changes"]
@@ -373,6 +410,8 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
 
     from config.config import COMUNICATION_CHANNEL_ID
 
+    lastmod_text = format_lastmod(result["lastmod"])
+
     await logger.send_log(
         level="INFO",
         event="BAN_ANNOUNCEMENT_UPDATED",
@@ -380,4 +419,6 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
         info=f"{prefix}: nuovo Banned and Restricted Announcement — {url}",
         fields=fields,
         extra_channel_id=COMUNICATION_CHANNEL_ID,
+        community_title=f"📋 Nuovo Banned and Restricted Announcement — {lastmod_text}",
+        community_info=f"Ecco cosa cambia nei formati ufficiali Magic — [leggi l'annuncio completo]({url})",
     )

@@ -332,9 +332,10 @@ eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run(
 - `docs/infrastruttura.md` — sezione "Roadmap Infrastrutturale", Sprint 8: da "parziale" a "completato".
 - `CHANGELOG.md` — nuova voce `Fixed`.
 
-**Implementazione effettiva:** 54 problemi (42 fuori da `legacy/`, che è stato escluso in `ruff.toml`
-invece di essere corretto — vedi CLAUDE.md "Legacy code": non fa parte del codice attivamente
-mantenuto). 27 corretti con `ruff check . --fix` (import inutilizzati, f-string senza placeholder,
+**Implementazione effettiva:** 54 problemi (42 fuori da `legacy/`, che a quel tempo era escluso in
+`ruff.toml` invece di essere corretto, non facendo parte del codice attivamente mantenuto — la cartella
+e' stata poi rimossa interamente dal repository, vedi `CHANGELOG.md`). 27 corretti con
+`ruff check . --fix` (import inutilizzati, f-string senza placeholder,
 import multipli sulla stessa riga) — diff rivisto a mano prima di fidarsi dell'autofix. I restanti 15
 manuali:
 - 12 `E701` (statement multipli su una riga) → separati su righe distinte, nessun cambio di logica.

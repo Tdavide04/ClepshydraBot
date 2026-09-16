@@ -249,6 +249,9 @@ settimane.
 | `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
 | `build_month_calendar(categories)` | Raggruppa le voci per `(anno, mese)`, spezzando i range multi-mese ai confini del mese; anno mancante inferito dalla data corrente |
 | `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: un'immagine calendario per mese (Gantt per categoria colorato per famiglia + elenco dettagliato, generata da `EventCalendarImageGenerator`), allegata allo stesso messaggio invece di descrivere gli eventi a parole — vedi `CLAUDE.md` "Arena Event Schedule monitor" per il design completo |
+| `extract_set_name_from_url(url)` | Deriva un nome leggibile dell'espansione dallo slug URL (es. `the-hobbit-event-schedule` → "The Hobbit"), usato nel titolo dell'embed community |
+| `format_period_covered(month_calendar)` | Calcola il periodo complessivo coperto da tutte le voci (min/max su `(anno, mese, giorno)`), es. "11 Agosto - 29 Settembre 2026" |
+| `get_latest_known_event_schedule()` | Legge (senza rete) l'ultima pagina nota dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
 
 `check_event_schedule_updates()` stampa sempre un esito in console (`[EVENT SCHEDULE] ...`) — nessun
 cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta — anche quando non c'è nulla
@@ -284,11 +287,14 @@ Traccia solo l'ultima pagina (più recente) effettivamente processata, non l'int
 bookkeeping operativo, a differenza di `arena_rarity_data.json` non contiene dati curati/editoriali,
 quindi non è tracciato in git (vedi `.gitignore`).
 
-Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla comunque la
-pagina più recente sul sitemap): `/forced_event_schedule_check`. `/preview_calendario_eventi` fa lo stesso
-controllo ma pubblica le immagini calendario come messaggio normale (non ephemeral) nel canale in cui viene
-invocato, invece che nel canale log — strumento manuale di anteprima, non tocca lo stato salvato ai fini
-del confronto `lastmod` in modo diverso dagli altri due percorsi.
+Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
+confronto `lastmod`, ricontrolla comunque la pagina più recente sul sitemap): `/forced_event_schedule_check`.
+Quando il calendario viene generato con successo, le immagini vengono postate sia nel canale log sia in
+`COMUNICATION_CHANNEL_ID` (canale pubblico, con embed dedicato senza gergo da staff — titolo con il nome
+dell'espansione, corpo con il periodo coperto e la fonte, vedi `CLAUDE.md`); i due casi WARN (pagina non
+interpretabile o senza date) restano solo nel canale log. Esisteva un comando separato
+`/preview_calendario_eventi` per un'anteprima manuale fuori dal canale log — rimosso una volta che
+`/forced_event_schedule_check` ha iniziato a postare anche nel canale community, rendendolo ridondante.
 
 ---
 
@@ -326,7 +332,9 @@ bot che deve solo notificare).
 | `_pick_latest(entries)` | Stessa selezione per `lastmod` più recente del monitor Event Schedule |
 | `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
 | `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
-| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, l'embed va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) oltre al canale log — riguarda la community, non solo lo staff; WARN/nessuna modifica restano solo nel canale log |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
+| `format_lastmod(lastmod)` | Formatta il timestamp ISO-8601 del sitemap in italiano (es. "21 Agosto 2026, 18:02 UTC"), usato nel titolo dell'embed community — unico dato data+ora disponibile, la pagina mostra solo il giorno |
+| `get_latest_known_ban_announcement()` | Legge (senza rete) l'ultimo annuncio noto dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
 
 ### Stato (`data/ban_announcement_state.json`, non tracciato in git)
 
@@ -339,9 +347,17 @@ bot che deve solo notificare).
 
 Stesso bookkeeping operativo (non dati curati) dello stato Event Schedule — non tracciato in git.
 
-Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`):
-`/forced_ban_announcement_check`. Nessun equivalente di `/preview_calendario_eventi` qui — non c'è
-un'immagine da generare in anteprima, solo un embed testuale.
+Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
+confronto `lastmod`): `/forced_ban_announcement_check`.
+
+### Log di stato all'avvio (`STARTUP_STATUS`)
+
+Subito dopo `SYSTEM_STARTUP`, `main.py` posta un secondo log `STARTUP_STATUS` (solo canale log, nessun
+`extra_channel_id`) che riporta l'ultima pagina Event Schedule e l'ultimo Banned and Restricted
+Announcement già noti al bot — letti da `get_latest_known_event_schedule()`/
+`get_latest_known_ban_announcement()`, puri accessi allo stato salvato su disco, **senza alcuna richiesta
+di rete**. È un colpo d'occhio ad ogni riavvio, distinto dal check periodico vero e proprio (che scatta
+poco dopo, quando i quattro `periodic_*_loop()` partono, e interroga davvero il sitemap).
 
 ---
 

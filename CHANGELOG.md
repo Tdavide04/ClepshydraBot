@@ -8,6 +8,55 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.0 (2026-09-16)
+
+### Added
+- `main.py`: nuovo log `STARTUP_STATUS` subito dopo `SYSTEM_STARTUP` (solo canale log, nessun
+  `extra_channel_id`) — riporta l'ultima pagina Event Schedule e l'ultimo Banned and Restricted
+  Announcement gia' noti al bot, letti da `get_latest_known_event_schedule()`/
+  `get_latest_known_ban_announcement()` (nuove funzioni in `utils/arena_event_schedule.py` e
+  `utils/ban_announcement.py`, puro accesso allo stato salvato su disco, senza richieste di rete) — un
+  colpo d'occhio ad ogni riavvio, distinto dal check periodico vero e proprio
+- `utils/arena_event_schedule.py`: nuove `extract_set_name_from_url()` (deriva un nome leggibile
+  dell'espansione dallo slug URL, es. `the-hobbit-event-schedule` -> "The Hobbit") e
+  `format_period_covered()` (calcola il periodo complessivo coperto da tutte le voci del calendario, es.
+  "11 Agosto - 29 Settembre 2026")
+- `utils/ban_announcement.py`: nuova `format_lastmod()` (formatta il timestamp ISO-8601 del sitemap in
+  italiano, es. "21 Agosto 2026, 18:02 UTC" — unico dato data+ora disponibile per l'annuncio)
+
+### Changed
+- **`Logger.send_log()` non riusa piu' l'embed del canale log per il canale community**: quando
+  `extra_channel_id` e' impostato, costruisce un embed indipendente da nuovi parametri
+  `community_title`/`community_info`, senza il gergo da staff ("Controllo manuale/automatico forzato",
+  l'utente che ha invocato il comando) che il canale log mostra correttamente ma che non ha senso in un
+  canale pubblico dove si fa anche `@everyone`. I `files` vengono ora correttamente re-inviati anche al
+  canale extra (prima arrivava solo l'embed testuale): ogni `discord.File.reset()` viene richiamato prima
+  del secondo invio, dato che lo stream era gia' stato consumato dal primo
+- `send_event_schedule_log()`: il messaggio nel canale community ora include il nome dell'espansione
+  (titolo, es. "📅 Calendario Eventi Arena — The Hobbit") e il periodo coperto (corpo, es. "Periodo: 11
+  Agosto - 29 Settembre 2026"), non solo un link nudo
+- `send_ban_announcement_log()`: il titolo del messaggio community ora include data e ora dell'annuncio
+  (es. "📋 Nuovo Banned and Restricted Announcement — 21 Agosto 2026, 18:02 UTC")
+
+### Removed
+- `/preview_calendario_eventi` (admin, era in `cogs/arena_event_schedule_updater.py`) — ridondante una
+  volta che `/forced_event_schedule_check` posta anche nel canale community, non solo nel canale log
+- **Cartella `legacy/` rimossa interamente dal repository** (implementazione V1 del bot, non piu'
+  importata da nessun modulo attivo, mantenuta finora solo come riferimento storico). Di conseguenza:
+  `ruff.toml` non esclude piu' `legacy/` dal lint (nessun codice li' da escludere), `.dockerignore` non la
+  referenzia piu', rimossa la sezione "Legacy code" da `CLAUDE.md`
+
+### Docs
+- Aggiornati `CLAUDE.md` (rimossa sezione "Legacy code"; sezioni Event Schedule/Ban Announcement monitor
+  aggiornate con l'arricchimento dei messaggi community e la rimozione di `/preview_calendario_eventi`;
+  documentato `STARTUP_STATUS` e `COMUNICATION_CHANNEL_ID`; conteggio test aggiornato a 174), `README.md`
+  (rimossa riga `/preview_calendario_eventi`, feature bullet aggiornate), `docs/comandi.md` (rimosso
+  `/preview_calendario_eventi` da entrambe le tabelle, corretta la riga di `/forced_event_schedule_check`
+  disallineata da modifiche precedenti al file), `docs/caching.md` (sezioni 3/3b aggiornate con le nuove
+  funzioni e il comportamento sul canale community, nuova sottosezione "Log di stato all'avvio"),
+  `docs/infrastruttura.md` e `docs/roadmap-miglioramenti.md` (note storiche sulla rimozione di `legacy/`
+  aggiornate per non puntare piu' a una sezione di `CLAUDE.md` che non esiste piu')
+
 ## 3.4.0 (2026-09-16)
 
 ### Added

@@ -6,8 +6,8 @@ from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db
 from utils.card_cache import periodic_save_loop
 from utils.arena_overrides import periodic_spg_refresh_loop
-from utils.arena_event_schedule import periodic_event_schedule_check_loop
-from utils.ban_announcement import periodic_ban_announcement_check_loop
+from utils.arena_event_schedule import get_latest_known_event_schedule, periodic_event_schedule_check_loop
+from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
 
 
 class ClepshydraBotte(commands.Bot):
@@ -43,6 +43,27 @@ class ClepshydraBotte(commands.Bot):
                     f"**Database:** Inizializzato\n"
                     f"**Comandi Sync:** {len(synced)}\n"
                     f"**Versione Library:** {discord.__version__}"
+                )
+            )
+
+            # Riepilogo di stato SOLO nel canale log (non community): quale
+            # sia l'ultima pagina Event Schedule/Banned and Restricted GIA'
+            # nota al bot, letta dagli state file su disco senza fare
+            # richieste di rete. Distinto dal check periodico vero e proprio
+            # (che invece interroga il sitemap e scatta poco dopo, appena i
+            # create_task sotto partono) - qui interessa solo mostrare cosa
+            # il bot sa gia' ad ogni riavvio, utile per verificare al volo
+            # se lo stato salvato risulta quello aspettato.
+            event_schedule_state = get_latest_known_event_schedule()
+            ban_announcement_state = get_latest_known_ban_announcement()
+            await logger.send_log(
+                level="INFO",
+                event="STARTUP_STATUS",
+                info=(
+                    f"**Ultima pagina Event Schedule nota:** "
+                    f"{event_schedule_state['url'] or 'nessuna (stato vuoto)'}\n"
+                    f"**Ultimo Banned and Restricted Announcement noto:** "
+                    f"{ban_announcement_state['url'] or 'nessuno (stato vuoto)'}"
                 )
             )
 

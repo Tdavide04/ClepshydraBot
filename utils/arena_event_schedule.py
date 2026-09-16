@@ -140,6 +140,17 @@ def invalidate_state_cache() -> None:
     _state_cache = None
 
 
+def get_latest_known_event_schedule() -> dict:
+    """Ritorna l'ultima pagina Event Schedule nota da stato salvato su disco
+    - {"url": str | None, "lastmod": str | None} - senza alcuna richiesta di
+    rete. Usata dal log di stato all'avvio del bot (main.py), distinto dal
+    check periodico vero e proprio: qui interessa solo mostrare cosa il bot
+    sa gia', non verificare se c'e' qualcosa di nuovo."""
+
+    state = _load_state()
+    return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
+
+
 # ==========================================
 # SITEMAP
 # ==========================================
@@ -325,6 +336,59 @@ def build_month_calendar(
     return result
 
 
+def extract_set_name_from_url(url: str) -> str:
+    """Deriva un nome leggibile dell'espansione dallo slug della pagina
+    Event Schedule (es. '.../the-hobbit-event-schedule' -> 'The Hobbit').
+    La pagina non espone il nome del set in un campo dedicato che si possa
+    estrarre in modo affidabile (compare solo dentro prosa/HTML vario), ma
+    lo slug e' sempre presente e stabile, quindi e' la fonte piu' sicura per
+    un titolo comunity leggibile."""
+
+    slug = url.rstrip("/").rsplit("/", 1)[-1]
+    if slug.endswith("-event-schedule"):
+        slug = slug[: -len("-event-schedule")]
+
+    return " ".join(word.capitalize() for word in slug.split("-") if word)
+
+
+def format_period_covered(
+    month_calendar: dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]],
+) -> str | None:
+    """Formatta in italiano il periodo complessivo coperto da tutte le voci
+    di un calendario gia' costruito da build_month_calendar() (es. '11
+    Agosto - 29 Settembre 2026'), o None se il calendario e' vuoto. Il
+    confronto cronologico usa tuple (anno, mese, giorno): dato che le chiavi
+    (anno, mese) sono gia' in ordine cronologico e i giorni sono ritagliati
+    ai limiti del mese per i segmenti intermedi, il min/max su queste tuple
+    coincide con l'inizio/fine reali dell'intervallo originale, senza dover
+    ricostruire i range pre-split."""
+
+    starts: list[date] = []
+    ends: list[date] = []
+
+    for (year, month), category_entries in month_calendar.items():
+        for entries in category_entries.values():
+            for day_start, day_end, _ in entries:
+                starts.append(date(year, month, day_start))
+                ends.append(date(year, month, day_end))
+
+    if not starts:
+        return None
+
+    period_start, period_end = min(starts), max(ends)
+
+    if period_start.year == period_end.year:
+        return (
+            f"{period_start.day} {MONTHS_IT[period_start.month]} - "
+            f"{period_end.day} {MONTHS_IT[period_end.month]} {period_end.year}"
+        )
+
+    return (
+        f"{period_start.day} {MONTHS_IT[period_start.month]} {period_start.year} - "
+        f"{period_end.day} {MONTHS_IT[period_end.month]} {period_end.year}"
+    )
+
+
 def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
     """Tra le pagine Event Schedule trovate sul sitemap, individua quella con
     il lastmod piu' recente - in pratica il set attualmente attivo. I lastmod
@@ -445,7 +509,23 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
     design precedente (un campo per categoria, diviso in piu' messaggi),
     poco leggibile con le 13-15 categorie reali. Import di
     EventCalendarImageGenerator locale alla funzione (non in cima al modulo)
-    per evitare un import circolare: quel modulo importa MONTHS_IT da qui."""
+    per evitare un import circolare: quel modulo importa MONTHS_IT da qui.
+
+    Quando il calendario viene generato con successo, le immagini vengono
+    postate anche in COMUNICATION_CHANNEL_ID (via `extra_channel_id` di
+    Logger.send_log(), stesso schema di send_ban_announcement_log() in
+    utils/ban_announcement.py) - un aggiornamento reale riguarda tutta la
+    community, non solo lo staff. Quel canale e' pubblico (si fa anche
+    @everyone): `community_title`/`community_info` costruiscono un embed
+    dedicato senza il gergo da staff ("Controllo manuale forzato", l'utente
+    che ha invocato il comando) che resta nell'`info` del canale log - solo
+    le immagini sono condivise tra i due invii. I due casi WARN (pagina non
+    interpretabile o senza date) restano solo nel canale log: sono rumore
+    operativo per chi manutiene il bot, non contenuto da mostrare alla
+    community. Import di
+    COMUNICATION_CHANNEL_ID differito (come in ban_announcement.py, vedi
+    utils/permissions.py per lo stesso pattern) per restare importabile nei
+    test senza un .env completo."""
 
     url = result["url"]
     categories = result["categories"]
@@ -489,10 +569,19 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
         for (year, month), category_entries in sorted(month_calendar.items())
     ]
 
+    from config.config import COMUNICATION_CHANNEL_ID
+
+    set_name = extract_set_name_from_url(url)
+    period = format_period_covered(month_calendar)
+    period_line = f"**Periodo:** {period}\n" if period else ""
+
     await logger.send_log(
         level="INFO",
         event="ARENA_EVENT_SCHEDULE_UPDATED",
         user=user,
         info=f"{prefix}: {url}",
         files=files,
+        extra_channel_id=COMUNICATION_CHANNEL_ID,
+        community_title=f"📅 Calendario Eventi Arena — {set_name}",
+        community_info=f"{period_line}[Fonte]({url})",
     )

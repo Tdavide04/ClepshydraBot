@@ -16,7 +16,17 @@ class Logger(commands.Cog):
             "DEBUG": ("🔵", discord.Color.blue())
         }
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None, extra_channel_id=None):
+    @staticmethod
+    def _add_fields(embed, fields):
+        for field in (fields or []):
+            embed.add_field(
+                name=field["name"],
+                value=field["value"],
+                inline=field.get("inline", False),
+            )
+
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
+                        extra_channel_id=None, community_title=None, community_info=None):
         """Metodo universale per inviare log con pattern specifico.
 
         fields: lista opzionale di dict {"name", "value", "inline"} aggiunti
@@ -30,13 +40,24 @@ class Logger(commands.Cog):
         (utils/arena_event_schedule.py) per allegare le immagini calendario
         generate invece di descrivere gli eventi solo a parole.
 
-        extra_channel_id: se impostato (e diverso da 0/None), lo stesso embed
-        viene postato anche in questo canale oltre al canale log - usato dal
-        monitor Banned and Restricted (utils/ban_announcement.py) per rendere
-        pubblico un annuncio che riguarda tutta la community, non solo lo
-        staff. I `files` non vengono replicati sul canale extra: un
-        discord.File e' uno stream single-use, gia' consumato dal primo
-        invio, quindi qui viene ripostato solo l'embed.
+        extra_channel_id: se impostato (e diverso da 0/None), lo stesso
+        aggiornamento viene postato anche in questo canale oltre al canale
+        log - usato dal monitor Banned and Restricted e dal monitor Event
+        Schedule per rendere pubblico un aggiornamento che riguarda tutta la
+        community, non solo lo staff. NON riusa l'embed del canale log: quel
+        titolo/description contengono dettagli da staff ("Controllo manuale
+        forzato", l'utente che ha invocato il comando, il livello/nome
+        evento tecnico) che non hanno senso in un canale pubblico dove si fa
+        anche @everyone. Viene invece costruito un embed indipendente da
+        `community_title`/`community_info` (stesso colore, stessi `fields` e
+        `files` - quei due sono contenuto genuino anche per la community,
+        solo la cornice cambia). Un discord.File e' uno stream single-use:
+        prima del secondo invio viene richiamato `File.reset()` su ciascuno
+        (riporta il cursore del file a 0) per poterli ri-allegare senza
+        dover ricreare gli oggetti.
+
+        community_title / community_info: titolo e testo dedicati
+        all'embed pubblico, usati solo se `extra_channel_id` e' impostato.
         """
         emoji, color = self.levels.get(level.upper(), self.levels["INFO"])
 
@@ -60,22 +81,25 @@ class Logger(commands.Cog):
                 color=color,
                 timestamp=datetime.now()
             )
-
-            for field in (fields or []):
-                embed.add_field(
-                    name=field["name"],
-                    value=field["value"],
-                    inline=field.get("inline", False),
-                )
-
+            self._add_fields(embed, fields)
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
             await log_channel.send(embed=embed, files=files or None)
 
             if extra_channel_id:
                 try:
+                    for f in (files or []):
+                        f.reset()
+
+                    community_embed = discord.Embed(
+                        title=community_title or event.replace("_", " ").title(),
+                        description=community_info or "",
+                        color=color,
+                    )
+                    self._add_fields(community_embed, fields)
+
                     extra_channel = await self.bot.fetch_channel(extra_channel_id)
-                    await extra_channel.send(embed=embed)
+                    await extra_channel.send(embed=community_embed, files=files or None)
                 except Exception as e:
                     print(f"⚠️ Errore logger (canale extra): {e}")
 

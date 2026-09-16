@@ -219,6 +219,56 @@ class TestBuildMonthCalendar:
         assert result == {}
 
 
+class TestExtractSetNameFromUrl:
+
+    def test_strips_the_event_schedule_suffix_and_title_cases_words(self):
+        url = "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule"
+        assert arena_event_schedule.extract_set_name_from_url(url) == "The Hobbit"
+
+    def test_handles_a_trailing_slash(self):
+        url = "https://magic.wizards.com/en/news/mtg-arena/duskmourn-event-schedule/"
+        assert arena_event_schedule.extract_set_name_from_url(url) == "Duskmourn"
+
+
+class TestFormatPeriodCovered:
+
+    def test_returns_none_for_an_empty_calendar(self):
+        assert arena_event_schedule.format_period_covered({}) is None
+
+    def test_single_month_range_has_no_repeated_year(self):
+        categories = {"Quick Draft": ["August 11-19: Duskmourn"]}
+        month_calendar = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 19 Agosto 2026"
+
+    def test_multi_month_range_spans_both_months(self):
+        categories = {"Premier Draft": ["August 11-September 29: The Hobbit"]}
+        month_calendar = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 29 Settembre 2026"
+
+    def test_range_crossing_into_next_year_shows_both_years(self):
+        categories = {"Quick Draft": ["December 28-January 4: New Year Set"]}
+        month_calendar = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 12, 1)
+        )
+        assert arena_event_schedule.format_period_covered(month_calendar) == "28 Dicembre 2026 - 4 Gennaio 2027"
+
+    def test_covers_the_full_span_across_multiple_categories(self):
+        """Il periodo deve riflettere l'intervallo piu' ampio tra TUTTE le
+        categorie, non solo la prima incontrata."""
+        categories = {
+            "Quick Draft": ["September 1-7: Secrets of Strixhaven"],
+            "Premier Draft": ["August 11-19: Duskmourn"],
+        }
+        month_calendar = arena_event_schedule.build_month_calendar(
+            categories, reference_date=date(2026, 9, 15)
+        )
+        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 7 Settembre 2026"
+
+
 class TestPickLatest:
 
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
@@ -386,10 +436,13 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None):
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
+                        extra_channel_id=None, community_title=None, community_info=None):
         self.calls.append({
             "level": level, "event": event, "info": info,
             "fields": fields or [], "files": files or [],
+            "extra_channel_id": extra_channel_id,
+            "community_title": community_title, "community_info": community_info,
         })
 
 
@@ -405,6 +458,7 @@ class TestSendEventScheduleLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_UNPARSEABLE"
         assert logger.calls[0]["files"] == []
+        assert logger.calls[0]["extra_channel_id"] is None, "un parse fallito e' rumore da staff, non da community"
 
     def test_categories_without_parseable_dates_send_a_warn_with_no_files(self):
         """Le categorie sono state interpretate (categories non e' None) ma
@@ -421,11 +475,17 @@ class TestSendEventScheduleLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_NO_DATES"
         assert logger.calls[0]["files"] == []
+        assert logger.calls[0]["extra_channel_id"] is None, "nessuna data riconosciuta e' rumore da staff, non da community"
 
-    def test_valid_categories_attach_one_image_per_month(self):
+    def test_valid_categories_attach_one_image_per_month_and_post_to_the_community_channel(self, monkeypatch):
         """Sostituisce il vecchio design a campi embed di testo: un'immagine
         calendario per mese coinvolto, allegata allo stesso messaggio INFO,
-        invece di descrivere gli eventi a parole."""
+        invece di descrivere gli eventi a parole. Un aggiornamento reale va
+        anche nel canale community (extra_channel_id), a differenza dei due
+        WARN sopra."""
+        import config.config as config_module
+        monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
+
         logger = FakeLogger()
         categories = {
             "Premier Draft": ["August 11-19: Duskmourn: House of Horror"],
@@ -445,3 +505,19 @@ class TestSendEventScheduleLog:
         assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_UPDATED"
         assert len(logger.calls[0]["files"]) == len(expected_months)
         assert all(f.filename.startswith("calendario_") for f in logger.calls[0]["files"])
+        assert logger.calls[0]["extra_channel_id"] == 999
+
+        # Il canale community e' pubblico (si fa anche @everyone): niente
+        # gergo da staff ("Controllo manuale/automatico") nel suo embed
+        # dedicato, distinto dall'`info` del canale log.
+        community_title = logger.calls[0]["community_title"]
+        community_info = logger.calls[0]["community_info"]
+        assert community_title and "calendario" in community_title.lower()
+        assert "controllo" not in community_info.lower()
+        assert SET_A_URL in community_info
+
+        # Nome espansione (dallo slug URL) e periodo coperto (dal calendario
+        # costruito) - il contenuto in piu' richiesto oltre al link nudo.
+        assert community_title == "📅 Calendario Eventi Arena — Set A"
+        expected_period = arena_event_schedule.format_period_covered(expected_months)
+        assert expected_period in community_info
