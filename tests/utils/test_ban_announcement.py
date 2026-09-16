@@ -235,10 +235,11 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None):
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None, extra_channel_id=None):
         self.calls.append({
             "level": level, "event": event, "info": info,
             "fields": fields or [], "files": files or [],
+            "extra_channel_id": extra_channel_id,
         })
 
 
@@ -254,6 +255,7 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UNPARSEABLE"
         assert logger.calls[0]["fields"] == []
+        assert logger.calls[0]["extra_channel_id"] is None, "solo lo staff deve vedere i WARN non interpretabili"
 
     def test_no_changes_sends_a_plain_info_with_no_fields(self):
         logger = FakeLogger()
@@ -265,8 +267,12 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["level"] == "INFO"
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_NO_CHANGES"
         assert logger.calls[0]["fields"] == []
+        assert logger.calls[0]["extra_channel_id"] is None, "nulla da comunicare alla community se non cambia niente"
 
-    def test_changes_are_posted_as_one_field_per_format(self):
+    def test_changes_are_posted_as_one_field_per_format_and_to_the_community_channel(self, monkeypatch):
+        import config.config as config_module
+        monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
+
         logger = FakeLogger()
         changes = {
             "Standard": ["Badgermole Cub is banned."],
@@ -279,6 +285,11 @@ class TestSendBanAnnouncementLog:
         assert len(logger.calls) == 1
         assert logger.calls[0]["level"] == "INFO"
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UPDATED"
+        assert logger.calls[0]["extra_channel_id"] == 999
+        assert "banlist" not in logger.calls[0]["info"].lower(), (
+            "l'Artisan homebrew di questa community non e' toccata da questi annunci, "
+            "quindi il messaggio non deve menzionarla"
+        )
         field_names = {f["name"] for f in logger.calls[0]["fields"]}
         assert field_names == {"Standard", "Brawl"}
         brawl_field = next(f for f in logger.calls[0]["fields"] if f["name"] == "Brawl")

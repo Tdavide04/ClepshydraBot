@@ -326,10 +326,14 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
     annuncio Banned and Restricted. Esposta come funzione pubblica perche'
     usata sia dal loop automatico sia dal comando admin manuale.
 
-    Solo notifica: non scrive mai su banned_cards. La banlist Artisan resta
-    un elenco curato a mano via /banlist_aggiungi e /banlist_rimuovi (vedi
-    docs/banlist-system.md) - nessuno dei formati ufficiali Wizards in questi
-    annunci corrisponde all'Artisan homebrew di questa community."""
+    Solo notifica: non scrive mai su banned_cards (vedi docs/banlist-system.md
+    - nessuno dei formati ufficiali Wizards in questi annunci corrisponde
+    all'Artisan homebrew di questa community, quindi non c'e' un messaggio
+    da comunicare a riguardo). Quando l'annuncio contiene modifiche reali,
+    l'embed viene postato anche in COMUNICATION_CHANNEL_ID (import differito,
+    come utils/permissions.py, per restare importabile nei test senza un
+    .env completo) oltre che nel canale log - riguarda tutta la community,
+    non solo lo staff."""
 
     url = result["url"]
     changes = result["changes"]
@@ -367,14 +371,13 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
             value = value[: _FIELD_VALUE_LIMIT - 1] + "…"
         fields.append({"name": format_name, "value": value, "inline": False})
 
+    from config.config import COMUNICATION_CHANNEL_ID
+
     await logger.send_log(
         level="INFO",
         event="BAN_ANNOUNCEMENT_UPDATED",
         user=user,
-        info=(
-            f"{prefix}: nuovo Banned and Restricted Announcement — {url}\n"
-            f"La banlist Artisan del bot resta manuale: questo e' solo un promemoria, nessuna "
-            f"carta e' stata aggiunta/rimossa in automatico."
-        ),
+        info=f"{prefix}: nuovo Banned and Restricted Announcement — {url}",
         fields=fields,
+        extra_channel_id=COMUNICATION_CHANNEL_ID,
     )

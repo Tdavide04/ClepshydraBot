@@ -79,9 +79,11 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with ~14
   slash commands). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
   `send_log(level, event, info)` on, to post colored embeds to a central log channel — `send_log()` also
-  takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields) and
-  `files` (list of `discord.File`, attached to the same message) kwargs, used by the Arena Event Schedule
-  monitor to attach calendar images (see below).
+  takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields), `files`
+  (list of `discord.File`, attached to the same message) kwargs, used by the Arena Event Schedule monitor
+  to attach calendar images (see below), and `extra_channel_id` (also posts the same embed, without
+  `files`, to a second channel — `config.COMUNICATION_CHANNEL_ID`, used by the Banned and Restricted
+  monitor to make a change public to the whole community, not just staff — see below).
 - **`services/`** — Business logic, stateless where possible. `tournament_service.py` orchestrates the
   tournament lifecycle; `pairing_engine.py` generates Swiss pairings (bye handling, anti-rematch);
   `standings.py` computes standings (3/1/0 scoring + tiebreakers); `rating.py` implements Glicko-2.
@@ -276,11 +278,13 @@ unchanged) is a valid `{}` result (`BAN_ANNOUNCEMENT_NO_CHANGES` INFO log), dist
 summary structure found at all — `BAN_ANNOUNCEMENT_UNPARSEABLE` WARN, same "ask for a manual check instead
 of guessing" philosophy as `parse_full_event_calendar()`). When there are real changes,
 `send_ban_announcement_log()` posts one Discord embed field per affected format (via `Logger.send_log()`'s
-`fields` kwarg), each field's value being the format's change lines — plus a note in the message body that
-the bot's own Artisan banlist was **not** touched. Admin `/forced_ban_announcement_check` forces an
-immediate re-check of the current latest announcement, ignoring the saved `lastmod` — mirrors
-`/forced_event_schedule_check`, no equivalent of `/preview_calendario_eventi` here since there's no image
-to preview.
+`fields` kwarg), each field's value being the format's change lines. Unlike the WARN/no-changes cases,
+this one is also posted to `config.COMUNICATION_CHANNEL_ID` (via `send_log()`'s `extra_channel_id`, deferred
+import of `config.config` — same reason as `utils/permissions.py`, keeps the module importable in tests
+without a full `.env`) — a real ban change is community-relevant, not staff-only, unlike a parse failure
+or a no-op cycle. Admin `/forced_ban_announcement_check` forces an immediate re-check of the current latest
+announcement, ignoring the saved `lastmod` — mirrors `/forced_event_schedule_check`, no equivalent of
+`/preview_calendario_eventi` here since there's no image to preview.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 

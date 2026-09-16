@@ -8,6 +8,22 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.4.0 (2026-09-16)
+
+### Added
+- `cogs/logger.py`: `Logger.send_log()` accetta ora anche `extra_channel_id` — se impostato, ripubblica lo
+  stesso embed (senza `files`, gia' consumati dal primo invio) anche in un secondo canale oltre al canale
+  log
+- `config/config.py`: nuova `COMUNICATION_CHANNEL_ID` (env `COMUNICATION_CHANNEL_ID`/`_TEST`, opzionale
+  con fallback `0` come `TOURNAMENT_CHANNEL_ID` — un `.env` non ancora aggiornato non fa crashare il bot)
+
+### Changed
+- `send_ban_announcement_log()` (`utils/ban_announcement.py`): quando un annuncio contiene modifiche
+  reali, l'embed viene postato anche in `COMUNICATION_CHANNEL_ID` — riguarda tutta la community, non solo
+  lo staff, a differenza dei WARN/nessuna-modifica che restano solo nel canale log. Rimossa la nota "la
+  banlist Artisan resta manuale" dal messaggio: nessuno dei formati ufficiali coperti da questi annunci e'
+  l'Artisan homebrew di questa community, quindi il chiarimento era irrilevante per chi legge la notifica
+
 ## 3.3.0 (2026-09-16)
 
 ### Added

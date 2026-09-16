@@ -27,11 +27,21 @@ TOURNAMENT_CHANNEL_ID = int(
     ) or "0"
 )
 
+# Canale pubblico per notifiche di interesse community (es. Banned and
+# Restricted Announcement) - distinto dal canale log, che resta ad uso
+# staff. Opzionale (fallback "0") come TOURNAMENT_CHANNEL_ID, cosi' un .env
+# non ancora aggiornato con questa variabile non fa crashare il bot.
+COMUNICATION_CHANNEL_ID = int(
+    os.getenv(
+        "COMUNICATION_CHANNEL_ID_TEST" if TEST_MODE else "COMUNICATION_CHANNEL_ID"
+    ) or "0"
+)
+
 # Non da .env: bump manuale in codice ad ogni release (MINOR per feature,
 # PATCH per bug fix - vedi nota "Versioning" in CHANGELOG.md), cosi' resta
 # tracciata in git invece di poter disallinearsi silenziosamente da un .env
 # non aggiornato su una specifica macchina.
-VERSION = "3.3.0"
+VERSION = "3.4.0"
 if TEST_MODE:
     VERSION = VERSION + "-test"
 

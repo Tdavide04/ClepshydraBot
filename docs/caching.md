@@ -326,7 +326,7 @@ bot che deve solo notificare).
 | `_pick_latest(entries)` | Stessa selezione per `lastmod` più recente del monitor Event Schedule |
 | `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
 | `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
-| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`), con nota esplicita che la banlist Artisan del bot non viene toccata |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, l'embed va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) oltre al canale log — riguarda la community, non solo lo staff; WARN/nessuna modifica restano solo nel canale log |
 
 ### Stato (`data/ban_announcement_state.json`, non tracciato in git)
 

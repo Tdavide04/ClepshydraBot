@@ -16,7 +16,7 @@ class Logger(commands.Cog):
             "DEBUG": ("🔵", discord.Color.blue())
         }
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None):
+    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None, extra_channel_id=None):
         """Metodo universale per inviare log con pattern specifico.
 
         fields: lista opzionale di dict {"name", "value", "inline"} aggiunti
@@ -29,6 +29,14 @@ class Logger(commands.Cog):
         dell'embed - usata dal calendario eventi Arena
         (utils/arena_event_schedule.py) per allegare le immagini calendario
         generate invece di descrivere gli eventi solo a parole.
+
+        extra_channel_id: se impostato (e diverso da 0/None), lo stesso embed
+        viene postato anche in questo canale oltre al canale log - usato dal
+        monitor Banned and Restricted (utils/ban_announcement.py) per rendere
+        pubblico un annuncio che riguarda tutta la community, non solo lo
+        staff. I `files` non vengono replicati sul canale extra: un
+        discord.File e' uno stream single-use, gia' consumato dal primo
+        invio, quindi qui viene ripostato solo l'embed.
         """
         emoji, color = self.levels.get(level.upper(), self.levels["INFO"])
 
@@ -63,6 +71,13 @@ class Logger(commands.Cog):
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
             await log_channel.send(embed=embed, files=files or None)
+
+            if extra_channel_id:
+                try:
+                    extra_channel = await self.bot.fetch_channel(extra_channel_id)
+                    await extra_channel.send(embed=embed)
+                except Exception as e:
+                    print(f"⚠️ Errore logger (canale extra): {e}")
 
         except Exception as e:
             print(f"⚠️ Errore logger: {e}")
