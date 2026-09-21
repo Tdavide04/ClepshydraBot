@@ -243,18 +243,33 @@ settimane.
 | Funzione | Descrizione |
 |---|---|
 | `check_event_schedule_updates(force=False)` | Individua la pagina più recente sul sitemap; se nuova/cambiata (o sempre, se `force=True`) la scarica+interpreta; ritorna `[]` o `[{url, lastmod, categories}]` |
-| `_pick_latest(entries)` | Tra le pagine trovate, seleziona quella col `lastmod` più alto (confronto lessicografico su timestamp ISO-8601 a larghezza fissa) |
+| `_pick_latest(entries)` | Alias locale di `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (condivisa con il monitor Ban Announcement) — tra le pagine trovate, seleziona quella col `lastmod` più alto |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
 | `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
-| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: una categoria per campo embed (non tutto nella description), diviso in più messaggi da `_CATEGORIES_PER_MESSAGE` (6) categorie l'uno invece di un unico embed enorme |
+| `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
+| `build_month_calendar(categories)` | Raggruppa le voci per `(anno, mese)`, spezzando i range multi-mese ai confini del mese; anno mancante inferito dalla data corrente |
+| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: un'immagine calendario per mese (Gantt per categoria colorato per famiglia + elenco dettagliato, generata da `EventCalendarImageGenerator`), allegata allo stesso messaggio invece di descrivere gli eventi a parole — vedi `CLAUDE.md` "Arena Event Schedule monitor" per il design completo |
+| `extract_set_name_from_url(url)` | Deriva un nome leggibile dell'espansione dallo slug URL (es. `the-hobbit-event-schedule` → "The Hobbit"), usato nel titolo dell'embed community |
+| `format_period_covered(month_calendar)` | Calcola il periodo complessivo coperto da tutte le voci (min/max su `(anno, mese, giorno)`), es. "11 Agosto - 29 Settembre 2026" |
+| `get_latest_known_event_schedule()` | Legge (senza rete) l'ultima pagina nota dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
+
+`check_event_schedule_updates()` stampa sempre un esito in console (`[EVENT SCHEDULE] ...`) — nessun
+cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta — anche quando non c'è nulla
+da postare su Discord. Senza questo log, un giro che non trova cambiamenti (l'esito più comune, dato che
+il contenuto reale cambia solo ogni 6-9 settimane) è indistinguibile in console da un task che non è mai
+partito — origine di una confusione reale in produzione, dove sembrava che il check non girasse mentre in
+realtà girava e correttamente non trovava nulla di nuovo.
 
 ### Parsing e gestione dei fallimenti
 
 La sezione "Full Event Calendar" di queste pagine è HTML realmente strutturato (non prosa libera come i
 post Announcements settimanali): blocchi `<h2>/<h3>/<h4>Categoria</h2>` seguiti da
 `<ul><li>intervallo date: descrizione</li></ul>`, delimitati tra l'heading "Full Event Calendar" e la
-prima chiusura `</article>` successiva (esclude le card di navigazione laterale, che usano heading con
-attributi CSS anziché bare come quelli della sezione calendario).
+prima chiusura `</article>` successiva — è questo confine (`</article>`), non gli attributi dell'heading,
+a escludere le card di navigazione laterale (che vivono fuori dall'`<article>`). L'heading "Full Event
+Calendar" stesso può avere attributi (`<h2 id="FRACalendar" style="...">`, osservato su
+`reality-fracture-event-schedule`, Settembre 2026) — `_CALENDAR_HEADING_RE` li tollera; solo gli heading
+di categoria (`<h3>Premier Draft</h3>` ecc.) restano bare su tutte le pagine osservate finora.
 
 Se la struttura attesa non viene trovata, `parse_full_event_calendar()` ritorna `None` invece di un
 riassunto parziale o sbagliato — il chiamante logga un `WARN` ("controllo manuale consigliato") invece di
@@ -275,8 +290,77 @@ Traccia solo l'ultima pagina (più recente) effettivamente processata, non l'int
 bookkeeping operativo, a differenza di `arena_rarity_data.json` non contiene dati curati/editoriali,
 quindi non è tracciato in git (vedi `.gitignore`).
 
-Comando admin per forzare un controllo immediato (ignora il confronto `lastmod`, ricontrolla comunque la
-pagina più recente sul sitemap): `/forced_event_schedule_check`.
+Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
+confronto `lastmod`, ricontrolla comunque la pagina più recente sul sitemap): `/forced_event_schedule_check`.
+Quando il calendario viene generato con successo, le immagini vengono postate sia nel canale log sia in
+`COMUNICATION_CHANNEL_ID` (canale pubblico, con embed dedicato senza gergo da staff — titolo con il nome
+dell'espansione, corpo con il periodo coperto e la fonte, vedi `CLAUDE.md`); i due casi WARN (pagina non
+interpretabile o senza date) restano solo nel canale log. Esisteva un comando separato
+`/preview_calendario_eventi` per un'anteprima manuale fuori dal canale log — rimosso una volta che
+`/forced_event_schedule_check` ha iniziato a postare anche nel canale community, rendendolo ridondante.
+
+---
+
+## 3b. Monitoraggio Banned and Restricted Announcement (`utils/ban_announcement.py`)
+
+### Problema
+
+Wizards pubblica un "**Banned and Restricted Announcement**" a cadenza fissa (circa ogni 6 settimane,
+sempre di lunedì — URL tipo `magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026`)
+che copre tutti i formati costruito ufficiali (Standard, Pioneer, Modern, Legacy, Vintage, Pauper, Alchemy,
+Historic, Timeless, Brawl, Competitive Brawl). Nessuno di questi è l'**Artisan** homebrew di questa
+community: la banlist del bot (`banned_cards`, vedi `docs/banlist-system.md`) è un elenco curato a mano,
+indipendente dalle decisioni ufficiali Wizards. Questo monitor serve solo a **notificare** che è uscito un
+nuovo annuncio — non scrive mai sulla banlist.
+
+### Soluzione
+
+Stesso schema del monitor Event Schedule: queste pagine sono anch'esse elencate in
+`magic.wizards.com/en/sitemap.xml` con `<lastmod>`, e Wizards non rimuove gli annunci passati dal sitemap,
+quindi si considera solo quello con `lastmod` più recente (`_pick_latest()`). Il check del sitemap gira
+quotidianamente (economico); il fetch+parsing della pagina vera e propria scatta solo se il `lastmod`
+dell'annuncio più recente è cambiato.
+
+A differenza dell'Event Schedule, la pagina non ha una sezione a elenco date ma prosa libera per formato.
+Ogni sezione `<h2>Formato</h2>` è però seguita da un riepilogo affidabile e strutturato:
+`<p style="padding-left: 30px;">Carta X è bannata.<br/>Carta Y è sbannata.</p>` (oppure letteralmente
+`"No changes"` quando il formato non cambia) — verificato dal vivo sugli annunci di agosto/giugno/marzo
+2026. `parse_ban_announcement()` estrae solo questo riepilogo, mai la prosa di analisi circostante o le
+decklist di esempio (troppo poco strutturate per un'estrazione affidabile, e comunque fuori scopo per un
+bot che deve solo notificare).
+
+| Funzione | Descrizione |
+|---|---|
+| `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes}]` |
+| `_pick_latest(entries)` | Stesso alias di `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) usato dal monitor Event Schedule |
+| `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
+| `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
+| `format_lastmod(lastmod)` | Formatta il timestamp ISO-8601 del sitemap in italiano (es. "21 Agosto 2026, 18:02 UTC"), usato nel titolo dell'embed community — unico dato data+ora disponibile, la pagina mostra solo il giorno |
+| `get_latest_known_ban_announcement()` | Legge (senza rete) l'ultimo annuncio noto dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
+
+### Stato (`data/ban_announcement_state.json`, non tracciato in git)
+
+```json
+{
+  "latest_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026",
+  "latest_lastmod": "2026-08-21T18:02:33.573Z"
+}
+```
+
+Stesso bookkeeping operativo (non dati curati) dello stato Event Schedule — non tracciato in git.
+
+Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
+confronto `lastmod`): `/forced_ban_announcement_check`.
+
+### Log di stato all'avvio (`STARTUP_STATUS`)
+
+Subito dopo `SYSTEM_STARTUP`, `main.py` posta un secondo log `STARTUP_STATUS` (solo canale log, nessun
+`extra_channel_id`) che riporta l'ultima pagina Event Schedule e l'ultimo Banned and Restricted
+Announcement già noti al bot — letti da `get_latest_known_event_schedule()`/
+`get_latest_known_ban_announcement()`, puri accessi allo stato salvato su disco, **senza alcuna richiesta
+di rete**. È un colpo d'occhio ad ogni riavvio, distinto dal check periodico vero e proprio (che scatta
+poco dopo, quando i quattro `periodic_*_loop()` partono, e interroga davvero il sitemap).
 
 ---
 
@@ -329,4 +413,5 @@ di `ArtisanService`.
 | Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
 | Event Schedule Arena | `arena_event_schedule_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
+| Banned and Restricted | `ban_announcement_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_ban_announcement_check` (ignora `lastmod`) |
 | Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |

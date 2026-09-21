@@ -32,7 +32,7 @@ python -m pytest                          # equivalent; python -m adds cwd to sy
 pytest tests/tournament/test_pairing_engine.py
 pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds::test_otto_giocatori -v
 
-# Lint (blocking gate in CI — legacy/ is excluded, see ruff.toml)
+# Lint (blocking gate in CI)
 ruff check .
 
 # Inspect the SQLite DB
@@ -56,10 +56,11 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 138 tests total, no `pytest-asyncio` — async integration tests
+Suite: 186 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
-`tests/utils/test_arena_event_schedule.py`) instead
+`tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
+`tests/utils/test_sitemap_monitor.py`) instead
 wrap each scenario in a single `asyncio.run()` call,
 since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
 `_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
@@ -78,7 +79,15 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `presentation/` (onboarding wizard), `deck_validation/` (Artisan deck legality checks, formerly named
   `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with ~14
   slash commands). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
-  `send_log(level, event, info)` on, to post colored embeds to a central log channel.
+  `send_log(level, event, info)` on, to post colored embeds to a central log channel — `send_log()` also
+  takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields) and
+  `files` (list of `discord.File`, attached to the same message), used by the Event Schedule and Banned
+  and Restricted monitors (see below). `extra_channel_id`, when set, republishes the update to a second
+  channel (`config.COMUNICATION_CHANNEL_ID`) — but as a fully **separate** embed built from
+  `community_title`/`community_info`, not a copy of the log-channel one: the log embed carries staff
+  detail (which user forced the check, "Controllo manuale/automatico") that has no place in a public
+  channel where `@everyone` gets pinged. `files` ARE resent as-is to the second channel — each
+  `discord.File.reset()` is called first, since the stream was already consumed by the first `send()`.
 - **`services/`** — Business logic, stateless where possible. `tournament_service.py` orchestrates the
   tournament lifecycle; `pairing_engine.py` generates Swiss pairings (bye handling, anti-rematch);
   `standings.py` computes standings (3/1/0 scoring + tiebreakers); `rating.py` implements Glicko-2.
@@ -96,9 +105,15 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   `_migrate_banlist()`, but only if the table is empty.
 - **`utils/`** — Cross-cutting helpers: `card_cache.py` (Scryfall response cache), `arena_overrides.py`
   (SPG rarity overrides), `arena_event_schedule.py` (monitors Wizards' "[Set] MTG Arena Event Schedule"
-  pages via the site's `sitemap.xml`, see below), `deck_image_generator.py` (Pillow-based deck showcase
-  PNGs), `permissions.py` (`@is_admin()` app-command check based on a configured Discord role name),
-  `tournament_embeds.py`, `tournament_logic.py`.
+  pages via the site's `sitemap.xml`, see below), `event_calendar_image_generator.py` (Pillow-based
+  calendar image for the Event Schedule, see below), `ban_announcement.py` (monitors Wizards' "Banned and
+  Restricted Announcement" posts via the same `sitemap.xml`, notify-only — see below),
+  `sitemap_monitor.py` (shared by the two monitors above: JSON state load/save with atomic writes,
+  `lastmod`-based "pick the newest page" selection, generic sitemap/page GET — extracted once
+  `ban_announcement.py` duplicated `arena_event_schedule.py`'s version of this byte-for-byte; each
+  domain module still owns its own URL filtering and HTML parsing, the only genuinely different part),
+  `deck_image_generator.py` (Pillow-based deck showcase PNGs), `permissions.py` (`@is_admin()` app-command
+  check based on a configured Discord role name), `tournament_embeds.py`, `tournament_logic.py`.
 
 ### Config and environment
 
@@ -106,18 +121,31 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
 (no pydantic/settings class). `TEST_MODE` selects `_TEST`-suffixed env vars (token, guild, channels, db
 path) at import time — there is no runtime toggle. `main.py` constructs the bot, calls `init_db()`,
 dynamically loads every module/package under `cogs/`, syncs the slash command tree to a single guild
-(`GUILD_ID`) rather than globally, logs `SYSTEM_STARTUP` to Discord, and only THEN starts three background
-tasks — `periodic_save_loop()` (card cache autosave, every 60s), `periodic_spg_refresh_loop()` (SPG rarity
-override auto-refresh, every 7 days — see below), and `periodic_event_schedule_check_loop()` (Arena Event
-Schedule page monitor, every 24h — see below). The three `self.loop.create_task(...)` calls must stay
-AFTER the sync+log block, not before: `create_task` only schedules, it doesn't block, so if scheduled
-earlier the background tasks' first runs (both do real HTTP calls, not instant) can race ahead of and
-finish before the `await self.tree.sync(...)` call resolves — observed in production, the `SYSTEM_STARTUP`
-log arrived *after* the automatic check logs instead of before. Startup failures (`discord.LoginFailure`
+(`GUILD_ID`) rather than globally, logs `SYSTEM_STARTUP` to Discord, then a second `STARTUP_STATUS` log
+(log channel only, no `extra_channel_id` — staff-only bookkeeping) reporting the latest Event Schedule
+page and Banned and Restricted announcement the bot already knows about
+(`get_latest_known_event_schedule()`/`get_latest_known_ban_announcement()`, a pure read of the saved state
+JSON files, no network call — distinct from the real check the periodic tasks below run moments later),
+and only THEN starts four background tasks — `periodic_save_loop()` (card cache autosave, every 60s),
+`periodic_spg_refresh_loop()` (SPG rarity override auto-refresh, every 7 days — see below),
+`periodic_event_schedule_check_loop()` (Arena Event Schedule page monitor, every 24h — see below), and
+`periodic_ban_announcement_check_loop()` (Banned and Restricted Announcement monitor, every 24h — see
+below). The four `self.loop.create_task(...)` calls must stay AFTER the sync+log block, not before:
+`create_task` only schedules, it doesn't block, so if scheduled earlier the background tasks' first runs
+(both do real HTTP calls, not instant) can race ahead of and finish before the `await self.tree.sync(...)`
+call resolves — observed in production, the `SYSTEM_STARTUP` log arrived *after* the automatic check logs
+instead of before. Startup failures (`discord.LoginFailure`
 and other exceptions in `setup_hook`/`bot.run`) are caught, logged to stderr with a `FATAL:` prefix, and
 exit non-zero instead of failing silently — this also means a broken slash-command definition (e.g. a
 description over Discord's 100-char limit) crashes the whole bot on every restart, not just that one
 command, since `tree.sync()` fails for the entire batch.
+
+`COMUNICATION_CHANNEL_ID` (env `COMUNICATION_CHANNEL_ID`/`_TEST`, note the spelling — matches what's
+already in `.env.example`) is the public community channel — the one where `@everyone` gets pinged —
+distinct from `LOG_CHANNEL_ID` (staff-only, and notably has no `_TEST` variant, shared between normal and
+test-mode runs, unlike every other channel constant). Optional with fallback `"0"` like
+`TOURNAMENT_CHANNEL_ID`, so a `.env` predating this feature doesn't crash the bot; `Logger.send_log()`'s
+`extra_channel_id` no-ops when it's `0`/`None`.
 
 `VERSION` (shown in the `SYSTEM_STARTUP` Discord log) is a hardcoded constant in `config/config.py`, not
 an env var — bump it by hand in the same commit that bumps `CHANGELOG.md`. From 3.0.0 onward: bump MINOR
@@ -211,21 +239,91 @@ section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
 so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
 summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate re-check of
-the current latest page, ignoring the saved `lastmod`. `send_event_schedule_log()` posts one embed field
-per category (not the whole calendar crammed into the embed description as plain markdown-bold text —
-tried first, unreadable for the 13-15 categories a real page typically has) and splits across multiple
-messages at `_CATEGORIES_PER_MESSAGE` (6) fields each, labeled "parte N/M" when there's more than one.
+the current latest page, ignoring the saved `lastmod`.
+
+`send_event_schedule_log()` posts a calendar **image** per month, not text: each category entry (e.g.
+`"August 11-19: Duskmourn: House of Horror"`) is parsed by `parse_event_entry()` into a date range, and
+`build_month_calendar()` groups entries into `{(year, month): {category: [(day_start, day_end, name)]}}`,
+splitting any range crossing a month boundary into one clipped segment per month it touches. Missing year
+is inferred from the current date (`_infer_start_year()` — if a range's start month is more than ~6 months
+"behind" the current month, it's assumed to be next year, to handle a page published near year-end
+referencing January). `utils/event_calendar_image_generator.py`'s `EventCalendarImageGenerator` then
+renders each `(year, month)` as a Gantt (one row per category, colored by *family* — Premier Draft/Quick
+Draft/Flashback/Sealed & Cube/Metagame/Community, a keyword heuristic on the category name in
+`_classify_family()`, not data from the Wizards page) plus a detailed text list below it (full event
+names, no truncation, category shown in parentheses) — this two-part layout is the result of several
+design iterations against real data: a plain day-grid calendar is unreadable because long-running
+categories (Premier Draft, Sealed...) repeat identically across dozens of day cells; a family-only Gantt
+(6 rows) loses the "is this really two distinct queues or one drawn twice" signal a reader wants; the
+final design keeps one row per category (so nothing is silently merged) but relies on the text list below
+for anything a bar is too narrow to show a name for. `_clean_name()` strips the redundant
+`"Magic: The Gathering | "` and `"Arena Direct for "` prefixes from event names before rendering, since
+the row's family color already conveys the category. `create_month_panel()` (an earlier per-category
+Gantt with no family grouping) and `create_multi_month_calendar()` (stitches several months' panels plus
+ONE merged detail list into a single image) both remain in the module, unused by the current flow, kept
+in case that layout is wanted again.
+
+`send_event_schedule_log()` uses this to attach one `discord.File` image per month to a single Discord
+log message (via `Logger.send_log()`'s `files` kwarg) — used by both the automatic daily check and
+`/forced_event_schedule_check`, so both now post images instead of the field-per-category embeds used
+before 3.2.0. If the page's categories were parsed but none of their entries match the expected date
+format, `build_month_calendar()` returns empty and a dedicated `WARN` (`ARENA_EVENT_SCHEDULE_NO_DATES`) is
+logged instead of generating an empty image, and stays log-channel-only (staff noise, not community
+content). When the calendar generates successfully, the same images are also posted to
+`COMUNICATION_CHANNEL_ID` with a dedicated, staff-jargon-free embed: `extract_set_name_from_url()` derives
+a readable expansion name from the page's URL slug (e.g. `the-hobbit-event-schedule` → "The Hobbit" — the
+page has no dedicated "set name" field to parse reliably, but the slug is always present and stable) and
+`format_period_covered()` computes the full date range spanned by every entry (min/max over
+`(year, month, day)` tuples across `month_calendar`, correct because the `(year, month)` keys are already
+chronologically ordered and per-month segments are pre-clipped) — together giving a title like "📅
+Calendario Eventi Arena — The Hobbit" and a body with "Periodo: 11 Agosto - 29 Settembre 2026" plus the
+source link. There used to be a separate `/preview_calendario_eventi` admin command for a manual,
+non-ephemeral preview outside the log channel; removed once `/forced_event_schedule_check` started posting
+to `COMUNICATION_CHANNEL_ID` too, making it redundant.
+
+### Banned and Restricted Announcement monitor
+
+`utils/ban_announcement.py` watches Wizards' "Banned and Restricted Announcement" posts
+(`magic.wizards.com/en/news/announcements/banned-and-restricted-*`), published on a fixed cadence
+(roughly every 6 weeks, always on a Monday) covering all official constructed formats (Standard, Pioneer,
+Modern, Legacy, Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) — notably, none of
+these is the Artisan homebrew format this community's own banlist governs (see "Sistema Banlist" above /
+`docs/banlist-system.md`), so this monitor is **notification-only**: it never writes to `banned_cards`.
+Structurally it reuses the same pattern as the Arena Event Schedule monitor — these announcement pages are
+also listed in `magic.wizards.com/en/sitemap.xml` with `<lastmod>`, Wizards doesn't remove past ones, so
+only the most recent by `lastmod` is considered (`_pick_latest()`), and the cheap sitemap check runs daily
+while the page itself is only fetched+parsed on a `lastmod` change (`check_ban_announcement_updates()`).
+
+Unlike the Event Schedule page, an announcement is free-form prose per format, not a structured date list
+— but each `<h2>Format</h2>` section is followed by a reliable one-paragraph summary
+(`<p style="padding-left: 30px;">Card X is banned.<br/>Card Y is unbanned.</p>`, or literally "No changes"
+when nothing changed in that format), verified live against the August/June/March 2026 announcements.
+`parse_ban_announcement()` extracts only that summary paragraph per format — never the surrounding
+analysis prose or sample decklists, both too unstructured to parse reliably and out of scope for a
+notify-only bot — and drops any format whose summary is "No changes", so the result dict only lists
+formats that actually changed. An announcement parsed correctly but with nothing to report (all formats
+unchanged) is a valid `{}` result (`BAN_ANNOUNCEMENT_NO_CHANGES` INFO log), distinct from `None` (no `<h2>`
+summary structure found at all — `BAN_ANNOUNCEMENT_UNPARSEABLE` WARN, same "ask for a manual check instead
+of guessing" philosophy as `parse_full_event_calendar()`). When there are real changes,
+`send_ban_announcement_log()` posts one Discord embed field per affected format (via `Logger.send_log()`'s
+`fields` kwarg), each field's value being the format's change lines. Unlike the WARN/no-changes cases,
+this one is also posted to `config.COMUNICATION_CHANNEL_ID` (via `send_log()`'s `extra_channel_id`, deferred
+import of `config.config` — same reason as `utils/permissions.py`, keeps the module importable in tests
+without a full `.env`) — a real ban change is community-relevant, not staff-only, unlike a parse failure
+or a no-op cycle. The community embed is dedicated, not a copy of the log one: title
+`"📋 Nuovo Banned and Restricted Announcement — {data e ora}"`, the date/time coming from
+`format_lastmod()` applied to the sitemap `lastmod` (the only date+time available — the page's own
+`<time>` element shows just the day, no hour; `lastmod` reflects Wizards' last edit to the page, not
+necessarily first publish, but it's the closest thing there is). Body is a plain link to the article, no
+"Controllo manuale/automatico" or invoking-user mention — those stay in the log-channel `info` only.
+Admin `/forced_ban_announcement_check` forces an immediate re-check of the current latest announcement,
+ignoring the saved `lastmod` — mirrors `/forced_event_schedule_check`.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 
 The package was renamed from `tournament` to `deck_validation` (see `CHANGELOG.md` 1.3.1) to
 disambiguate it from `cogs/tournament_system/`. `README.md`'s project-structure diagram still shows the
 old `tournament/` name — treat `deck_validation/` (actual directory) as current.
-
-### Legacy code
-
-`legacy/` holds the bot's original implementation, kept for historical reference only. It is not
-imported by `main.py` and should not be modified as part of feature work.
 
 ## Agent skills
 

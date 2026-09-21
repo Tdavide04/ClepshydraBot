@@ -8,6 +8,193 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.2 (2026-09-21)
+
+### Fixed
+- `utils/arena_event_schedule.py`: `_CALENDAR_HEADING_RE` non riconosceva l'heading "Full Event Calendar"
+  quando porta attributi (`<h2 id="FRACalendar" style="scroll-margin-top: 70px;">`, osservato dal vivo su
+  `reality-fracture-event-schedule`) invece del bare `<h2>` delle pagine precedenti — causava un falso
+  positivo `ARENA_EVENT_SCHEDULE_UNPARSEABLE` in produzione (2026-09-21) anche se la sezione era presente
+  e ben formata. La regex ora tollera attributi sul tag, come già fa `_H2_RE` in `ban_announcement.py` per
+  lo stesso pattern osservato sugli annunci Banned and Restricted. Verificato contro la pagina reale: 14
+  categorie estratte correttamente, 3 immagini calendario generate (prima: 0, solo un WARN)
+
+## 3.5.1 (2026-09-17)
+
+### Changed
+- **Estratta in `utils/sitemap_monitor.py` la logica duplicata tra `utils/arena_event_schedule.py` e
+  `utils/ban_announcement.py`**: caricamento/salvataggio dello stato JSON (scrittura atomica via `.tmp` +
+  `os.replace`), selezione della pagina piu' recente per `lastmod`, fetch generico del sitemap e di una
+  singola pagina — erano ~90 righe identiche byte-per-byte, duplicate quando `ban_announcement.py` ha
+  ricalcato `arena_event_schedule.py`. Nessun cambio di comportamento: verificato sia con la suite di test
+  (nessuna modifica richiesta ai test esistenti, grazie a come Python risolve i nomi importati) sia con
+  uno smoke test dal vivo contro i dati reali di Wizards, output identico a prima del refactor. Il filtro
+  delle URL di interesse e il parsing HTML restano in ciascun modulo — l'unica parte davvero diversa tra
+  i due monitor
+- `tests/utils/test_sitemap_monitor.py`: nuovo file, 12 test diretti sul modulo condiviso (prima la
+  logica era testata solo indirettamente tramite i due monitor)
+
+## 3.5.0 (2026-09-16)
+
+### Added
+- `main.py`: nuovo log `STARTUP_STATUS` subito dopo `SYSTEM_STARTUP` (solo canale log, nessun
+  `extra_channel_id`) — riporta l'ultima pagina Event Schedule e l'ultimo Banned and Restricted
+  Announcement gia' noti al bot, letti da `get_latest_known_event_schedule()`/
+  `get_latest_known_ban_announcement()` (nuove funzioni in `utils/arena_event_schedule.py` e
+  `utils/ban_announcement.py`, puro accesso allo stato salvato su disco, senza richieste di rete) — un
+  colpo d'occhio ad ogni riavvio, distinto dal check periodico vero e proprio
+- `utils/arena_event_schedule.py`: nuove `extract_set_name_from_url()` (deriva un nome leggibile
+  dell'espansione dallo slug URL, es. `the-hobbit-event-schedule` -> "The Hobbit") e
+  `format_period_covered()` (calcola il periodo complessivo coperto da tutte le voci del calendario, es.
+  "11 Agosto - 29 Settembre 2026")
+- `utils/ban_announcement.py`: nuova `format_lastmod()` (formatta il timestamp ISO-8601 del sitemap in
+  italiano, es. "21 Agosto 2026, 18:02 UTC" — unico dato data+ora disponibile per l'annuncio)
+
+### Changed
+- **`Logger.send_log()` non riusa piu' l'embed del canale log per il canale community**: quando
+  `extra_channel_id` e' impostato, costruisce un embed indipendente da nuovi parametri
+  `community_title`/`community_info`, senza il gergo da staff ("Controllo manuale/automatico forzato",
+  l'utente che ha invocato il comando) che il canale log mostra correttamente ma che non ha senso in un
+  canale pubblico dove si fa anche `@everyone`. I `files` vengono ora correttamente re-inviati anche al
+  canale extra (prima arrivava solo l'embed testuale): ogni `discord.File.reset()` viene richiamato prima
+  del secondo invio, dato che lo stream era gia' stato consumato dal primo
+- `send_event_schedule_log()`: il messaggio nel canale community ora include il nome dell'espansione
+  (titolo, es. "📅 Calendario Eventi Arena — The Hobbit") e il periodo coperto (corpo, es. "Periodo: 11
+  Agosto - 29 Settembre 2026"), non solo un link nudo
+- `send_ban_announcement_log()`: il titolo del messaggio community ora include data e ora dell'annuncio
+  (es. "📋 Nuovo Banned and Restricted Announcement — 21 Agosto 2026, 18:02 UTC")
+
+### Removed
+- `/preview_calendario_eventi` (admin, era in `cogs/arena_event_schedule_updater.py`) — ridondante una
+  volta che `/forced_event_schedule_check` posta anche nel canale community, non solo nel canale log
+- **Cartella `legacy/` rimossa interamente dal repository** (implementazione V1 del bot, non piu'
+  importata da nessun modulo attivo, mantenuta finora solo come riferimento storico). Di conseguenza:
+  `ruff.toml` non esclude piu' `legacy/` dal lint (nessun codice li' da escludere), `.dockerignore` non la
+  referenzia piu', rimossa la sezione "Legacy code" da `CLAUDE.md`
+
+### Docs
+- Aggiornati `CLAUDE.md` (rimossa sezione "Legacy code"; sezioni Event Schedule/Ban Announcement monitor
+  aggiornate con l'arricchimento dei messaggi community e la rimozione di `/preview_calendario_eventi`;
+  documentato `STARTUP_STATUS` e `COMUNICATION_CHANNEL_ID`; conteggio test aggiornato a 174), `README.md`
+  (rimossa riga `/preview_calendario_eventi`, feature bullet aggiornate), `docs/comandi.md` (rimosso
+  `/preview_calendario_eventi` da entrambe le tabelle, corretta la riga di `/forced_event_schedule_check`
+  disallineata da modifiche precedenti al file), `docs/caching.md` (sezioni 3/3b aggiornate con le nuove
+  funzioni e il comportamento sul canale community, nuova sottosezione "Log di stato all'avvio"),
+  `docs/infrastruttura.md` e `docs/roadmap-miglioramenti.md` (note storiche sulla rimozione di `legacy/`
+  aggiornate per non puntare piu' a una sezione di `CLAUDE.md` che non esiste piu')
+
+## 3.4.0 (2026-09-16)
+
+### Added
+- `cogs/logger.py`: `Logger.send_log()` accetta ora anche `extra_channel_id` — se impostato, ripubblica lo
+  stesso embed (senza `files`, gia' consumati dal primo invio) anche in un secondo canale oltre al canale
+  log
+- `config/config.py`: nuova `COMUNICATION_CHANNEL_ID` (env `COMUNICATION_CHANNEL_ID`/`_TEST`, opzionale
+  con fallback `0` come `TOURNAMENT_CHANNEL_ID` — un `.env` non ancora aggiornato non fa crashare il bot)
+
+### Changed
+- `send_ban_announcement_log()` (`utils/ban_announcement.py`): quando un annuncio contiene modifiche
+  reali, l'embed viene postato anche in `COMUNICATION_CHANNEL_ID` — riguarda tutta la community, non solo
+  lo staff, a differenza dei WARN/nessuna-modifica che restano solo nel canale log. Rimossa la nota "la
+  banlist Artisan resta manuale" dal messaggio: nessuno dei formati ufficiali coperti da questi annunci e'
+  l'Artisan homebrew di questa community, quindi il chiarimento era irrilevante per chi legge la notifica
+
+## 3.3.0 (2026-09-16)
+
+### Added
+- `utils/ban_announcement.py`: nuovo modulo che monitora i post "Banned and Restricted Announcement"
+  ufficiali di Wizards (`magic.wizards.com/en/news/announcements/banned-and-restricted-*`, cadenza fissa
+  di circa 6 settimane, sempre di lunedi'). Stesso schema del monitor Event Schedule: le pagine sono
+  elencate nel sitemap `magic.wizards.com/en/sitemap.xml` con `<lastmod>`, Wizards non rimuove gli annunci
+  passati quindi si considera solo il piu' recente (`_pick_latest()`), check giornaliero economico sul
+  sitemap e fetch+parsing della pagina solo su `lastmod` cambiato. A differenza dell'Event Schedule la
+  pagina e' prosa libera per formato, ma ogni sezione ha un riepilogo affidabile subito sotto l'heading
+  (`<p style="padding-left: 30px;">Carta X e' bannata.<br/>...</p>`, o "No changes") — `parse_ban_announcement()`
+  estrae solo quel riepilogo, verificato dal vivo sugli annunci di marzo/giugno/agosto 2026, ignorando la
+  prosa di analisi e le decklist di esempio circostanti
+- `/forced_ban_announcement_check` (admin, `cogs/ban_announcement_updater.py`): forza subito un ricontrollo
+  dell'ultimo annuncio, ignorando il `lastmod` salvato
+- `periodic_ban_announcement_check_loop()`: quarto task in background avviato da `main.py`, stesso pattern
+  e cadenza (24h) degli altri tre
+
+### Notes
+- **Solo notifica**: nessuno dei formati ufficiali coperti da questi annunci (Standard, Pioneer, Modern,
+  Legacy, Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) e' l'Artisan homebrew di
+  questa community — `send_ban_announcement_log()` non scrive mai su `banned_cards`, la banlist resta
+  curata a mano via `/banlist_aggiungi`/`/banlist_rimuovi` come prima. Un annuncio con zero formati
+  modificati e' un esito valido (`BAN_ANNOUNCEMENT_NO_CHANGES`, non un errore), distinto dal caso in cui il
+  riepilogo strutturato non viene trovato affatto (`BAN_ANNOUNCEMENT_UNPARSEABLE`)
+
+### Docs
+- Aggiornati `CLAUDE.md` (nuova sezione "Banned and Restricted Announcement monitor", quarto task in
+  `main.py`, elenco `utils/`, conteggio test), `README.md` (feature, comando, struttura progetto),
+  `docs/caching.md` (nuova sezione 3b + riga tabella riepilogo cache), `docs/comandi.md`
+  (`/forced_ban_announcement_check` in entrambe le tabelle), `docs/banlist-system.md` (nota sul monitor
+  notify-only)
+
+## 3.2.0 (2026-09-16)
+
+### Added
+- `utils/event_calendar_image_generator.py`: nuovo modulo (Pillow) che genera, per l'Arena Event Schedule,
+  un'immagine calendario mensile invece del solo testo — `EventCalendarImageGenerator.create_month_calendar()`
+  disegna un Gantt con una riga per categoria (come le pagine Wizards le elencano, 13-15 righe) colorata per
+  FAMIGLIA di categoria (Premier Draft/Quick Draft/Flashback/Sealed & Cube/Metagame/Community — euristica su
+  parole chiave nel nome categoria, non un dato della pagina), seguito da un elenco testuale dettagliato con
+  i nomi completi degli eventi (nessun troncamento, categoria originale tra parentesi). I nomi vengono ripuliti
+  dai prefissi ridondanti "Magic: The Gathering | " e "Arena Direct for " prima del rendering, dato che il
+  colore della riga comunica gia' il tipo di evento. Risultato di piu' giri di iterazione su mock-up con dati
+  reali: una griglia calendario classica risultava illeggibile (categorie lunghe settimane ripetute identiche
+  in ogni cella giorno), uno swimlane con una riga per famiglia (6 righe) perdeva la distinzione tra categorie
+  diverse della stessa famiglia. `create_month_panel()` (Gantt senza raggruppamento famiglia) e
+  `create_multi_month_calendar()` (piu' mesi + un solo elenco dettagliato unito) restano nel modulo,
+  disponibili ma non usati dal flusso attuale
+- `utils/arena_event_schedule.py`: nuove `parse_event_entry()` (estrae mese/giorno di inizio e fine da una
+  voce testuale, formato "Mese Giorno[-Mese] Giorno: Nome evento") e `build_month_calendar()` (raggruppa le
+  voci per mese, spezzando i range che attraversano piu' mesi in un segmento per mese toccato; anno mancante
+  inferito dalla data corrente, con gestione del turno di anno per pagine pubblicate a fine anno)
+- `/preview_calendario_eventi` (admin, `cogs/arena_event_schedule_updater.py`): ricontrolla la pagina Event
+  Schedule piu' recente e pubblica un'immagine calendario per mese come messaggio normale (non ephemeral) nel
+  canale in cui viene invocato, con un breve testo (mesi coperti + link alla fonte)
+- `cogs/logger.py`: `Logger.send_log()` accetta ora anche un parametro opzionale `files` (lista di
+  `discord.File`), allegati allo stesso messaggio dell'embed — usato dal calendario eventi Arena
+
+### Changed
+- **`send_event_schedule_log()` ora allega immagini calendario invece di descrivere gli eventi a parole** —
+  sostituisce il design a campo-embed-per-categoria introdotto in 3.1.0 (poco leggibile con le 13-15
+  categorie reali di una pagina tipica). Usata sia dal check automatico giornaliero
+  (`periodic_event_schedule_check_loop()`) sia da `/forced_event_schedule_check`, quindi entrambi i percorsi
+  ora pubblicano immagini nel canale log invece del vecchio testo. Nuovo caso gestito: pagina interpretata ma
+  senza voci con un formato data riconoscibile → `WARN` dedicato (`ARENA_EVENT_SCHEDULE_NO_DATES`) invece di
+  generare un'immagine vuota o fallire
+
+### Removed
+- `_category_field()`, `_CATEGORIES_PER_MESSAGE`, `_FIELD_VALUE_LIMIT` (`utils/arena_event_schedule.py`) — il
+  design a campi embed testuali introdotto in 3.1.0, sostituito dal calendario a immagine
+
+### Docs
+- `CLAUDE.md`: sezione "Arena Event Schedule monitor" riscritta per il nuovo design a immagine (parsing date,
+  classificazione famiglia, pulizia nomi, generatore immagini); elenco `utils/` aggiornato
+- `README.md`: feature, tabella comandi (`/preview_calendario_eventi`), struttura progetto e tech stack
+  aggiornati per il calendario a immagine
+- `docs/caching.md`: tabella funzioni di `arena_event_schedule.py` aggiornata (`parse_event_entry`,
+  `build_month_calendar`, nuovo comportamento di `send_event_schedule_log`); aggiunto `/preview_calendario_eventi`
+- `docs/comandi.md`: aggiunto `/preview_calendario_eventi` (descrizione + tabella "Location File"); corretta
+  la riga stale di `/forced_event_schedule_check` (22 → 28, disallineata da modifiche precedenti al file)
+
+- `tests/utils/test_arena_event_schedule.py`: nuove classi `TestParseEventEntry` e `TestBuildMonthCalendar`;
+  `TestSendEventScheduleLog` riscritta per il nuovo comportamento a immagini (allegati `files` invece di
+  `fields`, nuovo caso "nessuna data riconoscibile"); rimossa `TestCategoryField` (testava codice rimosso).
+  Suite totale: 138 → 147
+
+## 3.1.1 (2026-09-11)
+
+### Fixed
+- `check_event_schedule_updates()` non stampava nulla in console quando non trovava cambiamenti (il caso
+  più comune) — indistinguibile da "il task non è partito", causa di confusione reale in produzione dopo
+  un riavvio in cui il check aveva già processato la pagina più recente in un giro precedente. Aggiunti
+  log `[EVENT SCHEDULE] ...` per ogni esito (nessun cambiamento, pagina nuova/aggiornata, fetch fallito,
+  sezione non riconosciuta), simmetrico ai log `[SPG] ...`/`[DONE]` già presenti in `arena_overrides.py`
+
 ## 3.1.0 (2026-09-11)
 
 ### Fixed

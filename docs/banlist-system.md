@@ -4,6 +4,12 @@
 
 Il sistema gestisce le carte bandite nel formato **Artisan** (solo carte Common e Uncommon su MTG Arena). La banlist è un elenco di carte che, pur essendo di rarità comune o non comune, sono bandite perché considerate troppo forti per il formato.
 
+**Nota**: `utils/ban_announcement.py` monitora i "Banned and Restricted Announcement" ufficiali di Wizards
+e notifica quando ne esce uno nuovo (vedi `docs/caching.md` sezione 3b), ma è **solo un promemoria** — non
+scrive mai su `banned_cards`. Nessuno dei formati ufficiali coperti da quegli annunci (Standard, Modern,
+Alchemy, ecc.) è l'Artisan homebrew di questa community, quindi l'aggiornamento della banlist resta sempre
+manuale via `/banlist_aggiungi`/`/banlist_rimuovi`.
+
 ---
 
 ## Architettura

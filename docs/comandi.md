@@ -65,7 +65,8 @@
 | Comando | Descrizione |
 |---|---|
 | `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
-| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`) |
+| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); posta l'immagine calendario sia nel canale log sia nel canale community |
+| `/forced_ban_announcement_check` | Forza subito un ricontrollo dell'ultimo Banned and Restricted Announcement, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); se ci sono modifiche reali, posta sia nel canale log sia nel canale community — solo notifica, non tocca mai la banlist Artisan |
 | `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
 
 ---
@@ -97,6 +98,7 @@
 | `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1391 |
 | `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 26 |
 | `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 22 |
+| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 22 |
 | `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 97 |
 
 ---

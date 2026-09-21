@@ -36,17 +36,26 @@ Approccio:
 """
 
 import asyncio
-import json
-import os
+import calendar
 import re
 import html as html_module
 import xml.etree.ElementTree as ET
+from datetime import date
 
 import aiohttp
+import discord
+
+from utils.sitemap_monitor import (
+    _CHECK_INTERVAL_SECONDS,
+    _SITEMAP_NS,
+    fetch_page_html,
+    fetch_sitemap_xml,
+    load_json_state,
+    pick_latest_by_lastmod,
+    save_json_state,
+)
 
 STATE_PATH = "data/arena_event_schedule_state.json"
-
-SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
 
 # Sotto-percorso su cui vivono sia i post settimanali "announcements-*" sia
 # le pagine dedicate "*-event-schedule" che questo modulo osserva.
@@ -56,23 +65,42 @@ _EVENT_SCHEDULE_URL_RE = re.compile(
     re.escape(_NEWS_URL_PREFIX) + r"[a-z0-9-]+-event-schedule$"
 )
 
-_SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-
-# Il sitemap e la pagina cambiano raramente (nuovo set ogni 6-9 settimane, con
-# eventuali aggiornamenti in-place a meta' ciclo), ma il check e' una singola
-# GET economica su un file statico: girare spesso costa pochissimo e riduce
-# la latenza con cui la community viene informata, a differenza del parsing
-# della singola pagina (piu' fragile) che scatta solo sui cambiamenti reali.
-_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
-
 _HEADING_LIST_RE = re.compile(
     r"<h[234]>\s*([^<]+?)\s*</h[234]>\s*<ul>(.*?)</ul>",
     re.DOTALL,
 )
 _LI_RE = re.compile(r"<li>(.*?)</li>", re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
-_CALENDAR_HEADING_RE = re.compile(r"<h[234]>\s*Full Event Calendar\s*</h[234]>")
+# [^>]* tollera attributi sul tag heading (es. reality-fracture-event-schedule
+# ha <h2 id="FRACalendar" style="scroll-margin-top: 70px;">Full Event
+# Calendar</h2> invece del bare <h2> osservato sulle pagine precedenti -
+# causa reale di un WARN ARENA_EVENT_SCHEDULE_UNPARSEABLE in produzione il
+# 2026-09-21). Le categorie sotto (_HEADING_LIST_RE) restano bare su questa
+# pagina, quindi non serve la stessa tolleranza li'.
+_CALENDAR_HEADING_RE = re.compile(r"<h[234][^>]*>\s*Full Event Calendar\s*</h[234]>")
 _ARTICLE_END_RE = re.compile(r"</article>")
+
+# Ogni voce della "Full Event Calendar" ha il formato osservato dal vivo
+# "Mese Giorno[-Mese] Giorno: Nome evento" (es. "August 11-September 29: ...",
+# "August 11-19: ..."), senza anno esplicito - il mese di fine e' opzionale
+# quando il range resta nello stesso mese. Il trattino puo' essere un en dash
+# "-" (quello effettivamente usato dal sito) o un normale "-".
+_ENTRY_DATE_RE = re.compile(
+    r"^(?P<m1>[A-Za-z]+)\s+(?P<d1>\d{1,2})\s*[–-]\s*"
+    r"(?:(?P<m2>[A-Za-z]+)\s+)?(?P<d2>\d{1,2})\s*:\s*(?P<name>.+)$"
+)
+
+_MONTH_NUMBERS = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+}
+
+MONTHS_IT = {
+    1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+    5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
+    9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre",
+}
 
 _state_cache: dict | None = None
 
@@ -87,32 +115,31 @@ def _load_state() -> dict:
     if _state_cache is not None:
         return _state_cache
 
-    if not os.path.exists(STATE_PATH):
-        _state_cache = {"latest_url": None, "latest_lastmod": None}
-        return _state_cache
-
-    with open(STATE_PATH, "r", encoding="utf-8") as f:
-        _state_cache = json.load(f)
-
+    _state_cache = load_json_state(STATE_PATH, {"latest_url": None, "latest_lastmod": None})
     return _state_cache
 
 
 def _save_state(data: dict) -> None:
     global _state_cache
 
-    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-
-    tmp_path = STATE_PATH + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-    os.replace(tmp_path, STATE_PATH)
-
+    save_json_state(STATE_PATH, data)
     _state_cache = data
 
 
 def invalidate_state_cache() -> None:
     global _state_cache
     _state_cache = None
+
+
+def get_latest_known_event_schedule() -> dict:
+    """Ritorna l'ultima pagina Event Schedule nota da stato salvato su disco
+    - {"url": str | None, "lastmod": str | None} - senza alcuna richiesta di
+    rete. Usata dal log di stato all'avvio del bot (main.py), distinto dal
+    check periodico vero e proprio: qui interessa solo mostrare cosa il bot
+    sa gia', non verificare se c'e' qualcosa di nuovo."""
+
+    state = _load_state()
+    return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
 
 
 # ==========================================
@@ -153,11 +180,9 @@ async def _fetch_sitemap_event_schedule_urls(
     """Scarica il sitemap e restituisce {url: lastmod} per le sole pagine
     '*-event-schedule' sotto /en/news/mtg-arena/."""
 
-    async with session.get(SITEMAP_URL) as response:
-        if response.status != 200:
-            print(f"[SITEMAP FAIL] {SITEMAP_URL} -> {response.status}")
-            return {}
-        body = await response.text()
+    body = await fetch_sitemap_xml(session)
+    if body is None:
+        return {}
 
     return _parse_sitemap_xml(body)
 
@@ -196,25 +221,170 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
     return categories or None
 
 
-def _pick_latest(entries: dict[str, str]) -> tuple[str, str] | None:
-    """Tra le pagine Event Schedule trovate sul sitemap, individua quella con
-    il lastmod piu' recente - in pratica il set attualmente attivo. I lastmod
-    sono timestamp ISO-8601 a larghezza fissa (es. '2026-09-02T16:05:08.364Z'),
-    quindi il confronto lessicografico tra stringhe coincide con l'ordine
-    cronologico, senza dover fare parsing di date."""
+# ==========================================
+# PARSING DATE VOCE + RAGGRUPPAMENTO PER MESE
+# ==========================================
 
-    if not entries:
+def parse_event_entry(text: str) -> dict | None:
+    """Estrae mese/giorno di inizio e fine da una voce testuale della
+    'Full Event Calendar' (es. 'August 11-September 29: Nome evento' o
+    'August 11-19: Nome evento'). Restituisce None se il testo non segue il
+    formato atteso - il chiamante deve escludere la voce dal calendario a
+    immagine invece di inventare una data, ma puo' comunque mostrarla intatta
+    negli embed testuali (che non dipendono da questo parsing)."""
+
+    match = _ENTRY_DATE_RE.match(text.strip())
+    if not match:
         return None
 
-    return max(entries.items(), key=lambda item: item[1])
+    m1 = _MONTH_NUMBERS.get(match.group("m1").lower())
+    m2_raw = match.group("m2")
+    m2 = _MONTH_NUMBERS.get(m2_raw.lower()) if m2_raw else m1
+
+    if m1 is None or m2 is None:
+        return None
+
+    try:
+        d1 = int(match.group("d1"))
+        d2 = int(match.group("d2"))
+    except ValueError:
+        return None
+
+    return {
+        "start_month": m1,
+        "start_day": d1,
+        "end_month": m2,
+        "end_day": d2,
+        "name": match.group("name").strip(),
+    }
+
+
+def _infer_start_year(start_month: int, reference: date) -> int:
+    """Assume l'anno corrente al momento del check; se il mese di inizio
+    risulta molto "indietro" rispetto al mese corrente (es. Gennaio quando il
+    check avviene a Dicembre), lo si considera dell'anno prossimo invece che
+    di uno gia' passato - copre il turno di anno per un range pubblicato a
+    fine anno. La soglia (6 mesi) evita falsi positivi sulle voci "Flashback"
+    che si riferiscono correttamente a un mese recente dello stesso anno."""
+
+    diff = start_month - reference.month
+    if diff <= -6:
+        return reference.year + 1
+    return reference.year
+
+
+def build_month_calendar(
+    categories: dict[str, list[str]],
+    reference_date: date | None = None,
+) -> dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]]:
+    """Trasforma {categoria: [voci testuali]} in
+    {(anno, mese): {categoria: [(giorno_inizio, giorno_fine, nome), ...]}},
+    spezzando ogni range che attraversa piu' mesi in un segmento per mese
+    toccato (i giorni vengono ritagliati ai limiti del mese). Voci non
+    parsabili (formato data imprevisto) vengono escluse silenziosamente -
+    restano visibili solo negli embed testuali, che non passano da qui."""
+
+    if reference_date is None:
+        reference_date = date.today()
+
+    result: dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]] = {}
+
+    for category, entries in categories.items():
+        for entry_text in entries:
+            parsed = parse_event_entry(entry_text)
+            if parsed is None:
+                continue
+
+            start_year = _infer_start_year(parsed["start_month"], reference_date)
+            end_year = start_year
+            if parsed["end_month"] < parsed["start_month"]:
+                end_year = start_year + 1
+
+            cur_year, cur_month = start_year, parsed["start_month"]
+            while (cur_year, cur_month) <= (end_year, parsed["end_month"]):
+                if (cur_year, cur_month) == (start_year, parsed["start_month"]):
+                    seg_start = parsed["start_day"]
+                else:
+                    seg_start = 1
+
+                if (cur_year, cur_month) == (end_year, parsed["end_month"]):
+                    seg_end = parsed["end_day"]
+                else:
+                    seg_end = calendar.monthrange(cur_year, cur_month)[1]
+
+                month_key = (cur_year, cur_month)
+                result.setdefault(month_key, {}).setdefault(category, []).append(
+                    (seg_start, seg_end, parsed["name"])
+                )
+
+                if cur_month == 12:
+                    cur_year, cur_month = cur_year + 1, 1
+                else:
+                    cur_month += 1
+
+    return result
+
+
+def extract_set_name_from_url(url: str) -> str:
+    """Deriva un nome leggibile dell'espansione dallo slug della pagina
+    Event Schedule (es. '.../the-hobbit-event-schedule' -> 'The Hobbit').
+    La pagina non espone il nome del set in un campo dedicato che si possa
+    estrarre in modo affidabile (compare solo dentro prosa/HTML vario), ma
+    lo slug e' sempre presente e stabile, quindi e' la fonte piu' sicura per
+    un titolo comunity leggibile."""
+
+    slug = url.rstrip("/").rsplit("/", 1)[-1]
+    if slug.endswith("-event-schedule"):
+        slug = slug[: -len("-event-schedule")]
+
+    return " ".join(word.capitalize() for word in slug.split("-") if word)
+
+
+def format_period_covered(
+    month_calendar: dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]],
+) -> str | None:
+    """Formatta in italiano il periodo complessivo coperto da tutte le voci
+    di un calendario gia' costruito da build_month_calendar() (es. '11
+    Agosto - 29 Settembre 2026'), o None se il calendario e' vuoto. Il
+    confronto cronologico usa tuple (anno, mese, giorno): dato che le chiavi
+    (anno, mese) sono gia' in ordine cronologico e i giorni sono ritagliati
+    ai limiti del mese per i segmenti intermedi, il min/max su queste tuple
+    coincide con l'inizio/fine reali dell'intervallo originale, senza dover
+    ricostruire i range pre-split."""
+
+    starts: list[date] = []
+    ends: list[date] = []
+
+    for (year, month), category_entries in month_calendar.items():
+        for entries in category_entries.values():
+            for day_start, day_end, _ in entries:
+                starts.append(date(year, month, day_start))
+                ends.append(date(year, month, day_end))
+
+    if not starts:
+        return None
+
+    period_start, period_end = min(starts), max(ends)
+
+    if period_start.year == period_end.year:
+        return (
+            f"{period_start.day} {MONTHS_IT[period_start.month]} - "
+            f"{period_end.day} {MONTHS_IT[period_end.month]} {period_end.year}"
+        )
+
+    return (
+        f"{period_start.day} {MONTHS_IT[period_start.month]} {period_start.year} - "
+        f"{period_end.day} {MONTHS_IT[period_end.month]} {period_end.year}"
+    )
+
+
+# In pratica seleziona il set attualmente attivo - vedi
+# pick_latest_by_lastmod() in utils/sitemap_monitor.py per il razionale.
+_pick_latest = pick_latest_by_lastmod
 
 
 async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | None:
-    async with session.get(url) as response:
-        if response.status != 200:
-            print(f"[EVENT SCHEDULE FETCH FAIL] {url} -> {response.status}")
-            return None
-        return await response.text()
+    return await fetch_page_html(session, url, log_prefix="EVENT SCHEDULE")
 
 
 # ==========================================
@@ -246,6 +416,7 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
+            print("[EVENT SCHEDULE] nessuna pagina Event Schedule trovata sul sitemap")
             return []
 
         url, lastmod = latest
@@ -255,18 +426,27 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
             and state.get("latest_lastmod") == lastmod
         )
         if already_seen and not force:
+            print(f"[EVENT SCHEDULE] nessun cambiamento (piu' recente: {url})")
             return []
+
+        print(f"[EVENT SCHEDULE] pagina nuova/aggiornata: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
             # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
             # prossimo giro invece di marcarla come vista.
+            print(f"[EVENT SCHEDULE] fetch fallito per {url}, ritento al prossimo giro")
             return []
 
         categories = parse_full_event_calendar(page_html)
 
     _save_state({"latest_url": url, "latest_lastmod": lastmod})
+
+    if categories is None:
+        print(f"[EVENT SCHEDULE] {url}: sezione 'Full Event Calendar' non riconosciuta")
+    else:
+        print(f"[EVENT SCHEDULE] {url}: {len(categories)} categorie interpretate")
 
     return [{"url": url, "lastmod": lastmod, "categories": categories}]
 
@@ -295,34 +475,34 @@ async def periodic_event_schedule_check_loop(
         await asyncio.sleep(interval_seconds)
 
 
-# Quante categorie per messaggio Discord. Un embed regge fino a 25 campi,
-# ma un unico messaggio con 15+ categorie (osservato: le pagine reali ne
-# hanno 13-15) risultava un muro di testo poco leggibile nonostante il
-# grassetto markdown. Un campo per categoria (nome in risalto tipografico,
-# non semplice testo in grassetto in un paragrafo) e piu' messaggi invece di
-# uno solo enorme.
-_CATEGORIES_PER_MESSAGE = 6
-
-# Limite Discord per il valore di un singolo campo embed.
-_FIELD_VALUE_LIMIT = 1024
-
-
-def _category_field(category: str, entries: list[str]) -> dict:
-    value = "\n".join(f"• {entry}" for entry in entries[:10])
-    if len(value) > _FIELD_VALUE_LIMIT:
-        value = value[:_FIELD_VALUE_LIMIT - 20] + "\n_...troncato_"
-    return {"name": category[:256], "value": value or "-", "inline": False}
-
-
 async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> None:
     """Posta su Discord (via Logger cog) l'esito del controllo di una singola
     pagina Event Schedule. Esposta come funzione pubblica perche' usata sia
     dal loop automatico sia dal comando admin manuale (stesso formato di
     log per entrambi i percorsi).
 
-    Una categoria per campo embed (non tutto infilato nella description) e
-    diviso in piu' messaggi da _CATEGORIES_PER_MESSAGE categorie l'uno,
-    invece di un unico embed enorme."""
+    Genera e allega un'immagine calendario per mese (EventCalendarImageGenerator)
+    invece di descrivere gli eventi a parole in campi embed - sostituisce il
+    design precedente (un campo per categoria, diviso in piu' messaggi),
+    poco leggibile con le 13-15 categorie reali. Import di
+    EventCalendarImageGenerator locale alla funzione (non in cima al modulo)
+    per evitare un import circolare: quel modulo importa MONTHS_IT da qui.
+
+    Quando il calendario viene generato con successo, le immagini vengono
+    postate anche in COMUNICATION_CHANNEL_ID (via `extra_channel_id` di
+    Logger.send_log(), stesso schema di send_ban_announcement_log() in
+    utils/ban_announcement.py) - un aggiornamento reale riguarda tutta la
+    community, non solo lo staff. Quel canale e' pubblico (si fa anche
+    @everyone): `community_title`/`community_info` costruiscono un embed
+    dedicato senza il gergo da staff ("Controllo manuale forzato", l'utente
+    che ha invocato il comando) che resta nell'`info` del canale log - solo
+    le immagini sono condivise tra i due invii. I due casi WARN (pagina non
+    interpretabile o senza date) restano solo nel canale log: sono rumore
+    operativo per chi manutiene il bot, non contenuto da mostrare alla
+    community. Import di
+    COMUNICATION_CHANNEL_ID differito (come in ban_announcement.py, vedi
+    utils/permissions.py per lo stesso pattern) per restare importabile nei
+    test senza un .env completo."""
 
     url = result["url"]
     categories = result["categories"]
@@ -341,20 +521,44 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
         )
         return
 
-    category_items = list(categories.items())
-    chunks = [
-        category_items[i:i + _CATEGORIES_PER_MESSAGE]
-        for i in range(0, len(category_items), _CATEGORIES_PER_MESSAGE)
+    month_calendar = build_month_calendar(categories)
+
+    if not month_calendar:
+        await logger.send_log(
+            level="WARN",
+            event="ARENA_EVENT_SCHEDULE_NO_DATES",
+            user=user,
+            info=(
+                f"{prefix}: {url} interpretata ma nessuna voce aveva un "
+                f"formato data riconoscibile - calendario non generato, "
+                f"controllo manuale consigliato."
+            ),
+        )
+        return
+
+    from utils.event_calendar_image_generator import EventCalendarImageGenerator
+
+    files = [
+        discord.File(
+            EventCalendarImageGenerator.create_month_calendar(year, month, category_entries),
+            filename=f"calendario_{year}_{month:02d}.png",
+        )
+        for (year, month), category_entries in sorted(month_calendar.items())
     ]
 
-    for part_index, chunk in enumerate(chunks, start=1):
-        fields = [_category_field(category, entries) for category, entries in chunk]
-        part_label = f" — parte {part_index}/{len(chunks)}" if len(chunks) > 1 else ""
+    from config.config import COMUNICATION_CHANNEL_ID
 
-        await logger.send_log(
-            level="INFO",
-            event="ARENA_EVENT_SCHEDULE_UPDATED",
-            user=user,
-            info=f"{prefix}: {url}{part_label}",
-            fields=fields,
-        )
+    set_name = extract_set_name_from_url(url)
+    period = format_period_covered(month_calendar)
+    period_line = f"**Periodo:** {period}\n" if period else ""
+
+    await logger.send_log(
+        level="INFO",
+        event="ARENA_EVENT_SCHEDULE_UPDATED",
+        user=user,
+        info=f"{prefix}: {url}",
+        files=files,
+        extra_channel_id=COMUNICATION_CHANNEL_ID,
+        community_title=f"📅 Calendario Eventi Arena — {set_name}",
+        community_info=f"{period_line}[Fonte]({url})",
+    )

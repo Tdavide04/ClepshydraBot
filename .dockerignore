@@ -22,7 +22,6 @@ data
 # Non necessari a runtime
 tests
 docs
-legacy
 deploy
 .claude
 *.md
