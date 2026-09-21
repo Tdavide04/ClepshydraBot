@@ -63,6 +63,24 @@ VALID_CALENDAR_HTML = """
 
 NO_CALENDAR_HTML = "<html><body><article><h2>Some Other Page</h2><p>niente qui</p></article></body></html>"
 
+# Regressione 2026-09-21: reality-fracture-event-schedule ha iniziato a
+# pubblicare l'heading "Full Event Calendar" CON attributi
+# (id="FRACalendar" style="scroll-margin-top: 70px;"), diverso dal bare
+# <h2> di tutte le pagine osservate finora - ha fatto scattare in produzione
+# un WARN ARENA_EVENT_SCHEDULE_UNPARSEABLE per un falso positivo (drift
+# minimo, non una vera mancanza della sezione).
+ATTRIBUTED_CALENDAR_HEADING_HTML = """
+<html><body><article>
+<h2 id="FRACalendar" style="scroll-margin-top: 70px;">Full Event Calendar</h2>
+
+<h3>Premier Draft</h3>
+<ul>
+	<li>September 29–November 9: <i>Reality Fracture</i></li>
+</ul>
+</article>
+</body></html>
+"""
+
 # Frammento realistico del sitemap reale (magic.wizards.com/en/sitemap.xml):
 # mix di pagine event-schedule, post announcements settimanali (da escludere)
 # e pagine di prodotto totalmente estranee (da escludere).
@@ -116,6 +134,15 @@ class TestParseFullEventCalendar:
 
     def test_returns_none_when_calendar_heading_missing(self):
         assert arena_event_schedule.parse_full_event_calendar(NO_CALENDAR_HTML) is None
+
+    def test_recognizes_the_calendar_heading_even_with_attributes(self):
+        """Regressione: l'heading 'Full Event Calendar' puo' avere
+        attributi (id/style) come su reality-fracture-event-schedule, non
+        solo il bare <h2> delle pagine precedenti."""
+        categories = arena_event_schedule.parse_full_event_calendar(ATTRIBUTED_CALENDAR_HEADING_HTML)
+
+        assert categories is not None
+        assert categories["Premier Draft"] == ["September 29–November 9: Reality Fracture"]
 
 
 class TestParseEventEntry:

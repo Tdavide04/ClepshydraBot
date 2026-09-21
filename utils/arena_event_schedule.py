@@ -71,7 +71,13 @@ _HEADING_LIST_RE = re.compile(
 )
 _LI_RE = re.compile(r"<li>(.*?)</li>", re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
-_CALENDAR_HEADING_RE = re.compile(r"<h[234]>\s*Full Event Calendar\s*</h[234]>")
+# [^>]* tollera attributi sul tag heading (es. reality-fracture-event-schedule
+# ha <h2 id="FRACalendar" style="scroll-margin-top: 70px;">Full Event
+# Calendar</h2> invece del bare <h2> osservato sulle pagine precedenti -
+# causa reale di un WARN ARENA_EVENT_SCHEDULE_UNPARSEABLE in produzione il
+# 2026-09-21). Le categorie sotto (_HEADING_LIST_RE) restano bare su questa
+# pagina, quindi non serve la stessa tolleranza li'.
+_CALENDAR_HEADING_RE = re.compile(r"<h[234][^>]*>\s*Full Event Calendar\s*</h[234]>")
 _ARTICLE_END_RE = re.compile(r"</article>")
 
 # Ogni voce della "Full Event Calendar" ha il formato osservato dal vivo

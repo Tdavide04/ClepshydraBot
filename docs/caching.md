@@ -265,8 +265,11 @@ realtà girava e correttamente non trovava nulla di nuovo.
 La sezione "Full Event Calendar" di queste pagine è HTML realmente strutturato (non prosa libera come i
 post Announcements settimanali): blocchi `<h2>/<h3>/<h4>Categoria</h2>` seguiti da
 `<ul><li>intervallo date: descrizione</li></ul>`, delimitati tra l'heading "Full Event Calendar" e la
-prima chiusura `</article>` successiva (esclude le card di navigazione laterale, che usano heading con
-attributi CSS anziché bare come quelli della sezione calendario).
+prima chiusura `</article>` successiva — è questo confine (`</article>`), non gli attributi dell'heading,
+a escludere le card di navigazione laterale (che vivono fuori dall'`<article>`). L'heading "Full Event
+Calendar" stesso può avere attributi (`<h2 id="FRACalendar" style="...">`, osservato su
+`reality-fracture-event-schedule`, Settembre 2026) — `_CALENDAR_HEADING_RE` li tollera; solo gli heading
+di categoria (`<h3>Premier Draft</h3>` ecc.) restano bare su tutte le pagine osservate finora.
 
 Se la struttura attesa non viene trovata, `parse_full_event_calendar()` ritorna `None` invece di un
 riassunto parziale o sbagliato — il chiamante logga un `WARN` ("controllo manuale consigliato") invece di

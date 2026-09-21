@@ -8,6 +8,17 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.2 (2026-09-21)
+
+### Fixed
+- `utils/arena_event_schedule.py`: `_CALENDAR_HEADING_RE` non riconosceva l'heading "Full Event Calendar"
+  quando porta attributi (`<h2 id="FRACalendar" style="scroll-margin-top: 70px;">`, osservato dal vivo su
+  `reality-fracture-event-schedule`) invece del bare `<h2>` delle pagine precedenti — causava un falso
+  positivo `ARENA_EVENT_SCHEDULE_UNPARSEABLE` in produzione (2026-09-21) anche se la sezione era presente
+  e ben formata. La regex ora tollera attributi sul tag, come già fa `_H2_RE` in `ban_announcement.py` per
+  lo stesso pattern osservato sugli annunci Banned and Restricted. Verificato contro la pagina reale: 14
+  categorie estratte correttamente, 3 immagini calendario generate (prima: 0, solo un WARN)
+
 ## 3.5.1 (2026-09-17)
 
 ### Changed
