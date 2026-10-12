@@ -158,3 +158,30 @@ class TestDroppedPlayers:
         by_id = {e.player_id: e for e in entries}
         assert by_id[1].dropped is True
         assert by_id[2].dropped is False
+
+
+class TestPendingMatches:
+
+    def test_unplayed_match_does_not_change_standings(self):
+        """Regressione: una partita del round in corso ancora senza risultato
+        contava come 1-1 in game e il suo avversario entrava nell'OMW, quindi
+        /classifica a meta' round alterava GWP e OMW."""
+        players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
+        played = [
+            MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win", p1_game_wins=2, p2_game_wins=1),
+            MockMatch(player1_id=3, player2_id=4, winner_id=3, result="win", p1_game_wins=2, p2_game_wins=0),
+        ]
+        pending = MockMatch(player1_id=1, player2_id=3, round_number=2)
+
+        before = StandingsCalculator.compute(1, players, played, get_name, get_deck)
+        after = StandingsCalculator.compute(1, players, played + [pending], get_name, get_deck)
+
+        assert after == before
+
+    def test_bye_still_counts_while_pending(self):
+        players = [MockPlayer(1)]
+        bye = MockMatch(player1_id=1, player2_id=None)
+
+        entries = StandingsCalculator.compute(1, players, [bye], get_name, get_deck)
+
+        assert entries[0].points == 3

@@ -117,6 +117,10 @@ function generate_round(players, existing_matches, round_num):
 4. **Opponent Game Win % (OGW)** — media GWP degli avversari
 5. **Nome giocatore** (ordine alfabetico, ascendente)
 
+Le partite del round in corso **ancora senza risultato** non contano: né come game né per l'OMW/OGW
+dell'avversario (i bye invece contano subito, 3 punti). Fino alla 3.6.1 valevano come un 1-1 in game, e una
+`/classifica` a metà round alterava GWP e OMW; la classifica finale non ne era toccata.
+
 ### Giocatori droppati
 
 Un giocatore rimosso a torneo avviato (`/drop_giocatore`) **resta in classifica**, marcato _(drop)_, con i

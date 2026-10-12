@@ -8,6 +8,22 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.6.2 (2026-10-12)
+
+### Fixed
+- **`/classifica` a meta' round contava le partite non ancora giocate**: `StandingsCalculator.compute()`
+  (`services/standings.py`) trattava una partita del round in corso senza risultato come un 1-1 in game, e
+  aggiungeva l'avversario al calcolo dell'OMW/OGW — GWP e OMW risultavano alterati finche' il round non era
+  completo. Ora le partite senza risultato vengono saltate (i bye continuano a contare subito). La
+  classifica finale non ne era toccata, e nemmeno gli abbinamenti (`torneo_next_turn` richiede tutti i
+  risultati del round)
+- Test: 2 nuovi in `TestPendingMatches` (`tests/tournament/test_standings.py`): aggiungere una partita non
+  giocata non cambia la classifica (fallisce sul codice precedente), il bye conta anche se il round e' in
+  corso
+
+### Docs
+- `docs/tornei.md` (StandingsCalculator), `CLAUDE.md` (conteggio test)
+
 ## 3.6.1 (2026-10-12)
 
 ### Fixed

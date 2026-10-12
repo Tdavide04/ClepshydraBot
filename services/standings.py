@@ -84,6 +84,11 @@ class StandingsCalculator:
             if m.player1_id is None or m.player2_id is None:
                 continue
 
+            # Partita del round in corso non ancora giocata: non deve contare
+            # ne' come game (prima valeva 1-1) ne' per l'OMW dell'avversario.
+            if m.result is None:
+                continue
+
             s1 = stats.setdefault(m.player1_id, _PlayerStats())
             s2 = stats.setdefault(m.player2_id, _PlayerStats())
             s1.opponents.append(m.player2_id)
