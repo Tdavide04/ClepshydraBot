@@ -67,6 +67,53 @@ class TestRegistration:
             assert "confermata" in msg
         run_with_db(scenario)
 
+    def test_max_players_enforced_under_concurrent_registrations(self, isolated_db):
+        """Due /iscriviti simultanei per l'ultimo posto: il controllo del limite
+        e l'inserimento non erano atomici, entrambi passavano (riprodotto: 3
+        iscritti con max 2)."""
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Full Cup", max_players=2)
+            await service.register_player(t.id, discord_id=1)
+
+            results = await asyncio.gather(
+                service.register_player(t.id, discord_id=2),
+                service.register_player(t.id, discord_id=3),
+            )
+
+            assert sum("confermata" in r for r in results) == 1
+            assert sum("massimo" in r for r in results) == 1
+            assert len(await service.get_registered_players(t.id)) == 2
+        run_with_db(scenario)
+
+    def test_seed_is_unique_after_a_player_leaves(self, isolated_db):
+        """Il seed era count(iscritti attivi) + 1: dopo un'uscita il nuovo
+        iscritto riceveva lo stesso seed di uno gia' presente."""
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Seed Cup")
+            await service.register_player(t.id, discord_id=1)
+            await service.register_player(t.id, discord_id=2)
+            await service.unregister_player(t.id, discord_id=1)
+
+            await service.register_player(t.id, discord_id=3)
+
+            seeds = [p.seed for p in await service.get_registered_players(t.id)]
+            assert seeds == [2, 3]
+        run_with_db(scenario)
+
+    def test_unregister_twice_reports_not_registered(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Leave Cup")
+            await service.register_player(t.id, discord_id=1)
+            await service.unregister_player(t.id, discord_id=1)
+
+            msg = await service.unregister_player(t.id, discord_id=1)
+
+            assert "Non sei iscritto" in msg
+        run_with_db(scenario)
+
 
 class TestDeckSubmission:
 
@@ -239,6 +286,37 @@ class TestTournamentFlow:
             updated = next(m for m in await service.get_matches(t.id) if m.id == match.id)
             assert updated.result == MatchResult.WIN
             assert updated.winner_id == 2
+        run_with_db(scenario)
+
+    def test_force_drop_during_registration_unblocks_start(self, isolated_db):
+        """Un iscritto che non invia mai il mazzo bloccava /avvia_torneo, e lo
+        staff non poteva rimuoverlo: force_drop_player() accettava solo tornei
+        ACTIVE."""
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("AFK Cup")
+            for discord_id in (1, 2, 3):
+                await service.register_player(t.id, discord_id=discord_id)
+            await service.submit_deck(t.id, 1, "Deck 1")
+            await service.submit_deck(t.id, 2, "Deck 2")
+            assert "non hanno" in await service.start_tournament(t.id)
+
+            msg = await service.force_drop_player(t.id, discord_id=3)
+
+            assert "rimosso" in msg
+            assert [p.user.discord_id for p in await service.get_registered_players(t.id)] == [1, 2]
+            assert "iniziato" in await service.start_tournament(t.id)
+        run_with_db(scenario)
+
+    def test_force_drop_rejected_on_completed_tournament(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t, _ = await self._start_with_players(service, 2)
+            await service.force_conclude_tournament(t.id)
+
+            msg = await service.force_drop_player(t.id, discord_id=1000)
+
+            assert "non e attivo" in msg
         run_with_db(scenario)
 
 

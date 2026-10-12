@@ -8,6 +8,40 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.4 (2026-10-12)
+
+### Fixed
+- **Un iscritto senza mazzo poteva bloccare un torneo a tempo indeterminato**: `start_tournament()` rifiuta
+  l'avvio finche' un iscritto attivo non ha inviato il mazzo, ma durante le iscrizioni lo staff non aveva
+  modo di rimuoverlo — `force_drop_player()` (`/drop_giocatore`) accettava solo tornei `ACTIVE`, e
+  `/left_torneo` puo' usarlo solo il giocatore stesso. Unica via d'uscita era modificare il DB a mano.
+  `force_drop_player()` ora accetta anche tornei in `REGISTRATION`: marca l'iscrizione come droppata
+  (nessun match da chiudere, a differenza del caso `ACTIVE` con auto-loss). Un giocatore rimosso cosi' puo'
+  reiscriversi con `/iscriviti`, come dopo un `/left_torneo`. Description di `/drop_giocatore` aggiornata
+  ("Rimuovi un giocatore da un torneo attivo o in fase di iscrizioni")
+- `tests/tournament/test_tournament_service.py`: 2 nuovi test (drop in iscrizione che sblocca l'avvio,
+  drop rifiutato su torneo concluso)
+- **`max_players` superabile con iscrizioni simultanee**: `register_player()` contava gli iscritti e poi
+  inseriva il nuovo con query separate, con `await` in mezzo — riprodotto: torneo con massimo 2 e un
+  iscritto, due `/iscriviti` concorrenti, 3 iscritti finali. Ora la funzione e' serializzata da un
+  `asyncio.Lock` per istanza di `TournamentService` (il bot ne crea una sola; per istanza e non di modulo
+  perche' un `asyncio.Lock` si lega all'event loop alla prima contesa, e i test usano un loop per scenario)
+- **Seed duplicati dopo un'uscita**: il seed era `count(iscritti attivi) + 1`, ma il conteggio esclude i
+  droppati — A=1, B=2, A esce, C si iscrive e riceveva seed 2 come B. Ora e' il massimo seed gia' assegnato
+  nel torneo + 1, droppati inclusi (nuovo `TournamentPlayerRepository.max_seed()`). Impatto limitato: il
+  seed e' solo lo spareggio nell'ordinamento del pairing
+- `unregister_player()` (`/left_torneo`) non controllava se l'iscrizione fosse gia' droppata: un secondo
+  `/left_torneo` ripeteva "Sei uscito dal torneo", con doppio embed pubblico e doppio log
+  `PLAYER_UNREGISTERED`. Ora risponde "Non sei iscritto a questo torneo"
+- `tests/tournament/test_tournament_service.py`: 3 nuovi test di regressione (iscrizioni concorrenti con
+  limite, seed dopo un'uscita, doppia uscita). Verificati anche con lo stesso script che li aveva riprodotti
+  su un DB temporaneo
+
+### Docs
+- Aggiornati `docs/tornei.md` (ciclo di vita: `/drop_giocatore` anche in iscrizione; tabella metodi con
+  `force_drop_player`, `register_player`, `unregister_player`), `docs/comandi.md` (`/drop_giocatore`),
+  `docs/database.md` (colonna `seed`), `CLAUDE.md` (conteggio test)
+
 ## 3.5.3 (2026-10-12)
 
 ### Fixed

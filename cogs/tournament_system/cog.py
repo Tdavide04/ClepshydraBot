@@ -612,7 +612,7 @@ class TournamentSystemCog(commands.Cog):
 
     @discord.app_commands.command(
         name="drop_giocatore",
-        description="Rimuovi forzatamente un giocatore dal torneo attivo"
+        description="Rimuovi un giocatore da un torneo attivo o in fase di iscrizioni"
     )
     @is_admin()
     @discord.app_commands.describe(

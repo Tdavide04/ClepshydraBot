@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from database.models import (
@@ -78,6 +78,15 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
             .where(TournamentPlayer.dropped.is_(False))
         )
         return len(result.all())
+
+    async def max_seed(self, tournament_id: int) -> int:
+        """Seed piu' alto mai assegnato nel torneo, iscrizioni droppate
+        incluse (mantengono il loro seed se il giocatore si reiscrive)."""
+        result = await self.session.execute(
+            select(func.max(TournamentPlayer.seed))
+            .where(TournamentPlayer.tournament_id == tournament_id)
+        )
+        return result.scalar_one_or_none() or 0
 
 
 class MatchRepository(BaseRepository[Match]):

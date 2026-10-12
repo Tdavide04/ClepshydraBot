@@ -50,7 +50,7 @@
 | `/crea_torneo` | Apre modale per creare nuovo torneo (nome, formato, max player) |
 | `/avvia_torneo [torneo]` | Avvia registrazione → stato attivo, genera round 1 — rifiuta se un iscritto attivo non ha ancora inviato un mazzo valido |
 | `/torneo_next_turn [torneo]` | Genera prossimo round o completa torneo |
-| `/drop_giocatore <giocatore> [torneo]` | Rimozione forzata con auto-loss |
+| `/drop_giocatore <giocatore> [torneo]` | Rimozione forzata: durante le iscrizioni toglie l'iscritto (sblocca `/avvia_torneo` se non ha mai inviato il mazzo), a torneo attivo con auto-loss |
 | `/concludi_torneo [torneo]` | Conclusione anticipata con rating update |
 
 ### Gestione Banlist

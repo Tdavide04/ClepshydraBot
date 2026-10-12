@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -24,6 +25,14 @@ class TournamentService:
 
     def __init__(self, bot=None):
         self.bot = bot
+        # Serializza register_player(): il controllo di max_players e
+        # l'inserimento sono query separate, con await in mezzo - due
+        # /iscriviti simultanei per l'ultimo posto passavano entrambi. Lock
+        # per istanza e non di modulo (asyncio.Lock si lega all'event loop
+        # alla prima contesa, e i test usano un loop per scenario): basta
+        # perche' il bot crea un solo TournamentService
+        # (cogs/tournament_system/cog.py).
+        self._registration_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def _repos(self):
@@ -82,6 +91,12 @@ class TournamentService:
     async def register_player(
         self, tournament_id: int, discord_id: int, deck_name: str | None = None
     ) -> str:
+        async with self._registration_lock:
+            return await self._register_player(tournament_id, discord_id, deck_name)
+
+    async def _register_player(
+        self, tournament_id: int, discord_id: int, deck_name: str | None
+    ) -> str:
         async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -108,16 +123,18 @@ class TournamentService:
                 deck_info = f" con **{deck_name}**" if deck_name else ""
                 return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{existing.seed}){deck_info}."
 
-            count = await tprepo.count_in_tournament(tournament_id)
+            # Non count + 1: il conteggio esclude i droppati, quindi dopo
+            # un'uscita il nuovo seed collideva con uno gia' assegnato.
+            seed = await tprepo.max_seed(tournament_id) + 1
             tp = TournamentPlayer(
                 tournament_id=tournament_id,
                 user_id=user.id,
-                seed=count + 1,
+                seed=seed,
                 deck_name=deck_name,
             )
             await tprepo.add(tp)
             deck_info = f" con **{deck_name}**" if deck_name else ""
-            return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{count + 1}){deck_info}."
+            return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{seed}){deck_info}."
 
     async def submit_deck(
         self, tournament_id: int, discord_id: int, deck_name: str
@@ -247,7 +264,7 @@ class TournamentService:
                 return "Non sei iscritto a questo torneo."
 
             tp = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
-            if tp is None:
+            if tp is None or tp.dropped:
                 return "Non sei iscritto a questo torneo."
 
             tp.dropped = True
@@ -258,12 +275,16 @@ class TournamentService:
     async def force_drop_player(
         self, tournament_id: int, discord_id: int
     ) -> str:
+        """Rimozione decisa dallo staff. Vale anche in REGISTRATION: un
+        iscritto che non invia mai il mazzo blocca start_tournament(), e
+        unregister_player() puo' invocarlo solo il giocatore stesso - senza
+        questo caso lo staff non aveva modo di sbloccare l'avvio."""
         async with self._repos() as (session, trepo, tprepo, mrepo, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
                 return "Torneo non trovato."
-            if tournament.status != TournamentStatus.ACTIVE:
-                return "Il torneo non e attivo."
+            if tournament.status not in (TournamentStatus.ACTIVE, TournamentStatus.REGISTRATION):
+                return "Il torneo non e attivo ne in fase di iscrizioni."
 
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
@@ -272,6 +293,15 @@ class TournamentService:
             tp = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
             if tp is None or tp.dropped:
                 return "Giocatore non iscritto o gia rimosso."
+
+            if tournament.status == TournamentStatus.REGISTRATION:
+                tp.dropped = True
+                session.add(tp)
+                await session.commit()
+                return (
+                    f"Giocatore **{self._resolve_name(tp)}** rimosso dalle iscrizioni "
+                    f"del torneo **{tournament.name}**."
+                )
 
             current_round = await mrepo.get_current_round(tournament_id)
             matches = await mrepo.get_by_tournament(tournament_id)

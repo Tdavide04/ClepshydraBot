@@ -86,7 +86,7 @@ Relazioni: `players` → TournamentPlayer, `matches` → Match
 | `user_id` | Integer | FK → users.id | |
 | `joined_at` | DateTime | DEFAULT now | |
 | `dropped` | Boolean | DEFAULT False | Ritirato |
-| `seed` | Integer | NULLABLE | Seed pairing |
+| `seed` | Integer | NULLABLE | Seed pairing (spareggio nell'ordinamento); assegnato come massimo seed del torneo + 1, droppati inclusi |
 | `deck_name` | String(200) | NULLABLE | Nome deck (migrazione) |
 
 Relazioni: `tournament` → Tournament, `user` → User, `matches_as_player1/2` → Match

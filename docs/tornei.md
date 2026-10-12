@@ -36,6 +36,8 @@ REGISTRAZIONE
     │ /invia_deck → InviaDeckModal (deck validation + submit), ripetibile
     │ /iscrizioni_torneo → chi è iscritto e chi ha già inviato il mazzo
     │ /left_torneo → uscita volontaria
+    │ /drop_giocatore (admin) → rimuove un iscritto (es. chi non invia mai
+    │                           il mazzo e altrimenti bloccherebbe l'avvio)
     ▼
 AVVIO (admin)
     │ /avvia_torneo → bloccato se un iscritto attivo non ha ancora
@@ -46,7 +48,7 @@ ATTIVO
     │ /turni → visualizza pairing round corrente
     │ /risultato → submit risultato (win/loss/draw + game wins)
     │ /torneo_next_turn (admin) → genera prossimo round
-    │ /drop_giocatore (admin) → rimozione forzata
+    │ /drop_giocatore (admin) → rimozione forzata con auto-loss
     ▼
 COMPLETATO
     │ /classifica → classifica finale
@@ -161,12 +163,13 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | Metodo | Descrizione |
 |---|---|
 | `create_tournament(name, format, max_players)` | Crea torneo in stato `registration` |
-| `register_player(tournament_id, discord_id, deck_name=None)` | Registra utente, mazzo opzionale (di norma `None`: si invia separatamente) |
+| `register_player(tournament_id, discord_id, deck_name=None)` | Registra utente, mazzo opzionale (di norma `None`: si invia separatamente). Serializzata da un `asyncio.Lock` per istanza, così due iscrizioni simultanee non superano `max_players`; seed = massimo seed già assegnato nel torneo + 1 (droppati inclusi), quindi unico anche dopo un'uscita. Chi si reiscrive dopo un'uscita mantiene il proprio seed |
 | `submit_deck(tournament_id, discord_id, deck_name)` | Aggiorna il mazzo di un'iscrizione già esistente; fallisce se non iscritto o se il torneo non è più in `registration` |
+| `unregister_player(tournament_id, discord_id)` | Uscita volontaria (`/left_torneo`), solo in `registration`; un secondo tentativo risponde "Non sei iscritto" invece di ripetere l'uscita |
 | `start_tournament(tournament_id)` | Avvia, calcola round, genera round 1 — **rifiuta** se un iscritto attivo ha `deck_name is None` |
 | `submit_result(match_id, winner_id, p1_wins, p2_wins)` | Registra risultato |
 | `generate_next_round(tournament_id)` | Round successivo o conclusione |
-| `force_drop_player(tournament_id, discord_id)` | Rimozione con auto-loss |
+| `force_drop_player(tournament_id, discord_id)` | Rimozione decisa dallo staff: in `registration` marca solo l'iscrizione come droppata (sblocca un `start_tournament()` fermo per un mazzo mancante); in `active` assegna anche la vittoria all'avversario nel match pendente del round corrente |
 | `force_conclude_tournament(tournament_id)` | Conclusione anticipata |
 | `get_standings(tournament_id)` | Classifica con nomi |
 | `get_leaderboard(limit)` | Top N rating |
@@ -185,7 +188,7 @@ Tutti i comandi in `cogs/tournament_system/cog.py`:
 | `/crea_torneo` | Admin | Crea nuovo torneo |
 | `/avvia_torneo` | Admin | Inizia torneo |
 | `/torneo_next_turn` | Admin | Prossimo round |
-| `/drop_giocatore` | Admin | Rimuovi giocatore |
+| `/drop_giocatore` | Admin | Rimuovi giocatore (torneo attivo o in iscrizione) |
 | `/concludi_torneo` | Admin | Concludi forzatamente |
 | `/iscriviti` | Pubblico | Iscrizione (senza mazzo) |
 | `/invia_deck` | Pubblico | Invia/aggiorna il mazzo per un'iscrizione esistente |
@@ -239,7 +242,7 @@ Con pulsante conferma che:
 | `REGISTRATION_CONFIRMED` | INFO | `/iscriviti` (registrazione, mazzo non ancora inviato) |
 | `TOURNAMENT_DECK_SUBMITTED` | INFO/WARN | `/invia_deck` — INFO se il mazzo è valido e registrato, WARN se non valido o rifiutato (non iscritto / torneo non più in registrazione) |
 | `PLAYER_UNREGISTERED` | INFO | `/left_torneo` (uscita volontaria) |
-| `PLAYER_DROPPED` | INFO | `/drop_giocatore` (rimozione forzata admin) |
+| `PLAYER_DROPPED` | INFO | `/drop_giocatore` (rimozione forzata admin, anche durante le iscrizioni) |
 | `TOURNAMENT_START_BLOCKED` | WARN | `/avvia_torneo` rifiutato (torneo non trovato/non in registrazione, meno di 2 giocatori, o mazzi mancanti) |
 | `TOURNAMENT_STARTED` | INFO | `/avvia_torneo` riuscito — include l'elenco partecipanti e il nome del mazzo di ciascuno (primi 25, poi "...e altri N") |
 | `MATCH_RESULT` | INFO | `/risultato` confermato |
