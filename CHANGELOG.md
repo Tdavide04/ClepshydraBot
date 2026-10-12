@@ -8,6 +8,31 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.5 (2026-10-12)
+
+### Fixed
+- **`/classifica` andava in crash dopo qualunque `/drop_giocatore` a torneo avviato** (riprodotto:
+  `KeyError`): `get_standings()` passava a `StandingsCalculator.compute()` i soli iscritti attivi, ma le
+  partite gia' giocate dal droppato restano nel torneo, e il calcolo cercava le statistiche di un giocatore
+  assente. Il comando restava su "sta pensando..." per sempre, anche per la classifica finale. Ora:
+  - `TournamentPlayerRepository.get_by_tournament()` accetta `include_dropped` (default `False`: pairing,
+    avvio ed elenco iscrizioni restano invariati)
+  - `get_standings()` include i droppati che hanno giocato almeno una partita: restano in classifica
+    marcati _(drop)_ (nuovo `StandingsEntry.dropped`, mostrato da `build_standings_embed()`) e le loro
+    partite contano per l'OMW/OGW degli avversari, come nei tornei Wizards. Chi e' uscito durante le
+    iscrizioni non compare
+  - `compute()` tollera comunque un giocatore presente solo nelle partite (`stats.setdefault`) invece di
+    andare in errore
+- **Rating: le partite contro un giocatore poi droppato venivano ignorate** — `_update_ratings()` usava gli
+  stessi soli iscritti attivi e saltava in silenzio quelle partite, per entrambi i giocatori. Ora le conta
+- Test: 5 nuovi (`TestDroppedPlayers` in `tests/tournament/test_standings.py`; classifica dopo un drop a
+  torneo avviato, uscita in iscrizione esclusa, rating contro un droppato in
+  `test_tournament_service.py`) — i 4 di regressione falliscono sul codice precedente
+
+### Docs
+- `docs/tornei.md` (nuova sezione "Giocatori droppati", tabelle metodi/embed), `docs/database.md`
+  (`get_by_tournament`), `CLAUDE.md` (conteggio test)
+
 ## 3.5.4 (2026-10-12)
 
 ### Fixed

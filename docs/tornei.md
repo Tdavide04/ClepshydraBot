@@ -116,6 +116,19 @@ function generate_round(players, existing_matches, round_num):
 4. **Opponent Game Win % (OGW)** — media GWP degli avversari
 5. **Nome giocatore** (ordine alfabetico, ascendente)
 
+### Giocatori droppati
+
+Un giocatore rimosso a torneo avviato (`/drop_giocatore`) **resta in classifica**, marcato _(drop)_, con i
+punti delle partite già giocate: quelle partite continuano a contare per l'OMW/OGW dei suoi avversari, come
+nei tornei Wizards. Chi è uscito durante le iscrizioni (nessuna partita giocata) non compare. Non viene più
+abbinato nei round successivi (`PairingEngine` riceve solo gli iscritti attivi). Le partite contro un
+droppato contano anche per il rating Glicko-2 di fine torneo.
+
+Fino alla 3.5.4 `get_standings()` passava al calcolo solo gli iscritti attivi mentre le partite del droppato
+restavano: `/classifica` andava in `KeyError` dopo qualunque drop a torneo avviato, e `_update_ratings()`
+saltava in silenzio le partite contro di lui. `compute()` ora tollera comunque un giocatore presente solo
+nelle partite (`stats.setdefault`), invece di andare in errore.
+
 ### OMW Progress Bar
 
 La barra OMW è visualizzata nelle classifiche come indicatore visuale:
@@ -171,9 +184,9 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | `generate_next_round(tournament_id)` | Round successivo o conclusione |
 | `force_drop_player(tournament_id, discord_id)` | Rimozione decisa dallo staff: in `registration` marca solo l'iscrizione come droppata (sblocca un `start_tournament()` fermo per un mazzo mancante); in `active` assegna anche la vittoria all'avversario nel match pendente del round corrente |
 | `force_conclude_tournament(tournament_id)` | Conclusione anticipata |
-| `get_standings(tournament_id)` | Classifica con nomi |
+| `get_standings(tournament_id)` | Classifica con nomi; include i droppati che hanno giocato almeno una partita (`StandingsEntry.dropped`) |
 | `get_leaderboard(limit)` | Top N rating |
-| `_update_ratings(tournament_id)` | Glicko-2 su tutti i match |
+| `_update_ratings(tournament_id)` | Glicko-2 su tutti i match, anche quelli contro giocatori poi droppati |
 
 Coperto da test end-to-end in `tests/tournament/test_tournament_service.py` (iscrizione, invio/reinvio mazzo, blocco avvio se manca un mazzo, avvio, pairing, submit risultato, generazione round, drop forzato, standings, aggiornamento rating) su un DB SQLite temporaneo isolato per test — nessun mock sul layer di persistenza.
 
@@ -257,7 +270,7 @@ Con pulsante conferma che:
 
 | Funzione | Contenuto |
 |---|---|
-| `build_standings_embed()` | Classifica con rank, nome, punti, OMW bar, record |
+| `build_standings_embed()` | Classifica con rank, nome (marcato _(drop)_ se ritirato), punti, OMW bar, record |
 | `build_pairings_embed()` | Pairing con table number, giocatori, link profilo |
 | `build_start_embed()` | Annuncio inizio torneo con round totali |
 | `build_top8_embed()` | Bracket top 8 (da implementare) |

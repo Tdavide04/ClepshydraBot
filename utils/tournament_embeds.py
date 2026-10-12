@@ -39,8 +39,9 @@ def build_standings_embed(
         bar = omw_bar(pct)
         gw_pct = entry.game_win_percent * 100 if entry.game_win_percent else 0.0
         deck = entry.deck_name if entry.deck_name else "\u2014"
+        drop = " _(drop)_" if getattr(entry, "dropped", False) else ""
         lines.append(
-            f"{rank_label(entry.rank)} **{entry.player_name}** \u2014 {deck}\n"
+            f"{rank_label(entry.rank)} **{entry.player_name}**{drop} \u2014 {deck}\n"
             f"\u2523 {entry.points:.0f} pt  \u2022  {entry.wins}W/{entry.losses}L/{entry.draws}T\n"
             f"\u2523 GW: {gw_pct:.1f}%\n"
             f"\u2517 OMW: {bar}"

@@ -22,6 +22,7 @@ class StandingsEntry:
     opponent_win_percent: float
     game_win_percent: float = 0.0
     opponent_game_win_percent: float = 0.0
+    dropped: bool = False
 
 
 @dataclass
@@ -68,10 +69,13 @@ class StandingsCalculator:
             pid = p.id if hasattr(p, "id") else p
             stats[pid] = _PlayerStats()
 
+        # setdefault e non stats[...]: un giocatore puo' comparire nelle
+        # partite senza essere in `players` (es. droppato, se il chiamante
+        # passa i soli attivi) - prima era un KeyError su /classifica.
         for m in matches:
             if m.player2_id is None:
                 if m.player1_id is not None:
-                    s = stats[m.player1_id]
+                    s = stats.setdefault(m.player1_id, _PlayerStats())
                     s.match_points += POINTS_BYE
                     s.match_wins += 1
                     s.game_wins += 2
@@ -80,8 +84,8 @@ class StandingsCalculator:
             if m.player1_id is None or m.player2_id is None:
                 continue
 
-            s1 = stats[m.player1_id]
-            s2 = stats[m.player2_id]
+            s1 = stats.setdefault(m.player1_id, _PlayerStats())
+            s2 = stats.setdefault(m.player2_id, _PlayerStats())
             s1.opponents.append(m.player2_id)
             s2.opponents.append(m.player1_id)
 
@@ -148,6 +152,7 @@ class StandingsCalculator:
                 opponent_win_percent=round(omw, 4),
                 game_win_percent=round(gwp(pid), 4),
                 opponent_game_win_percent=round(ogw, 4),
+                dropped=bool(getattr(p, "dropped", False)),
             ))
 
         entries.sort(

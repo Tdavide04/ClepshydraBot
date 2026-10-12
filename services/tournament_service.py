@@ -423,7 +423,9 @@ class TournamentService:
             if tournament is None:
                 return
 
-            players = await tprepo.get_by_tournament(tournament_id)
+            # Droppati inclusi: le partite gia' giocate contro chi si e'
+            # ritirato contano per il rating di entrambi.
+            players = await tprepo.get_by_tournament(tournament_id, include_dropped=True)
             matches = await mrepo.get_by_tournament(tournament_id)
 
             user_ids = {tp.user_id for tp in players if tp.user_id}
@@ -538,8 +540,15 @@ class TournamentService:
             if tournament is None:
                 return "Torneo non trovato."
 
-            players = await tprepo.get_by_tournament(tournament_id)
             matches = await mrepo.get_by_tournament(tournament_id)
+            # Un droppato resta in classifica (marcato) solo se ha giocato:
+            # le sue partite contano per l'OMW degli avversari, come nei
+            # tornei Wizards. Chi e' uscito durante le iscrizioni no.
+            played = {m.player1_id for m in matches} | {m.player2_id for m in matches}
+            players = [
+                tp for tp in await tprepo.get_by_tournament(tournament_id, include_dropped=True)
+                if not tp.dropped or tp.id in played
+            ]
 
             name_cache: dict[int, str] = {}
             deck_cache: dict[int, str] = {}

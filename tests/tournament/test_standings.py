@@ -135,3 +135,26 @@ class TestSortStandings:
         )
         assert entries[0].player_id == 1
         assert entries[1].player_id == 2
+
+
+class TestDroppedPlayers:
+
+    def test_match_against_player_missing_from_list_does_not_crash(self):
+        """Regressione: get_standings() passava i soli iscritti attivi, ma le
+        partite giocate da un droppato restano - KeyError su /classifica."""
+        players = [MockPlayer(2)]
+        matches = [MockMatch(player1_id=1, player2_id=2, winner_id=2, result="win")]
+
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
+
+        assert [(e.player_id, e.points) for e in entries] == [(2, 3)]
+
+    def test_dropped_flag_is_propagated(self):
+        players = [MockPlayer(1, dropped=True), MockPlayer(2)]
+        matches = [MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win")]
+
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
+
+        by_id = {e.player_id: e for e in entries}
+        assert by_id[1].dropped is True
+        assert by_id[2].dropped is False

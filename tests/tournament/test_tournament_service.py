@@ -288,6 +288,59 @@ class TestTournamentFlow:
             assert updated.winner_id == 2
         run_with_db(scenario)
 
+    def test_standings_after_active_drop_keep_the_dropped_player(self, isolated_db):
+        """Regressione: dopo un /drop_giocatore a torneo attivo /classifica
+        andava in KeyError (le partite del droppato restano, lui no)."""
+        async def scenario():
+            service = TournamentService()
+            t, _ = await self._start_with_players(service, 4)
+            for m in await service.get_matches(t.id):
+                await service.submit_result(m.id, m.player1_id, "win", 2, 0)
+
+            # Il round 1 e' casuale: si droppa il vincitore di una partita,
+            # qualunque esso sia.
+            winner = (await service.get_matches(t.id))[0].player1
+            await service.force_drop_player(t.id, discord_id=winner.user.discord_id)
+            entries = await service.get_standings(t.id)
+
+            assert len(entries) == 4
+            dropped = [e for e in entries if e.dropped]
+            assert [e.player_id for e in dropped] == [winner.id]
+            assert dropped[0].points == 3
+        run_with_db(scenario)
+
+    def test_player_who_left_during_registration_is_not_in_standings(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await service.create_tournament("Left Cup")
+            await service.register_player(t.id, discord_id=1)
+            await service.register_player(t.id, discord_id=2)
+            await service.unregister_player(t.id, discord_id=1)
+
+            entries = await service.get_standings(t.id)
+
+            assert len(entries) == 1
+        run_with_db(scenario)
+
+    def test_ratings_count_matches_against_a_dropped_player(self, isolated_db):
+        """_update_ratings() saltava le partite contro chi e' stato poi
+        droppato: il vincitore non vedeva cambiare il proprio rating."""
+        async def scenario():
+            service = TournamentService()
+            t, _ = await self._start_with_players(service, 2)
+            match = (await service.get_matches(t.id))[0]
+            winner_id = match.player1.user.discord_id
+            loser_id = match.player2.user.discord_id
+            await service.submit_result(match.id, match.player1_id, "win", 2, 0)
+            await service.force_drop_player(t.id, discord_id=loser_id)
+
+            await service.generate_next_round(t.id)
+
+            board = {e["discord_id"]: e for e in await service.get_leaderboard()}
+            assert board[winner_id]["rating"] > 1500
+            assert board[loser_id]["rating"] < 1500
+        run_with_db(scenario)
+
     def test_force_drop_during_registration_unblocks_start(self, isolated_db):
         """Un iscritto che non invia mai il mazzo bloccava /avvia_torneo, e lo
         staff non poteva rimuoverlo: force_drop_player() accettava solo tornei

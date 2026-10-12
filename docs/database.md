@@ -183,7 +183,7 @@ Repository generico con CRUD base:
 
 | Metodo | Descrizione |
 |---|---|
-| `get_by_tournament(tournament_id)` | Giocatori attivi (eager load user) |
+| `get_by_tournament(tournament_id, include_dropped=False)` | Giocatori attivi (eager load user); `include_dropped=True` anche i ritirati, usato da classifica e rating |
 | `count_by_tournament(tournament_id)` | Conteggio iscritti |
 
 ### MatchRepository

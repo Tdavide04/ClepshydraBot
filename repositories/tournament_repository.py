@@ -51,14 +51,22 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
     def __init__(self, session):
         super().__init__(session, TournamentPlayer)
 
-    async def get_by_tournament(self, tournament_id: int) -> list[TournamentPlayer]:
-        result = await self.session.execute(
+    async def get_by_tournament(
+        self, tournament_id: int, include_dropped: bool = False
+    ) -> list[TournamentPlayer]:
+        """Iscritti del torneo ordinati per seed. Di default solo quelli
+        attivi (pairing, avvio, elenco iscrizioni); include_dropped=True per
+        classifica e rating, dove le partite gia' giocate da un droppato
+        continuano a contare."""
+        query = (
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
-            .where(TournamentPlayer.dropped.is_(False))
             .options(joinedload(TournamentPlayer.user))
             .order_by(TournamentPlayer.seed)
         )
+        if not include_dropped:
+            query = query.where(TournamentPlayer.dropped.is_(False))
+        result = await self.session.execute(query)
         return list(result.unique().scalars().all())
 
     async def get_by_tournament_and_user(
