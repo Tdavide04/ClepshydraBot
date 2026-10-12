@@ -77,29 +77,29 @@
 
 | Comando | File | Linea |
 |---|---|---|
-| `/presentati` | `cogs/presentation/cog.py` | 45 |
-| `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 67 |
-| `/crea_torneo` | `cogs/tournament_system/cog.py` | 507 |
-| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 521 |
-| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 719 |
-| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 622 |
-| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 672 |
-| `/iscriviti` | `cogs/tournament_system/cog.py` | 880 |
-| `/invia_deck` | `cogs/tournament_system/cog.py` | 936 |
-| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 975 |
-| `/left_torneo` | `cogs/tournament_system/cog.py` | 1025 |
-| `/risultato` | `cogs/tournament_system/cog.py` | 1071 |
-| `/classifica` | `cogs/tournament_system/cog.py` | 1148 |
-| `/turni` | `cogs/tournament_system/cog.py` | 1251 |
-| `/lista_tornei` | `cogs/tournament_system/cog.py` | 828 |
-| `/leaderboard` | `cogs/tournament_system/cog.py` | 1265 |
-| `/banlist` | `cogs/tournament_system/cog.py` | 1314 |
-| `/banlist_aggiungi` | `cogs/tournament_system/cog.py` | 1360 |
-| `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1391 |
-| `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 26 |
-| `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 22 |
-| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 22 |
-| `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 97 |
+| `/presentati` | `cogs/presentation/cog.py` | 48 |
+| `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 62 |
+| `/crea_torneo` | `cogs/tournament_system/cog.py` | 508 |
+| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 522 |
+| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 720 |
+| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 623 |
+| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 673 |
+| `/iscriviti` | `cogs/tournament_system/cog.py` | 881 |
+| `/invia_deck` | `cogs/tournament_system/cog.py` | 937 |
+| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 976 |
+| `/left_torneo` | `cogs/tournament_system/cog.py` | 1026 |
+| `/risultato` | `cogs/tournament_system/cog.py` | 1072 |
+| `/classifica` | `cogs/tournament_system/cog.py` | 1149 |
+| `/turni` | `cogs/tournament_system/cog.py` | 1252 |
+| `/lista_tornei` | `cogs/tournament_system/cog.py` | 829 |
+| `/leaderboard` | `cogs/tournament_system/cog.py` | 1266 |
+| `/banlist` | `cogs/tournament_system/cog.py` | 1315 |
+| `/banlist_aggiungi` | `cogs/tournament_system/cog.py` | 1361 |
+| `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1392 |
+| `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 31 |
+| `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 27 |
+| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 27 |
+| `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 103 |
 
 ---
 

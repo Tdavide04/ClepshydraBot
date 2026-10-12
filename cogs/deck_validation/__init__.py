@@ -3,10 +3,11 @@ from discord.ext import commands
 
 from cogs.deck_validation.validators import parse_decklist
 from cogs.deck_validation.service import ArtisanService
+from utils.interaction_errors import ReportingModal
 
 
 class ArtisanDeckCheckModal(
-    discord.ui.Modal,
+    ReportingModal,
     title="Controllo Mazzo Artisan"
 ):
     titolo = discord.ui.TextInput(
@@ -28,16 +29,6 @@ class ArtisanDeckCheckModal(
     def __init__(self, service: ArtisanService):
         super().__init__()
         self.service = service
-
-    async def on_error(self, interaction: discord.Interaction, error: Exception):
-        import traceback
-        traceback.print_exception(type(error), error, error.__traceback__)
-        try:
-            await interaction.followup.send(
-                "Errore interno durante l'analisi.", ephemeral=True
-            )
-        except Exception:
-            pass
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.send_message(

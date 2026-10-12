@@ -8,6 +8,37 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.6 (2026-10-12)
+
+### Fixed
+- **Nessuna gestione globale degli errori delle interazioni**: un'eccezione non prevista in uno slash command
+  (tipicamente dopo un `defer()`), in un modal o in una view lasciava l'utente su "sta pensando..." per
+  sempre e finiva solo in console, mai nel canale log — e' cosi' che si manifestava il crash di
+  `/classifica` corretto nella 3.5.5. Ora:
+  - nuovo `utils/interaction_errors.py`: `report_interaction_error()` risponde all'utente in ephemeral
+    ("errore inatteso, lo staff e' stato avvisato" — `followup` se l'interazione aveva gia' risposto,
+    altrimenti risposta diretta; non solleva se l'interazione e' gia' scaduta), logga `ERROR`
+    `INTERACTION_ERROR` con origine, eccezione e coda del traceback, stampa il traceback completo in console
+    con timestamp. Scompatta `CommandInvokeError` per mostrare l'eccezione reale
+  - nuovo cog `cogs/error_handler.py`: aggancia `CommandTree.on_error` (ripristinato allo scaricamento). I
+    `CheckFailure` (es. `@is_admin()`, che risponde gia' da se') non vengono loggati come errori
+  - nuove classi base `ReportingModal`/`ReportingView`, adottate da tutti gli 8 modal/view del bot
+    (`CreaTorneoModal`, `InviaDeckModal`, `RisultatoView`, `BasicPresentationModal`,
+    `OptionalPresentationModal`, `PreferencesView`, `PreviewView`, `ArtisanDeckCheckModal` — quest'ultimo
+    aveva un `on_error` proprio che stampava solo in console, rimosso)
+- `tests/utils/test_interaction_errors.py`: 9 nuovi test (risposta prima/dopo il defer, log con origine,
+  `CommandInvokeError` scompattato, interazione scaduta che logga comunque, classi base, `CheckFailure`
+  non loggato). Verificato anche l'aggancio reale su un `commands.Bot` di discord.py 2.7.1
+
+### Docs
+- `docs/architettura.md`: la sezione "Gestione Errori" dichiarava "ogni comando slash ha `try/except` con
+  log ERROR" — non era vero, sostituita con la descrizione del nuovo meccanismo. Corretta anche la riga
+  sulla CI, ferma a prima della 1.7.1 (`ruff` e' bloccante da allora, non piu' informativo)
+- `README.md` (struttura progetto), `CLAUDE.md` (nuovo cog e regola per i nuovi modal/view, conteggio test)
+- `docs/comandi.md` "Location File": numeri di riga ricalcolati dal codice per tutti i 23 comandi — sfasati
+  dagli import aggiunti qui, ma la tabella mescolava gia' riga del decoratore e riga della funzione, con
+  alcuni valori gia' errati (es. `/presentati`). Ora puntano tutti alla riga `async def`
+
 ## 3.5.5 (2026-10-12)
 
 ### Fixed

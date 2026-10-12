@@ -77,6 +77,7 @@ ClepsydraBot/
 │   ├── tournament/          # Artisan deck validation
 │   ├── tournament_system/   # Swiss tournament management
 │   ├── logger.py            # Centralized logging
+│   ├── error_handler.py     # Global slash command error handler
 │   ├── spg_override_updater.py
 │   ├── arena_event_schedule_updater.py
 │   └── ban_announcement_updater.py
@@ -98,6 +99,7 @@ ClepsydraBot/
 │   ├── event_calendar_image_generator.py
 │   ├── ban_announcement.py
 │   ├── sitemap_monitor.py
+│   ├── interaction_errors.py
 │   └── deck_image_generator.py
 ├── config/
 │   └── config.py

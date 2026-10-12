@@ -3,6 +3,7 @@ from cogs.presentation.models import PresentationData
 from cogs.presentation.embeds import build_preview_embed
 from cogs.presentation.modals import OptionalPresentationModal
 from cogs.presentation.service import PresentationService
+from utils.interaction_errors import ReportingView
 
 
 COLORI_OPTIONS = [
@@ -222,7 +223,7 @@ class FormatiLimitedSelect(discord.ui.Select):
         await interaction.response.defer()
 
 
-class PreferencesView(discord.ui.View):
+class PreferencesView(ReportingView):
     def __init__(self, data: PresentationData = None, service=None):
         super().__init__(timeout=300)
         self.data = data
@@ -260,7 +261,7 @@ class PreferencesView(discord.ui.View):
         await interaction.response.send_modal(modal)
 
 
-class PreviewView(discord.ui.View):
+class PreviewView(ReportingView):
     def __init__(self, data: PresentationData, member=None):
         super().__init__(timeout=300)
         self.data = data

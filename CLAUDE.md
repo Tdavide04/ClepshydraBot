@@ -56,11 +56,11 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 205 tests total, no `pytest-asyncio` — async integration tests
+Suite: 214 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
-`tests/utils/test_sitemap_monitor.py`) instead
+`tests/utils/test_sitemap_monitor.py`, `tests/utils/test_interaction_errors.py`) instead
 wrap each scenario in a single `asyncio.run()` call,
 since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
 `_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
@@ -88,6 +88,13 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
   detail (which user forced the check, "Controllo manuale/automatico") that has no place in a public
   channel where `@everyone` gets pinged. `files` ARE resent as-is to the second channel — each
   `discord.File.reset()` is called first, since the stream was already consumed by the first `send()`.
+  `error_handler.py` hooks `bot.tree.on_error` (restored on unload) so an unhandled slash-command
+  exception reaches the user and the log channel instead of leaving them on "thinking..." forever —
+  shared logic in `utils/interaction_errors.py` (`report_interaction_error()`: ephemeral reply via
+  `followup` if already deferred, `ERROR INTERACTION_ERROR` log with the traceback tail, full traceback in
+  console). Modals and views don't go through `tree.on_error`: every one of them subclasses
+  `ReportingModal`/`ReportingView` from that module instead of `discord.ui.Modal`/`View` — keep doing so for
+  new ones. `CheckFailure` (e.g. `@is_admin()`) is not logged: the check already answered the user.
 - **`services/`** — Business logic, stateless where possible. `tournament_service.py` orchestrates the
   tournament lifecycle; `pairing_engine.py` generates Swiss pairings (bye handling, anti-rematch);
   `standings.py` computes standings (3/1/0 scoring + tiebreakers); `rating.py` implements Glicko-2.

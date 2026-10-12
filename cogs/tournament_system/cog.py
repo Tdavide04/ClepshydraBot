@@ -3,6 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 
 from services.tournament_service import TournamentService
+from utils.interaction_errors import ReportingModal, ReportingView
 from utils.permissions import is_admin
 from utils.tournament_embeds import (
     build_standings_embed,
@@ -17,7 +18,7 @@ from cogs.deck_validation.validators import parse_decklist, validate_counts
 from config.config import GUILD_ID, TOURNAMENT_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
 
-class CreaTorneoModal(discord.ui.Modal, title="Crea Nuovo Torneo"):
+class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):
     def __init__(self, service: TournamentService, bot):
         super().__init__()
         self.service = service
@@ -93,7 +94,7 @@ class CreaTorneoModal(discord.ui.Modal, title="Crea Nuovo Torneo"):
             )
 
 
-class InviaDeckModal(discord.ui.Modal, title="Invia il mazzo per il torneo"):
+class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
     """Invio/aggiornamento del mazzo per un'iscrizione gia' esistente (creata
     da /iscriviti). Non crea ne' modifica l'iscrizione stessa: aggiorna solo
     TournamentPlayer.deck_name tramite TournamentService.submit_deck()."""
@@ -288,7 +289,7 @@ class InviaDeckModal(discord.ui.Modal, title="Invia il mazzo per il torneo"):
             )
 
 
-class RisultatoView(discord.ui.View):
+class RisultatoView(ReportingView):
     def __init__(
         self, match, tournament, service,
         my_tp, opponent_tp, bot,

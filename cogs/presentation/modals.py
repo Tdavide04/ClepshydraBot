@@ -4,9 +4,10 @@ from cogs.presentation.models import (
     PresentationData,
     get_or_create_presentation_data,
 )
+from utils.interaction_errors import ReportingModal
 
 
-class BasicPresentationModal(discord.ui.Modal, title="Presentazione Clepshydra"):
+class BasicPresentationModal(ReportingModal, title="Presentazione Clepshydra"):
     def __init__(self, user_id: int, service=None, on_complete: Callable | None = None):
         super().__init__()
         self.user_id = user_id
@@ -73,7 +74,7 @@ class BasicPresentationModal(discord.ui.Modal, title="Presentazione Clepshydra")
             await self.on_complete(interaction, self.presentation_data)
 
 
-class OptionalPresentationModal(discord.ui.Modal, title="Dettagli Opzionali"):
+class OptionalPresentationModal(ReportingModal, title="Dettagli Opzionali"):
     def __init__(self, presentation_data: PresentationData, on_complete: Callable | None = None):
         super().__init__()
         self.presentation_data = presentation_data

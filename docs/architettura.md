@@ -182,7 +182,15 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreaker)
 
 ## Gestione Errori
 
-- **Catch-all**: ogni comando slash ha `try/except` con log ERROR
+- **Catch-all interazioni** (dalla 3.5.6): un'eccezione non gestita in uno slash command, in un modal o in una view
+  viene intercettata da `utils/interaction_errors.py` — l'utente riceve un messaggio ephemeral ("errore inatteso,
+  lo staff è stato avvisato", via `followup` se l'interazione aveva già risposto con un `defer()`), il canale log
+  riceve un `ERROR` `INTERACTION_ERROR` con origine, eccezione e coda del traceback, la console il traceback
+  completo. Tre punti d'ingresso, perché discord.py instrada gli errori in modo diverso: `cogs/error_handler.py`
+  aggancia `CommandTree.on_error` (slash command; i `CheckFailure` come quelli di `@is_admin()` non vengono
+  loggati, il check ha già risposto), `ReportingModal`/`ReportingView` fanno da classe base a tutti i modal e le
+  view del bot. Prima della 3.5.6 non esisteva: un'eccezione dopo un `defer()` lasciava l'utente su "sta
+  pensando..." e finiva solo in console
 - **Retry**: chiamate Scryfall con backoff esponenziale (max 5 tentativi)
 - **Rate limiting**: semaforo asyncio per rispettare limiti Scryfall
 - **Scrittura atomica**: cache JSON scritta su `.tmp` poi `os.replace()`
@@ -195,4 +203,4 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreaker)
 
 - `tests/tournament/`: suite pytest per il layer di servizio torneo — `PairingEngine`, `Rating`, `StandingsCalculator`, embed builder, utility, e `TournamentService` (orchestrazione end-to-end: iscrizione, avvio, pairing, submit risultato, round successivo, drop forzato, standings, rating).
 - I test di `TournamentService` non usano mock: eseguono contro un SQLite temporaneo isolato per test (`tmp_path` + monkeypatch su `database.engine.DB_PATH`), incapsulando l'intero ciclo `init_db → logica → close_db` in un unico event loop (richiesto da aiosqlite, che lega le connessioni al loop che le ha create).
-- CI: `.github/workflows/ci.yml` esegue `pytest` ad ogni push/PR come gate bloccante; `ruff` gira in parallelo come step informativo (`continue-on-error`), perche' il codebase ha debito di lint pre-esistente non ancora sanato.
+- CI: `.github/workflows/ci.yml` esegue `pytest` e `ruff check .` ad ogni push/PR, entrambi come gate bloccanti (il lint lo è dalla 1.7.1, una volta sanato il debito pre-esistente).
