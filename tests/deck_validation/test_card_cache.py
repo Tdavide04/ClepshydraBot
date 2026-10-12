@@ -130,3 +130,60 @@ class TestSaveCache:
             return dict(card_cache._card_cache)
 
         assert run_with_db(scenario) == {"card a": {"name": "Card A"}}
+
+
+class TestPeriodicSaveLoop:
+
+    def test_a_failed_save_does_not_stop_the_loop(self, monkeypatch, capsys):
+        """Regressione: il ciclo non gestiva le eccezioni - un solo errore di
+        save_cache() (es. DB bloccato) uccideva il task in silenzio, e la cache
+        non veniva piu' salvata fino al riavvio."""
+        calls = []
+
+        async def flaky_save():
+            calls.append(len(calls))
+            if len(calls) == 1:
+                raise RuntimeError("database is locked")
+            if len(calls) == 3:
+                # Uscita dal ciclo infinito: e' cosi' che il task viene
+                # fermato davvero (cancellazione), e non va intercettata.
+                raise asyncio.CancelledError
+
+        monkeypatch.setattr(card_cache, "save_cache", flaky_save)
+
+        try:
+            asyncio.run(card_cache.periodic_save_loop(interval_seconds=0))
+        except asyncio.CancelledError:
+            pass
+
+        assert len(calls) == 3, "dopo l'errore il ciclo deve continuare a salvare"
+        assert "[CARD CACHE] salvataggio fallito" in capsys.readouterr().out
+
+    def test_dirty_entries_survive_a_failed_save(self, isolated_db, monkeypatch):
+        """Il ritentativo ha senso solo se le modifiche restano in sospeso:
+        save_cache() svuota _dirty_upserts solo dopo un commit riuscito."""
+        async def scenario():
+            card_cache.set_cached_card("Lightning Bolt", {"name": "Lightning Bolt"})
+
+            class BrokenSession:
+                async def get(self, *args):
+                    raise RuntimeError("database is locked")
+
+                async def close(self):
+                    pass
+
+            import database
+            real_get_session = database.get_session
+            monkeypatch.setattr(database, "get_session", lambda: BrokenSession())
+            try:
+                await card_cache.save_cache()
+            except RuntimeError:
+                pass
+            monkeypatch.setattr(database, "get_session", real_get_session)
+
+            assert "lightning bolt" in card_cache._dirty_upserts
+            await card_cache.save_cache()
+            return await _raw_rows()
+
+        rows = run_with_db(scenario)
+        assert "lightning bolt" in rows

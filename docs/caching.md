@@ -72,7 +72,7 @@ utile solo per la migrazione una tantum descritta sotto) e non viene più scritt
 | `mark_artisan_legal(name, entry, legal)` | Imposta `artisan_legal` + `artisan_legal_checked_at` e salva la entry |
 | `is_artisan_legal_stale(entry)` | `True` se manca il timestamp o è oltre `ARTISAN_LEGAL_TTL_DAYS` (30 giorni) |
 | `invalidate_card(name)` | Rimuove una carta dalla cache, in memoria e (al prossimo save) dal DB (usato da `/invalidate_card_cache`) |
-| `periodic_save_loop(delay=60)` | Task asincrono che chiama `save_cache()` ogni 60s |
+| `periodic_save_loop(interval_seconds=60)` | Task asincrono che chiama `save_cache()` ogni 60s. Un errore (es. DB bloccato) viene loggato in console (`[CARD CACHE] salvataggio fallito...`) e il ciclo continua: le modifiche restano in `_dirty_upserts`/`_dirty_deletes` (svuotati solo dopo un commit riuscito) e vengono ritentate al giro successivo. Fino alla 3.6.0 un solo errore uccideva il task in silenzio fino al riavvio. Alla chiusura del bot (`ClepshydraBotte.close()` in `main.py`, es. `pm2 restart`) `save_cache()` viene chiamata un'ultima volta prima di `close_db()`, così non si perdono le modifiche dell'ultimo minuto |
 
 ### Dettagli Implementativi
 
@@ -266,7 +266,8 @@ il contenuto reale cambia solo ogni 6-9 settimane) è indistinguibile in console
 partito — origine di una confusione reale in produzione, dove sembrava che il check non girasse mentre in
 realtà girava e correttamente non trovava nulla di nuovo. Ogni riga è preceduta da un timestamp
 (`[2026-10-12 15:20:04] [EVENT SCHEDULE] ...`, stesso formato dei log di `discord.py`) tramite `log()` in
-`utils/sitemap_monitor.py`, condivisa con il monitor Ban Announcement — senza, in `pm2 logs` non si
+`utils/console.py` (re-esportata da `utils/sitemap_monitor.py`), condivisa con il monitor Ban Announcement
+e con il resto del bot — senza, in `pm2 logs` non si
 poteva stabilire *quando* un check fosse girato rispetto alla comparsa di una pagina sul sitemap.
 
 ### Parsing e gestione dei fallimenti

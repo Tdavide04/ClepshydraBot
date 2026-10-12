@@ -8,6 +8,32 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.6.1 (2026-10-12)
+
+### Fixed
+- **Un errore di salvataggio fermava per sempre il salvataggio della cache carte**: `periodic_save_loop()`
+  (`utils/card_cache.py`) non gestiva le eccezioni, quindi un solo errore di `save_cache()` (es. DB
+  bloccato) uccideva il task in silenzio, e la cache non veniva piu' salvata fino al riavvio. Ora l'errore
+  viene loggato in console (`[CARD CACHE] salvataggio fallito, ritento tra 60s: ...`) e il ciclo continua;
+  `save_cache()` svuota le modifiche in sospeso solo dopo un commit riuscito, quindi il giro successivo
+  ritenta le stesse
+- **Alla chiusura del bot si perdevano fino a 60s di modifiche alla cache carte**: `ClepshydraBotte.close()`
+  (`main.py`) chiudeva il DB senza salvare. Ora chiama `save_cache()` un'ultima volta prima di `close_db()`
+  (un errore li' non impedisce la chiusura)
+
+### Changed
+- `log()` (console con timestamp) spostata da `utils/sitemap_monitor.py` al nuovo `utils/console.py`: con
+  questo fix era al terzo utilizzo fuori dai monitor sitemap (anche `utils/interaction_errors.py` ora la usa
+  invece di ripetere lo stesso formato). `utils/sitemap_monitor.py` la re-esporta, nessun import da cambiare
+- Test: 2 nuovi in `tests/deck_validation/test_card_cache.py` (il ciclo sopravvive a un salvataggio
+  fallito — fallisce sul codice precedente —, le modifiche in sospeso sopravvivono a un salvataggio fallito
+  e vengono scritte al tentativo successivo). La chiusura in `main.py` non e' coperta da test (`main.py`
+  avvia il bot all'import): verificata leggendo il codice
+
+### Docs
+- `docs/caching.md`, `docs/banlist-system.md` (`periodic_save_loop`), `CLAUDE.md` (salvataggio cache,
+  `utils/console.py`, conteggio test), `README.md` (struttura progetto)
+
 ## 3.6.0 (2026-10-12)
 
 ### Added

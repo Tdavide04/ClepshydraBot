@@ -4,7 +4,7 @@ import sys
 from discord.ext import commands
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import init_db, close_db
-from utils.card_cache import periodic_save_loop
+from utils.card_cache import periodic_save_loop, save_cache
 from utils.arena_overrides import periodic_spg_refresh_loop
 from utils.arena_event_schedule import get_latest_known_event_schedule, periodic_event_schedule_check_loop
 from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
@@ -79,6 +79,13 @@ class ClepshydraBotte(commands.Bot):
         self.loop.create_task(periodic_ban_announcement_check_loop(self))
 
     async def close(self):
+        # Salva le modifiche alla cache carte non ancora persistite dal ciclo
+        # da 60s (es. a un `pm2 restart`), prima di chiudere il DB. Un errore
+        # qui non deve impedire la chiusura.
+        try:
+            await save_cache()
+        except Exception as e:
+            print(f"Salvataggio cache carte in chiusura fallito: {e}", file=sys.stderr)
         await close_db()
         await super().close()
 

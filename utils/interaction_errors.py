@@ -15,9 +15,10 @@ modo diverso per ciascuno:
 """
 
 import traceback
-from datetime import datetime
 
 import discord
+
+from utils.console import log
 
 USER_MESSAGE = "❌ Si è verificato un errore inatteso. Lo staff è stato avvisato."
 
@@ -53,10 +54,7 @@ async def report_interaction_error(
     original = getattr(error, "original", error)
     formatted = "".join(traceback.format_exception(type(original), original, original.__traceback__))
 
-    print(
-        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INTERACTION ERROR] {source}: "
-        f"{type(original).__name__}: {original}"
-    )
+    log(f"[INTERACTION ERROR] {source}: {type(original).__name__}: {original}")
     print(formatted)
 
     await _notify_user(interaction)

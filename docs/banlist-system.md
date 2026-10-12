@@ -270,7 +270,7 @@ Cache chiave-valore (nome carta lowercase → dati Scryfall) che evita di richia
 | `save_cache()` | Scrive su disco con scrittura atomica (file `.tmp` + `os.replace`) |
 | `get_cached_card(name)` | Restituisce il dict Scryfall di una carta, o `None` |
 | `set_cached_card(name, data)` | Aggiunge/aggiorna una carta nella cache; marca `_dirty = True` |
-| `periodic_save_loop()` | Salva automaticamente ogni 60 secondi se ci sono modifiche |
+| `periodic_save_loop()` | Salva automaticamente ogni 60 secondi se ci sono modifiche; un errore non ferma il ciclo, le modifiche vengono ritentate al giro successivo |
 
 **Dettagli implementativi**:
 - `_dirty`: flag che evita scritture su disco se non ci sono state modifiche

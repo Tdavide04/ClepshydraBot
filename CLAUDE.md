@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 226 tests total, no `pytest-asyncio` — async integration tests
+Suite: 228 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
@@ -207,7 +207,9 @@ backoff retry on HTTP 429, 5xx and network errors (`_request_with_retry()`). A 4
 must say "retry later" instead of showing a verdict. Never collapse the two back into `None`: until 3.5.7
 a single timeout cached the card as illegal in `_ARENA_LEGAL_CACHE` until the next restart. The card cache (`utils/card_cache.py`) persists to the `cached_cards` SQLite
 table with incremental UPSERT/DELETE (`save_cache()`, tracking dirty card names — not a full-table
-rewrite) every 60s via `periodic_save_loop()`; `load_cache()` is called once from
+rewrite) every 60s via `periodic_save_loop()` — which catches and logs a failed save instead of dying
+silently (dirty sets are only cleared after a successful commit, so the next tick retries), plus one
+last `save_cache()` in `ClepshydraBotte.close()` before `close_db()`; `load_cache()` is called once from
 `database/engine.py:init_db()`, not per `ArtisanService` instance. `data/card_cache.json` (the pre-Step-4
 format) is no longer read or written once the table is populated — it's migrated once automatically if
 found on an empty table, then left inert on disk (gitignored, no longer tracked). The rarity-override
@@ -255,7 +257,8 @@ polling often lowers notification latency without adding cost, while the fragile
 ever runs on an actual change. It was 24h until 3.5.3: Wizards' sitemap lags the article itself (served with
 `Cache-Control: max-age` ~1h, regenerated after publication), so on 2026-10-12 the daily check ran before
 the October Banned and Restricted showed up there and the next one would have come almost a day later.
-Every console line from both monitors goes through `log()` (`utils/sitemap_monitor.py`), which prefixes a
+Every console line from both monitors goes through `log()` (`utils/console.py`, re-exported by
+`utils/sitemap_monitor.py`; use it for any new console output too), which prefixes a
 `[YYYY-MM-DD HH:MM:SS]` timestamp — needed to tell from `pm2 logs` *when* a check ran. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
 section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</li></ul>` blocks, bounded
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,

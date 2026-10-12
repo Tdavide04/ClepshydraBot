@@ -4,6 +4,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from utils.console import log
+
 # Path del JSON legacy: usato solo per la migrazione una tantum verso SQLite
 # (vedi load_cache()). Una volta migrato, questo file non viene piu' letto ne'
 # scritto dal bot.
@@ -166,7 +168,18 @@ def invalidate_card(card_name: str) -> bool:
     return existed
 
 
-async def periodic_save_loop():
+_SAVE_INTERVAL_SECONDS = 60
+
+
+async def periodic_save_loop(interval_seconds: int = _SAVE_INTERVAL_SECONDS):
+    """Salva la cache ogni minuto. Un errore (es. DB bloccato) non deve
+    fermare il ciclo: prima non era gestito e uccideva il task in silenzio,
+    lasciando la cache non piu' salvata fino al riavvio. save_cache() svuota
+    _dirty_upserts/_dirty_deletes solo dopo un commit riuscito, quindi il
+    giro successivo ritenta le stesse modifiche."""
     while True:
-        await asyncio.sleep(60)
-        await save_cache()
+        await asyncio.sleep(interval_seconds)
+        try:
+            await save_cache()
+        except Exception as e:
+            log(f"[CARD CACHE] salvataggio fallito, ritento tra {interval_seconds}s: {type(e).__name__}: {e}")

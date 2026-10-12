@@ -16,9 +16,11 @@ restano invece in ciascun modulo, e' l'unica parte davvero diversa tra i due
 
 import json
 import os
-from datetime import datetime
 
 import aiohttp
+
+# Re-esportata: i due monitor la importano da qui (vedi utils/console.py).
+from utils.console import log  # noqa: F401
 
 SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
 
@@ -34,16 +36,6 @@ _SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 # pubblicazione dell'articolo) al momento del check giornaliero, e il giro
 # successivo sarebbe arrivato quasi 24h dopo.
 _CHECK_INTERVAL_SECONDS = 2 * 60 * 60
-
-
-def log(message: str) -> None:
-    """print() su console con timestamp, nello stesso formato dei log di
-    discord.py ('[2026-10-12 15:20:04]') - senza, in `pm2 logs` era
-    impossibile capire QUANDO un check fosse girato (osservato il
-    2026-10-12: non si poteva stabilire se il check avesse preceduto la
-    comparsa del nuovo annuncio sul sitemap)."""
-
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
 
 def load_json_state(path: str, default: dict) -> dict:

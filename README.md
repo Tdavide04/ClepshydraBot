@@ -101,6 +101,7 @@ ClepsydraBot/
 │   ├── ban_announcement.py
 │   ├── sitemap_monitor.py
 │   ├── interaction_errors.py
+│   ├── console.py           # Timestamped console log()
 │   └── deck_image_generator.py
 ├── config/
 │   └── config.py
