@@ -27,7 +27,7 @@
 
 | Comando | Descrizione |
 |---|---|
-| `/risultato [torneo]` | Invia risultato match (select menu game wins) |
+| `/risultato [torneo]` | Invia risultato match (select menu game wins). Vale il primo dei due giocatori che lo inserisce: un secondo invio viene rifiutato in privato, senza annuncio pubblico — se il risultato è sbagliato lo corregge lo staff con `/correggi_risultato` |
 | `/classifica [torneo_id]` | Visualizza classifica con punti e OMW |
 | `/turni [torneo_id]` | Pairing del round corrente |
 
@@ -52,6 +52,7 @@
 | `/torneo_next_turn [torneo]` | Genera prossimo round o completa torneo |
 | `/drop_giocatore <giocatore> [torneo]` | Rimozione forzata: durante le iscrizioni toglie l'iscritto (sblocca `/avvia_torneo` se non ha mai inviato il mazzo), a torneo attivo con auto-loss |
 | `/concludi_torneo [torneo]` | Conclusione anticipata con rating update |
+| `/correggi_risultato <tavolo> <esito> [vincitore] [turno] [torneo]` | Sovrascrive (o inserisce, se manca) il risultato di una partita del torneo in corso: `esito` 2-0 / 2-1 / pareggio, `vincitore` obbligatorio tranne che per il pareggio, `turno` di default quello in corso. Anche round passati: la classifica si ricalcola, gli abbinamenti già generati restano. Rifiutato a torneo concluso (rating già calcolato). Annuncio pubblico + log `RESULT_CORRECTED` |
 
 ### Gestione Banlist
 
@@ -79,23 +80,24 @@
 |---|---|---|
 | `/presentati` | `cogs/presentation/cog.py` | 48 |
 | `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 58 |
-| `/crea_torneo` | `cogs/tournament_system/cog.py` | 526 |
-| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 540 |
-| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 738 |
-| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 641 |
-| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 691 |
-| `/iscriviti` | `cogs/tournament_system/cog.py` | 899 |
-| `/invia_deck` | `cogs/tournament_system/cog.py` | 955 |
-| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 994 |
-| `/left_torneo` | `cogs/tournament_system/cog.py` | 1044 |
-| `/risultato` | `cogs/tournament_system/cog.py` | 1090 |
-| `/classifica` | `cogs/tournament_system/cog.py` | 1167 |
-| `/turni` | `cogs/tournament_system/cog.py` | 1270 |
-| `/lista_tornei` | `cogs/tournament_system/cog.py` | 847 |
-| `/leaderboard` | `cogs/tournament_system/cog.py` | 1284 |
-| `/banlist` | `cogs/tournament_system/cog.py` | 1333 |
-| `/banlist_aggiungi` | `cogs/tournament_system/cog.py` | 1379 |
-| `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1410 |
+| `/crea_torneo` | `cogs/tournament_system/cog.py` | 544 |
+| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 558 |
+| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 831 |
+| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 659 |
+| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 784 |
+| `/correggi_risultato` | `cogs/tournament_system/cog.py` | 718 |
+| `/iscriviti` | `cogs/tournament_system/cog.py` | 992 |
+| `/invia_deck` | `cogs/tournament_system/cog.py` | 1048 |
+| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 1087 |
+| `/left_torneo` | `cogs/tournament_system/cog.py` | 1137 |
+| `/risultato` | `cogs/tournament_system/cog.py` | 1183 |
+| `/classifica` | `cogs/tournament_system/cog.py` | 1260 |
+| `/turni` | `cogs/tournament_system/cog.py` | 1363 |
+| `/lista_tornei` | `cogs/tournament_system/cog.py` | 940 |
+| `/leaderboard` | `cogs/tournament_system/cog.py` | 1377 |
+| `/banlist` | `cogs/tournament_system/cog.py` | 1426 |
+| `/banlist_aggiungi` | `cogs/tournament_system/cog.py` | 1472 |
+| `/banlist_rimuovi` | `cogs/tournament_system/cog.py` | 1503 |
 | `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 31 |
 | `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 27 |
 | `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 27 |

@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 220 tests total, no `pytest-asyncio` — async integration tests
+Suite: 226 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
@@ -222,7 +222,12 @@ create → register players (`/iscriviti`, no deck required — `TournamentPlaye
 the tournament is still in `REGISTRATION`) → start (`start_tournament()` refuses if any active registered
 player still has `deck_name is None`, round 1 random pairing) → submit results per round → generate next
 round (Swiss pairing, anti-rematch) → on final round, conclude and update Glicko-2 ratings
-(`services/rating.py`) for all participants. Round count is derived from player count via
+(`services/rating.py`) for all participants. Results: the first of the two players to submit via
+`/risultato` wins, no opponent confirmation (deliberate); staff fix mistakes with `/correggi_risultato`
+(`correct_result()`, also for past rounds and missing results, refused once the tournament is completed
+since ratings are already applied). `submit_result()`/`correct_result()` return a `ServiceResult(ok,
+message)` (`services/results.py`) instead of a string the cog had to pattern-match — prefer that for any
+service method you touch, the remaining string-matching between service and cog is known tech debt. Round count is derived from player count via
 `PairingEngine.calculate_rounds()`. Covered end-to-end by `tests/tournament/test_tournament_service.py`
 against an isolated SQLite DB (no mocks) — registration and deck submission were split into two separate
 steps/commands deliberately (previously `/iscriviti` opened a deck-validation modal directly), so a

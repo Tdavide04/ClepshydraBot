@@ -49,6 +49,7 @@ ATTIVO
     │ /risultato → submit risultato (win/loss/draw + game wins)
     │ /torneo_next_turn (admin) → genera prossimo round
     │ /drop_giocatore (admin) → rimozione forzata con auto-loss
+    │ /correggi_risultato (admin) → sovrascrive/inserisce un risultato
     ▼
 COMPLETATO
     │ /classifica → classifica finale
@@ -180,7 +181,8 @@ Metodo principale orchestratore che coordina tutte le operazioni del torneo.
 | `submit_deck(tournament_id, discord_id, deck_name)` | Aggiorna il mazzo di un'iscrizione già esistente; fallisce se non iscritto o se il torneo non è più in `registration` |
 | `unregister_player(tournament_id, discord_id)` | Uscita volontaria (`/left_torneo`), solo in `registration`; un secondo tentativo risponde "Non sei iscritto" invece di ripetere l'uscita |
 | `start_tournament(tournament_id)` | Avvia, calcola round, genera round 1 — **rifiuta** se un iscritto attivo ha `deck_name is None` |
-| `submit_result(match_id, winner_id, p1_wins, p2_wins)` | Registra risultato |
+| `submit_result(match_id, winner_id, result, p1_wins, p2_wins)` | Registra risultato; restituisce `ServiceResult(ok, message)` (`services/results.py`), rifiuta se la partita ha già un risultato |
+| `correct_result(tournament_id, round, table, winner_discord_id, winner_games, loser_games)` | Correzione staff: sovrascrive o inserisce il risultato di un tavolo (`winner_discord_id=None` = pareggio, `round=None` = round in corso); solo a torneo `active`; `ServiceResult` con il prima → dopo |
 | `generate_next_round(tournament_id)` | Round successivo o conclusione |
 | `force_drop_player(tournament_id, discord_id)` | Rimozione decisa dallo staff: in `registration` marca solo l'iscrizione come droppata (sblocca un `start_tournament()` fermo per un mazzo mancante); in `active` assegna anche la vittoria all'avversario nel match pendente del round corrente |
 | `force_conclude_tournament(tournament_id)` | Conclusione anticipata |
@@ -203,6 +205,7 @@ Tutti i comandi in `cogs/tournament_system/cog.py`:
 | `/torneo_next_turn` | Admin | Prossimo round |
 | `/drop_giocatore` | Admin | Rimuovi giocatore (torneo attivo o in iscrizione) |
 | `/concludi_torneo` | Admin | Concludi forzatamente |
+| `/correggi_risultato` | Admin | Correggi o inserisci il risultato di una partita |
 | `/iscriviti` | Pubblico | Iscrizione (senza mazzo) |
 | `/invia_deck` | Pubblico | Invia/aggiorna il mazzo per un'iscrizione esistente |
 | `/iscrizioni_torneo` | Pubblico | Chi è iscritto e chi ha già inviato il mazzo |
@@ -233,17 +236,29 @@ All'invio:
 
 Richiamabile più volte finché il torneo resta in `registration`: l'ultimo invio valido sovrascrive.
 
-### RisultatoView (`cog.py:258-430`)
+### RisultatoView (`cogs/tournament_system/cog.py`)
 
-Select menu per:
-- `player1_wins` (0-2)
-- `player2_wins` (0-2)
+Un unico select menu dal punto di vista di chi invia (Vittoria 2-0 / 2-1, Pareggio, Sconfitta 1-2 / 0-2),
+con pulsanti Conferma e Annulla. Alla conferma:
+1. Determina vincitore (o pareggio) e game win per player1/player2
+2. Chiama `TournamentService.submit_result()`, che restituisce un `ServiceResult`
+3. Se `ok`: embed verde nel messaggio ephemeral, annuncio nel canale torneo, log `MATCH_RESULT` INFO
+4. Se rifiutato (tipicamente: l'avversario l'aveva già inserito): solo il messaggio ephemeral con il
+   motivo, **nessun annuncio pubblico**, log `MATCH_RESULT` WARN
 
-Con pulsante conferma che:
-1. Determina vincitore (o pareggio)
-2. Chiama `TournamentService.submit_result()`
-3. Pubblica risultato su canale torneo
-4. Logga l'evento
+### Chi inserisce il risultato
+
+Basta uno dei due giocatori: vale il primo che lo inserisce, senza conferma dell'avversario (scelta
+deliberata — la conferma bilaterale aggiungerebbe un click a ogni partita e bloccherebbe il round se un
+avversario sparisce). Un risultato sbagliato lo corregge lo staff con `/correggi_risultato`
+(`correct_result()`), che sovrascrive anche partite di round passati — la classifica si ricalcola da
+sola, mentre gli abbinamenti dei round successivi già generati restano quelli (il comando lo avvisa). È
+rifiutato a torneo concluso, perché il rating Glicko-2 è già stato applicato. Serve anche a inserire il
+risultato di una partita mai riportata.
+
+Fino alla 3.5.7 un secondo invio rifiutato veniva comunque annunciato pubblicamente ("ha registrato il
+risultato"), e ogni risultato riuscito finiva a log come `WARN` arancione: il cog cercava `"Registrato"`
+con la maiuscola mentre il servizio restituiva `"Risultato registrato!"`.
 
 ---
 
@@ -258,7 +273,8 @@ Con pulsante conferma che:
 | `PLAYER_DROPPED` | INFO | `/drop_giocatore` (rimozione forzata admin, anche durante le iscrizioni) |
 | `TOURNAMENT_START_BLOCKED` | WARN | `/avvia_torneo` rifiutato (torneo non trovato/non in registrazione, meno di 2 giocatori, o mazzi mancanti) |
 | `TOURNAMENT_STARTED` | INFO | `/avvia_torneo` riuscito — include l'elenco partecipanti e il nome del mazzo di ciascuno (primi 25, poi "...e altri N") |
-| `MATCH_RESULT` | INFO | `/risultato` confermato |
+| `MATCH_RESULT` | INFO/WARN | `/risultato` — INFO se registrato, WARN se rifiutato (es. già inserito) |
+| `RESULT_CORRECTED` | INFO | `/correggi_risultato` (risultato prima → dopo) |
 | `ROUND_GENERATED` | INFO | `/torneo_next_turn` (nuovo round) |
 | `TOURNAMENT_CONCLUDED` | INFO | `/concludi_torneo` (conclusione forzata) |
 | `TOURNAMENT_COMPLETED` | INFO | Ultimo round completato, torneo concluso naturalmente |

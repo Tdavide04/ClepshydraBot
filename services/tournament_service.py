@@ -16,6 +16,7 @@ from repositories.tournament_repository import (
 )
 from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
+from services.results import ServiceResult
 from services.standings import StandingsCalculator, StandingsEntry
 from services.rating import Rating, rate_1vs1, rate_draw
 from config.config import GUILD_ID
@@ -385,28 +386,32 @@ class TournamentService:
         result: str | None,
         p1_game_wins: int | None = None,
         p2_game_wins: int | None = None,
-    ) -> str:
+    ) -> ServiceResult:
         async with self._repos() as (session, _, _, mrepo, _):
             match = await mrepo.get_by_id(match_id)
             if match is None:
-                return "Partita non trovata."
+                return ServiceResult(False, "Partita non trovata.")
             if match.result is not None:
-                return "Risultato gia inserito per questa partita."
+                return ServiceResult(
+                    False,
+                    "Risultato già inserito per questa partita. Se è sbagliato, chiedi allo "
+                    "staff di correggerlo con /correggi_risultato.",
+                )
             if match.player2_id is None:
-                return "Questa e una partita di bye."
+                return ServiceResult(False, "Questa è una partita di bye.")
 
             if result is not None:
                 try:
                     match.result = MatchResult(result)
                 except ValueError:
-                    return f"Risultato non valido: {result}"
+                    return ServiceResult(False, f"Risultato non valido: {result}")
                 if winner_tp_id is not None:
                     if winner_tp_id not in (match.player1_id, match.player2_id):
-                        return "Il vincitore non e uno dei giocatori della partita."
+                        return ServiceResult(False, "Il vincitore non è uno dei giocatori della partita.")
                     match.winner_id = winner_tp_id
             elif winner_tp_id is not None:
                 if winner_tp_id not in (match.player1_id, match.player2_id):
-                    return "Il vincitore non e uno dei giocatori della partita."
+                    return ServiceResult(False, "Il vincitore non è uno dei giocatori della partita.")
                 match.winner_id = winner_tp_id
                 match.result = MatchResult.WIN
 
@@ -415,7 +420,93 @@ class TournamentService:
 
             session.add(match)
             await session.commit()
-            return "Risultato registrato!"
+            return ServiceResult(True, "Risultato registrato!")
+
+    def _describe_result(self, match: Match) -> str:
+        if match.result is None:
+            return "nessun risultato"
+        if match.result == MatchResult.DRAW or match.winner_id is None:
+            return "pareggio"
+        winner = match.player1 if match.winner_id == match.player1_id else match.player2
+        description = f"vince {self._resolve_name(winner)}"
+        if match.p1_game_wins is not None and match.p2_game_wins is not None:
+            games = sorted((match.p1_game_wins, match.p2_game_wins), reverse=True)
+            description += f" {games[0]}-{games[1]}"
+        return description
+
+    async def correct_result(
+        self,
+        tournament_id: int,
+        round_number: int | None,
+        table_number: int,
+        winner_discord_id: int | None,
+        winner_games: int,
+        loser_games: int,
+    ) -> ServiceResult:
+        """Correzione staff (/correggi_risultato): sovrascrive il risultato di
+        una partita, o lo inserisce se manca (giocatore assente). Prima un
+        risultato sbagliato - il primo dei due giocatori che lo inserisce
+        decide, senza conferma - si poteva correggere solo a mano sul DB.
+
+        winner_discord_id None = pareggio. round_number None = round in corso.
+        Solo a torneo ACTIVE: a torneo concluso il rating Glicko-2 e' gia'
+        stato applicato e una correzione lo renderebbe incoerente. Correggere
+        un round passato e' permesso: la classifica si ricalcola da sola, gli
+        abbinamenti gia' generati restano quelli."""
+        async with self._repos() as (session, trepo, _, mrepo, _):
+            tournament = await trepo.get_by_id(tournament_id)
+            if tournament is None:
+                return ServiceResult(False, "Torneo non trovato.")
+            if tournament.status != TournamentStatus.ACTIVE:
+                return ServiceResult(
+                    False,
+                    "Si possono correggere solo i risultati di un torneo in corso: a torneo "
+                    "concluso il rating è già stato calcolato.",
+                )
+
+            current_round = await mrepo.get_current_round(tournament_id)
+            target_round = round_number or current_round
+            matches = await mrepo.get_by_tournament_and_round(tournament_id, target_round)
+            match = next((m for m in matches if m.table_number == table_number), None)
+            if match is None:
+                return ServiceResult(False, f"Nessuna partita al tavolo {table_number} del round {target_round}.")
+            if match.player2_id is None:
+                return ServiceResult(False, "Quella è una partita di bye: non ha un risultato da correggere.")
+
+            before = self._describe_result(match)
+
+            if winner_discord_id is None:
+                match.result = MatchResult.DRAW
+                match.winner_id = None
+                match.p1_game_wins = None
+                match.p2_game_wins = None
+            else:
+                winner = next(
+                    (tp for tp in (match.player1, match.player2)
+                     if tp is not None and tp.user is not None and tp.user.discord_id == winner_discord_id),
+                    None,
+                )
+                if winner is None:
+                    return ServiceResult(False, "Il giocatore indicato non gioca a quel tavolo.")
+                match.result = MatchResult.WIN
+                match.winner_id = winner.id
+                if winner.id == match.player1_id:
+                    match.p1_game_wins, match.p2_game_wins = winner_games, loser_games
+                else:
+                    match.p1_game_wins, match.p2_game_wins = loser_games, winner_games
+
+            session.add(match)
+            await session.commit()
+
+            message = (
+                f"Round {target_round}, tavolo {table_number}: {before} → {self._describe_result(match)}."
+            )
+            if target_round < current_round:
+                message += (
+                    "\nLa classifica è aggiornata; gli abbinamenti dei round successivi, già "
+                    "generati, restano invariati."
+                )
+            return ServiceResult(True, message)
 
     async def _update_ratings(self, tournament_id: int):
         async with self._repos() as (session, _, tprepo, mrepo, urepo):

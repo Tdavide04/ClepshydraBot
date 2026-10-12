@@ -19,17 +19,18 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 |---|---|---|
 | `/presentati` | Open presentation wizard | All |
 | `/artisan_check_deck` | Validate Artisan deck | All |
-| `/torneo crea` | Create tournament | Admin |
-| `/torneo avvia` | Start tournament | Admin |
-| `/torneo prossimo_turno` | Generate next round | Admin |
+| `/crea_torneo` | Create tournament | Admin |
+| `/avvia_torneo` | Start tournament | Admin |
+| `/torneo_next_turn` | Generate next round | Admin |
+| `/correggi_risultato` | Correct (or enter) a match result | Admin |
 | `/iscriviti` | Register for tournament (deck sent separately) | All |
 | `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
 | `/risultato` | Submit match result | All |
 | `/classifica` | View standings | All |
 | `/turni` | View current pairings | All |
 | `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
-| `/forced_event_schedule_check` | Force an immediate re-check of the latest Arena "Event Schedule" page (also runs automatically every day) | Admin |
-| `/forced_ban_announcement_check` | Force an immediate re-check of the latest Banned and Restricted Announcement (also runs automatically every day) | Admin |
+| `/forced_event_schedule_check` | Force an immediate re-check of the latest Arena "Event Schedule" page (also runs automatically every 2 hours) | Admin |
+| `/forced_ban_announcement_check` | Force an immediate re-check of the latest Banned and Restricted Announcement (also runs automatically every 2 hours) | Admin |
 
 ## Tech Stack
 

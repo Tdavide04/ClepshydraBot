@@ -219,11 +219,12 @@ class TestTournamentFlow:
             t, _ = await self._start_with_players(service, 2)
             match = (await service.get_matches(t.id))[0]
 
-            msg = await service.submit_result(match.id, match.player1_id, "win")
-            assert "registrato" in msg.lower()
+            outcome = await service.submit_result(match.id, match.player1_id, "win")
+            assert outcome.ok is True
 
             repeat = await service.submit_result(match.id, match.player1_id, "win")
-            assert "gia inserito" in repeat.lower()
+            assert repeat.ok is False
+            assert "/correggi_risultato" in repeat.message
         run_with_db(scenario)
 
     def test_generate_next_round_blocked_by_pending_results(self, isolated_db):
@@ -390,4 +391,108 @@ class TestStandings:
             leader = next(e for e in standings if e.player_id == match.player1_id)
             assert leader.points == 3.0
             assert leader.rank == 1
+        run_with_db(scenario)
+
+
+class TestCorrectResult:
+    """/correggi_risultato: lo staff sovrascrive (o inserisce) il risultato di
+    una partita - prima un risultato sbagliato si correggeva solo a mano sul DB."""
+
+    async def _start(self, service, count):
+        t = await service.create_tournament("Fix Cup")
+        for i in range(count):
+            await service.register_player(t.id, discord_id=1000 + i, deck_name=f"Deck {i}")
+        await service.start_tournament(t.id)
+        return t
+
+    def test_overwrites_a_wrong_result(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 2)
+            match = (await service.get_matches(t.id))[0]
+            await service.submit_result(match.id, match.player1_id, "win", 2, 0)
+            loser = match.player2.user.discord_id
+
+            outcome = await service.correct_result(t.id, None, match.table_number, loser, 2, 1)
+
+            assert outcome.ok is True
+            updated = (await service.get_matches(t.id))[0]
+            assert updated.winner_id == match.player2_id
+            assert (updated.p1_game_wins, updated.p2_game_wins) == (1, 2)
+            standings = {e.player_id: e.points for e in await service.get_standings(t.id)}
+            assert standings[match.player2_id] == 3
+            assert standings[match.player1_id] == 0
+        run_with_db(scenario)
+
+    def test_can_enter_a_missing_result_and_a_draw(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 2)
+            match = (await service.get_matches(t.id))[0]
+
+            outcome = await service.correct_result(t.id, None, match.table_number, None, 1, 1)
+
+            assert outcome.ok is True
+            updated = (await service.get_matches(t.id))[0]
+            assert updated.result == MatchResult.DRAW
+            assert updated.winner_id is None
+        run_with_db(scenario)
+
+    def test_rejects_a_player_not_at_that_table(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 2)
+            match = (await service.get_matches(t.id))[0]
+
+            outcome = await service.correct_result(t.id, None, match.table_number, 999999, 2, 0)
+
+            assert outcome.ok is False
+        run_with_db(scenario)
+
+    def test_rejects_unknown_table_and_bye(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 3)
+            bye = next(m for m in await service.get_matches(t.id) if m.player2_id is None)
+
+            missing = await service.correct_result(t.id, None, 99, None, 1, 1)
+            on_bye = await service.correct_result(t.id, None, bye.table_number, None, 1, 1)
+
+            assert missing.ok is False
+            assert on_bye.ok is False
+        run_with_db(scenario)
+
+    def test_rejected_on_a_completed_tournament(self, isolated_db):
+        """A torneo concluso il rating e' gia' stato applicato: una correzione
+        lo renderebbe incoerente."""
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 2)
+            match = (await service.get_matches(t.id))[0]
+            await service.submit_result(match.id, match.player1_id, "win", 2, 0)
+            await service.generate_next_round(t.id)
+
+            outcome = await service.correct_result(
+                t.id, 1, match.table_number, match.player2.user.discord_id, 2, 0
+            )
+
+            assert outcome.ok is False
+        run_with_db(scenario)
+
+    def test_correcting_a_past_round_warns_pairings_are_unchanged(self, isolated_db):
+        async def scenario():
+            service = TournamentService()
+            t = await self._start(service, 4)
+            round1 = await service.get_matches(t.id)
+            for m in round1:
+                await service.submit_result(m.id, m.player1_id, "win", 2, 0)
+            await service.generate_next_round(t.id)
+            m = round1[0]
+
+            outcome = await service.correct_result(
+                t.id, 1, m.table_number, m.player2.user.discord_id, 2, 0
+            )
+
+            assert outcome.ok is True
+            assert "abbinamenti" in outcome.message
         run_with_db(scenario)

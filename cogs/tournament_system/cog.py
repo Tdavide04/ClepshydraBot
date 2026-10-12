@@ -398,10 +398,29 @@ class RisultatoView(ReportingView):
         else:
             p1_game_wins, p2_game_wins = p2_gw, p1_gw
 
-        msg = await self.service.submit_result(
+        outcome = await self.service.submit_result(
             self.match.id, winner_id, result,
             p1_game_wins=p1_game_wins, p2_game_wins=p2_game_wins,
         )
+
+        logger = self.bot.get_cog("Logger")
+
+        if not outcome.ok:
+            # Rifiutato (es. l'avversario l'aveva gia' inserito): solo il
+            # giocatore lo vede, niente annuncio pubblico di un risultato
+            # che non e' stato registrato.
+            await interaction.response.edit_message(
+                content=f"\u26a0\ufe0f {outcome.message}", embed=None, view=None,
+            )
+            if logger:
+                await logger.send_log(
+                    level="WARN",
+                    event="MATCH_RESULT",
+                    user=interaction.user,
+                    info=f"Match {self.match.id}: rifiutato \u2014 {outcome.message}",
+                )
+            self.stop()
+            return
 
         labels = {
             "win_20": "\u2705 Vittoria 2-0", "win_21": "\u2705 Vittoria 2-1",
@@ -415,7 +434,7 @@ class RisultatoView(ReportingView):
                 f"**Tavolo {self.match.table_number}** "
                 f"(Round {self.match.round_number})"
             ),
-            color=discord.Color.green() if "Registrato" in msg else discord.Color.orange(),
+            color=discord.Color.green(),
             timestamp=datetime.now(),
         )
         embed.add_field(name="Risultato", value=labels.get(self.selected, self.selected), inline=True)
@@ -433,13 +452,12 @@ class RisultatoView(ReportingView):
                 f"{labels.get(self.selected, self.selected)}"
             )
 
-        logger = self.bot.get_cog("Logger")
         if logger:
             await logger.send_log(
-                level="INFO" if "Registrato" in msg else "WARN",
+                level="INFO",
                 event="MATCH_RESULT",
                 user=interaction.user,
-                info=f"Match {self.match.id}: {msg}",
+                info=f"Match {self.match.id}: {outcome.message}",
             )
 
         self.stop()
@@ -678,6 +696,81 @@ class TournamentSystemCog(commands.Cog):
                 f"Giocatore {giocatore.mention} rimosso dal torneo "
                 f"**{tournament.name}** (ID: {tournament.id})."
             ),
+        )
+
+    @discord.app_commands.command(
+        name="correggi_risultato",
+        description="Correggi o inserisci il risultato di una partita del torneo in corso"
+    )
+    @is_admin()
+    @discord.app_commands.describe(
+        tavolo="Numero del tavolo",
+        esito="Punteggio della partita",
+        vincitore="Chi ha vinto (non serve per il pareggio)",
+        turno="Round della partita (opzionale, usa quello in corso)",
+        torneo="ID o nome del torneo (opzionale, usa l'ultimo)",
+    )
+    @discord.app_commands.choices(esito=[
+        discord.app_commands.Choice(name="Vittoria 2-0", value="2-0"),
+        discord.app_commands.Choice(name="Vittoria 2-1", value="2-1"),
+        discord.app_commands.Choice(name="Pareggio", value="draw"),
+    ])
+    async def correggi_risultato(
+        self,
+        interaction: discord.Interaction,
+        tavolo: int,
+        esito: discord.app_commands.Choice[str],
+        vincitore: discord.User | None = None,
+        turno: int | None = None,
+        torneo: str | None = None,
+    ):
+        if not await self._check_tournament_channel(interaction):
+            return
+
+        is_draw = esito.value == "draw"
+        if is_draw and vincitore is not None:
+            return await interaction.response.send_message(
+                "Per un pareggio non va indicato il vincitore.", ephemeral=True
+            )
+        if not is_draw and vincitore is None:
+            return await interaction.response.send_message(
+                "Indica il vincitore della partita.", ephemeral=True
+            )
+
+        await interaction.response.defer(ephemeral=False)
+
+        tournament = await self._resolve_tournament(torneo=torneo)
+        if tournament is None:
+            return await interaction.followup.send(
+                "Nessun torneo disponibile." if torneo is None
+                else f"Torneo `{torneo}` non trovato.",
+                ephemeral=True,
+            )
+
+        winner_games, loser_games = (1, 1) if is_draw else (2, int(esito.value[-1]))
+        outcome = await self.service.correct_result(
+            tournament.id,
+            turno,
+            tavolo,
+            vincitore.id if vincitore else None,
+            winner_games,
+            loser_games,
+        )
+        if not outcome.ok:
+            return await interaction.followup.send(outcome.message, ephemeral=True)
+
+        embed = discord.Embed(
+            title="\u270f\ufe0f Risultato corretto dallo staff",
+            description=outcome.message,
+            color=discord.Color.blurple(),
+            timestamp=datetime.now(),
+        )
+        embed.set_footer(text=f"Torneo ID: {tournament.id}")
+        await interaction.followup.send(embed=embed)
+
+        await self._log(
+            "INFO", "RESULT_CORRECTED", user=interaction.user,
+            info=f"Torneo **{tournament.name}** (ID: {tournament.id}) \u2014 {outcome.message}",
         )
 
     @discord.app_commands.command(

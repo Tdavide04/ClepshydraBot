@@ -8,6 +8,45 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.6.0 (2026-10-12)
+
+### Added
+- **`/correggi_risultato <tavolo> <esito> [vincitore] [turno] [torneo]`** (admin): sovrascrive il
+  risultato di una partita del torneo in corso, o lo inserisce se manca (giocatore che non l'ha mai
+  riportato). Prima un risultato sbagliato si poteva correggere solo modificando il DB a mano: vale il
+  primo dei due giocatori che lo inserisce, senza conferma dell'avversario — scelta mantenuta
+  deliberatamente, la correzione staff copre i casi sbagliati. `esito` 2-0 / 2-1 / pareggio; `vincitore`
+  obbligatorio tranne per il pareggio; `turno` di default quello in corso, ma anche round passati (la
+  classifica si ricalcola da sola, gli abbinamenti dei round successivi gia' generati restano, e il
+  messaggio lo avvisa). Rifiutato a torneo concluso: il rating Glicko-2 e' gia' stato applicato. Annuncio
+  pubblico nel canale torneo con il risultato prima → dopo, log `RESULT_CORRECTED`. Nuovo
+  `TournamentService.correct_result()`
+- `services/results.py`: `ServiceResult(ok, message)`, esito strutturato restituito da `submit_result()` e
+  `correct_result()` al posto di una stringa interpretata dal cog per confronto di testo — primo passo del
+  refactor graduale di questo pattern
+
+### Fixed
+- **Ogni risultato registrato finiva a log come `WARN` arancione**: `RisultatoView` cercava `"Registrato"`
+  con la maiuscola, mentre `submit_result()` restituiva `"Risultato registrato!"`. Ora usa `outcome.ok`
+- **Un risultato rifiutato veniva annunciato pubblicamente**: se l'avversario aveva gia' inserito il
+  risultato, il secondo invio era rifiutato ma il bot pubblicava comunque nel canale "ha registrato il
+  risultato" con il punteggio (potenzialmente diverso). Ora il giocatore vede solo il motivo in privato,
+  con l'indicazione di chiedere allo staff `/correggi_risultato`, e il log e' `MATCH_RESULT` WARN
+- Test: 6 nuovi in `TestCorrectResult` (`tests/tournament/test_tournament_service.py`: sovrascrittura con
+  classifica aggiornata, inserimento di un risultato mancante come pareggio, giocatore non al tavolo,
+  tavolo inesistente e bye, torneo concluso, avviso sugli abbinamenti per un round passato);
+  `test_submit_result_flow` aggiornato a `ServiceResult`. Verificata anche la definizione del comando
+  costruendo l'albero reale dei 24 slash command (description e opzioni entro i limiti di Discord)
+
+### Docs
+- `docs/tornei.md` (sezione "Chi inserisce il risultato"; `RisultatoView` descriveva due select per i game
+  win, in realta' e' un unico select con 5 esiti), `docs/comandi.md`, `CLAUDE.md` (lifecycle torneo,
+  `ServiceResult`, conteggio test)
+- `README.md`: aggiunto `/correggi_risultato`; corretti i nomi dei comandi admin (`/torneo crea`,
+  `/torneo avvia`, `/torneo prossimo_turno` non esistono: sono `/crea_torneo`, `/avvia_torneo`,
+  `/torneo_next_turn`) e la cadenza dei due controlli forzati, ancora "every day" invece di "every 2
+  hours" — sfuggita nella 3.5.3
+
 ## 3.5.7 (2026-10-12)
 
 ### Fixed
