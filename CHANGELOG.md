@@ -8,6 +8,42 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.7 (2026-10-12)
+
+### Fixed
+- **Un errore temporaneo di Scryfall rendeva una carta illegale fino al riavvio del bot**:
+  `_get_with_retry()`/`_post_with_retry()` restituivano `None` sia per il 404 legittimo di `/cards/search`
+  ("nessuna stampa Arena", carta davvero illegale) sia per qualunque errore (timeout, 5xx, 429 oltre i
+  tentativi, eccezioni di rete). `_is_arena_artisan_legal()` trattava `None` come "illegale" e lo
+  salvava in `_ARENA_LEGAL_CACHE`: da li' ogni mazzo con quella carta veniva rifiutato con "Non legali in
+  Artisan Arena" fino al riavvio. Allo stesso modo un blocco `/cards/collection` fallito faceva comparire
+  le sue carte in "Carte non trovate". Ora:
+  - nuova `_request_with_retry()` (`cogs/deck_validation/service.py`, `_post_with_retry`/`_get_with_retry`
+    restano come wrapper): 404 → `{"data": []}`; 429, 5xx ed errori di rete/timeout ritentati con backoff
+    (i 5xx prima venivano abbandonati subito); dopo 5 tentativi, o su altro status inatteso, solleva la
+    nuova `ScryfallUnavailable` invece di restituire `None`
+  - `validate_deck()` la intercetta e restituisce un `DeckValidationResult` con il nuovo campo
+    `service_error` (che rende `is_valid` falso) e nessuna carta marcata non trovata/illegale; nessuna
+    cache viene toccata
+  - `/invia_deck` (`InviaDeckModal`) e `/artisan_check_deck` (`validate_and_publish()`) rispondono
+    "Scryfall non risponde, riprova tra qualche minuto" invece di un esito, e loggano `WARN`
+    `SCRYFALL_UNAVAILABLE`; l'iscrizione al torneo resta invariata
+- `ArtisanDeckCheckModal.on_submit()` aveva un `try/except Exception` che stampava solo in console e
+  aggirava la gestione globale introdotta nella 3.5.6: rimosso, un errore inatteso ora arriva a
+  `ReportingModal.on_error` (utente e staff avvisati)
+- Test: 6 nuovi in `tests/deck_validation/test_artisan_service.py` (errore sulla ricerca stampe e sul
+  blocco collection come `service_error`, stessa carta legale dopo il ripristino, 404 ancora illegale e
+  memorizzato; `_request_with_retry`: 404, retry su 503, `ScryfallUnavailable` a tentativi esauriti).
+  Verificato anche dal vivo contro Scryfall: carta senza stampe Arena (Black Lotus) illegale via 404,
+  host irraggiungibile → `service_error` dopo 5 tentativi con cache intatta
+
+### Docs
+- `docs/deck-validation.md`: nuova sezione "Scryfall non raggiungibile"; blocco "Modelli Dati" riallineato
+  al codice (descriveva campi inesistenti, es. `banned_cartes`/`card_data`)
+- `docs/caching.md` "Retry Logic": dichiarava un timeout di 10s per richiesta, in realta' e' 120s per
+  l'intera sessione di validazione; aggiunti 5xx/errori di rete e `ScryfallUnavailable`
+- `CLAUDE.md` (pipeline di validazione, conteggio test), `docs/comandi.md` (numeri di riga)
+
 ## 3.5.6 (2026-10-12)
 
 ### Fixed

@@ -405,9 +405,11 @@ _min_delay = 0.11  # 110ms tra richieste (supera il limite 100ms)
 
 ### Retry Logic
 
-- Backoff esponenziale su status 429 (leggendo header `Retry-After`)
-- Timeout: 10s per richiesta
-- Massimo 5 tentativi per richiesta
+- Backoff esponenziale su status 429 (leggendo header `Retry-After`), su 5xx e su errori di rete/timeout
+- Timeout: 120s complessivi per la sessione di una validazione (`aiohttp.ClientTimeout(total=120)`)
+- Massimo 5 tentativi per richiesta, poi `ScryfallUnavailable` — mai salvato in cache come "carta
+  illegale"; il 404 (nessuna stampa Arena) resta invece un esito valido. Vedi `docs/deck-validation.md`
+  "Scryfall non raggiungibile"
 
 ### Alchemy Filter
 

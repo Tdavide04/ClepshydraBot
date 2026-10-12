@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 214 tests total, no `pytest-asyncio` — async integration tests
+Suite: 220 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
@@ -200,7 +200,12 @@ assume systemd when writing deployment-related docs or scripts.
 6. On success, generate a showcase PNG (`DeckImageGenerator`) and post embeds to the log/deck channels.
 
 Scryfall calls are serialized through an `asyncio.Semaphore(1)` with a ~110ms delay and exponential
-backoff retry on HTTP 429. The card cache (`utils/card_cache.py`) persists to the `cached_cards` SQLite
+backoff retry on HTTP 429, 5xx and network errors (`_request_with_retry()`). A 404 becomes `{"data": []}`
+(on `/cards/search` it means "no Arena prints" → card illegal, a real answer); anything else that isn't a
+200 after the retries raises `ScryfallUnavailable`, which `validate_deck()` turns into a result with
+`service_error` set and no card marked invalid/illegal — the deck simply wasn't evaluated, and callers
+must say "retry later" instead of showing a verdict. Never collapse the two back into `None`: until 3.5.7
+a single timeout cached the card as illegal in `_ARENA_LEGAL_CACHE` until the next restart. The card cache (`utils/card_cache.py`) persists to the `cached_cards` SQLite
 table with incremental UPSERT/DELETE (`save_cache()`, tracking dirty card names — not a full-table
 rewrite) every 60s via `periodic_save_loop()`; `load_cache()` is called once from
 `database/engine.py:init_db()`, not per `ArtisanService` instance. `data/card_cache.json` (the pre-Step-4

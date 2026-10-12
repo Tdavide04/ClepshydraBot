@@ -132,6 +132,27 @@ Nella chiamata API:
 - Controlla se esiste una stampa common/uncommon su Arena
 - Salva risultato in cache con timestamp (`mark_artisan_legal()`)
 
+### Scryfall non raggiungibile
+
+`_request_with_retry()` (usata da `_post_with_retry`/`_get_with_retry`) distingue due esiti che fino alla
+3.5.6 diventavano entrambi `None`:
+
+- **404** → `{"data": []}`: su `/cards/search` significa "nessuna stampa trovata", quindi la carta non ha
+  stampe Arena ed è **illegale** — esito valido, memorizzato in cache come prima
+- **errore di rete, timeout, 5xx o 429 oltre i 5 tentativi, altro status inatteso** → solleva
+  `ScryfallUnavailable`. I 5xx vengono ora ritentati con backoff come i timeout (prima: abbandono immediato)
+
+`validate_deck()` intercetta `ScryfallUnavailable` e restituisce un `DeckValidationResult` con
+`service_error` valorizzato e nessuna carta in `invalid_cards`/`illegal_rarity_cards`: il mazzo **non è
+stato valutato**, né valido né invalido. Nessuna cache viene toccata. `/invia_deck` e
+`/artisan_check_deck` rispondono "Scryfall non risponde, riprova tra qualche minuto" (l'iscrizione al
+torneo resta invariata) e loggano `WARN` `SCRYFALL_UNAVAILABLE`.
+
+Prima della 3.5.7 un singolo timeout sulla ricerca stampe salvava la carta come illegale in
+`_ARENA_LEGAL_CACHE` fino al riavvio del bot (ogni mazzo che la conteneva veniva rifiutato con "Non legali
+in Artisan Arena"), e un blocco `/cards/collection` fallito faceva comparire le sue carte in "Carte non
+trovate".
+
 Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TTL), l'admin può usare
 `/invalidate_card_cache <carta>`.
 
@@ -157,27 +178,34 @@ Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TT
 ```python
 @dataclass
 class DeckEntry:
-    name: str           # Nome carta
-    quantity: int       # Quantità (default 1)
-    set_code: str | None = None  # Set code opzionale
+    quantity: int
+    name: str
+    is_sideboard: bool
 
 @dataclass
 class ArtisanCard:
     name: str
+    quantity: int
+    image_url: str | None
     type_line: str
     cmc: float
-    image_url: str | None
-    artisan_legal: bool | None
+    is_sideboard: bool
 
 @dataclass
 class DeckValidationResult:
-    is_valid: bool
-    entries: list[DeckEntry]
-    card_data: dict[str, ArtisanCard]
-    banned_cartes: list[str]
-    illegal_cartes: list[str]
-    not_found_cartes: list[str]
-    deck_name: str | None
+    deck_name: str
+    total_cards: int
+    main_count: int
+    side_count: int
+    banned_cards: list[str]          # default []
+    invalid_cards: list[str]         # "Carte non trovate"
+    illegal_rarity_cards: list[str]  # "Non legali in Artisan Arena"
+    mainboard: list[ArtisanCard]
+    sideboard: list[ArtisanCard]
+    service_error: str | None = None # Scryfall non raggiungibile: mazzo non valutato
+
+    @property
+    def is_valid(self) -> bool: ...  # False anche se service_error e' valorizzato
 ```
 
 ---

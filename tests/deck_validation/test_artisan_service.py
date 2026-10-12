@@ -1,9 +1,12 @@
 import asyncio
 import urllib.parse
 
+import pytest
+
+import cogs.deck_validation.service as service_module
 import utils.card_cache as card_cache
 from cogs.deck_validation.models import DeckEntry
-from cogs.deck_validation.service import ArtisanService
+from cogs.deck_validation.service import ArtisanService, ScryfallUnavailable
 from database import init_db, close_db, get_session
 from repositories.banlist_repository import BanlistRepository
 
@@ -64,10 +67,18 @@ def _make_fake_get(prints_by_name: dict):
         q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
         name = q.replace(" game:arena", "").strip()
         prints = prints_by_name.get(name)
-        if prints is None:
-            return None
-        return {"data": prints}
+        if isinstance(prints, Exception):
+            raise prints
+        # Nessuna stampa nota = 404 di Scryfall, che _get_with_retry traduce in
+        # un risultato vuoto (carta senza stampe Arena).
+        return {"data": prints or []}
     return fake_get
+
+
+@pytest.fixture
+def isolated_arena_legal_cache(monkeypatch):
+    """_ARENA_LEGAL_CACHE e' di modulo: ogni test parte vuoto."""
+    monkeypatch.setattr(service_module, "_ARENA_LEGAL_CACHE", {})
 
 
 class TestValidateDeck:
@@ -227,3 +238,128 @@ class TestArtisanLegalTTL:
             "la entry legacy senza timestamp deve essere trattata come scaduta "
             "e ri-verificata, non presa per buona"
         )
+
+
+class TestScryfallUnavailable:
+
+    def test_prints_lookup_failure_is_a_service_error_not_an_illegal_card(
+        self, isolated_db, isolated_arena_legal_cache
+    ):
+        """Regressione: un errore di rete sulla ricerca stampe salvava la carta
+        come illegale in _ARENA_LEGAL_CACHE fino al riavvio del bot."""
+        async def scenario():
+            card = _card_data("Flaky Card")
+            service = ArtisanService()
+            service._post_with_retry = _make_fake_post({"Flaky Card": card})
+            service._get_with_retry = _make_fake_get({"Flaky Card": ScryfallUnavailable("HTTP 503")})
+            entries = [DeckEntry(quantity=60, name="Flaky Card", is_sideboard=False)]
+            failed = await service.validate_deck(entries, "Test Deck", 60)
+
+            # Scryfall torna disponibile: la stessa carta deve risultare legale.
+            service._get_with_retry = _make_fake_get({"Flaky Card": [_arena_print("common")]})
+            recovered = await service.validate_deck(entries, "Test Deck", 60)
+            return failed, recovered
+
+        failed, recovered = run_with_db(scenario)
+        assert failed.service_error
+        assert failed.is_valid is False
+        assert failed.illegal_rarity_cards == []
+        assert failed.invalid_cards == []
+        assert recovered.service_error is None
+        assert recovered.is_valid is True
+
+    def test_collection_failure_is_a_service_error_not_missing_cards(
+        self, isolated_db, isolated_arena_legal_cache
+    ):
+        """Un blocco /cards/collection fallito faceva risultare le carte come
+        'Carte non trovate' invece di segnalare Scryfall non raggiungibile."""
+        async def scenario():
+            service = ArtisanService()
+
+            async def failing_post(session, url, payload, label, retries=5):
+                raise ScryfallUnavailable("timeout")
+
+            service._post_with_retry = failing_post
+            entries = [DeckEntry(quantity=60, name="Any Card", is_sideboard=False)]
+            return await service.validate_deck(entries, "Test Deck", 60)
+
+        result = run_with_db(scenario)
+        assert result.service_error
+        assert result.invalid_cards == []
+        assert result.main_count == 60
+
+    def test_card_without_arena_prints_is_still_illegal_and_cached(
+        self, isolated_db, isolated_arena_legal_cache
+    ):
+        """Il 404 di Scryfall (nessuna stampa Arena) resta un esito legittimo:
+        carta illegale, e va ricordato."""
+        async def scenario():
+            card = _card_data("Paper Only")
+            service = ArtisanService()
+            service._post_with_retry = _make_fake_post({"Paper Only": card})
+            service._get_with_retry = _make_fake_get({})
+            entries = [DeckEntry(quantity=60, name="Paper Only", is_sideboard=False)]
+            return await service.validate_deck(entries, "Test Deck", 60)
+
+        result = run_with_db(scenario)
+        assert result.service_error is None
+        assert result.illegal_rarity_cards == ["Paper Only"]
+        assert service_module._ARENA_LEGAL_CACHE["oracle-Paper Only"] is False
+
+
+class FakeResponse:
+    def __init__(self, status, payload=None, headers=None):
+        self.status = status
+        self._payload = payload or {}
+        self.headers = headers or {}
+
+    async def json(self):
+        return self._payload
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+
+class FakeSession:
+    """Restituisce in ordine le risposte (o solleva le eccezioni) date."""
+
+    def __init__(self, *outcomes):
+        self.outcomes = list(outcomes)
+        self.calls = 0
+
+    def request(self, method, url, json=None):
+        self.calls += 1
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+
+@pytest.fixture
+def no_sleep(monkeypatch):
+    async def instant(_seconds):
+        return None
+    monkeypatch.setattr(service_module.asyncio, "sleep", instant)
+
+
+class TestRequestWithRetry:
+
+    def test_404_is_an_empty_result(self, no_sleep):
+        session = FakeSession(FakeResponse(404))
+        data = asyncio.run(ArtisanService()._get_with_retry(session, "u", "x"))
+        assert data == {"data": []}
+
+    def test_server_error_is_retried_then_succeeds(self, no_sleep):
+        session = FakeSession(FakeResponse(503), FakeResponse(200, {"data": [1]}))
+        data = asyncio.run(ArtisanService()._get_with_retry(session, "u", "x"))
+        assert data == {"data": [1]}
+        assert session.calls == 2
+
+    def test_exhausted_retries_raise_scryfall_unavailable(self, no_sleep):
+        session = FakeSession(*[asyncio.TimeoutError() for _ in range(3)])
+        with pytest.raises(ScryfallUnavailable):
+            asyncio.run(ArtisanService()._post_with_retry(session, "u", {}, "x", retries=3))
+        assert session.calls == 3

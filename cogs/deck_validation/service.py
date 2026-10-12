@@ -19,11 +19,25 @@ from repositories.banlist_repository import BanlistRepository
 
 
 _COLLECTION_URL = "https://api.scryfall.com/cards/collection"
+
+SCRYFALL_UNAVAILABLE_MESSAGE = (
+    "⚠️ Scryfall, il servizio usato per verificare le carte, non risponde in questo momento: "
+    "il mazzo non è stato valutato. Riprova tra qualche minuto."
+)
 _COLLECTION_CHUNK = 75
 _MIN_REQUEST_INTERVAL = 0.11
 
 _SCRYFALL_SEMAPHORE = asyncio.Semaphore(1)
 _ARENA_LEGAL_CACHE: dict[str, bool] = {}
+
+
+class ScryfallUnavailable(Exception):
+    """Scryfall non ha dato una risposta utilizzabile (errore di rete,
+    timeout, 5xx o 429 oltre i tentativi, altro status inatteso). Distinto
+    di proposito dal 404, che su /cards/search e' una risposta valida
+    ("nessuna stampa trovata") e rende la carta illegale: fino alla 3.5.6
+    entrambi diventavano None, e un semplice timeout salvava la carta come
+    illegale in _ARENA_LEGAL_CACHE fino al riavvio del bot."""
 
 # Cache banlist condivisa a livello di modulo: il bot istanzia due ArtisanService
 # separate (tournament_system e deck_validation), che devono vedere la stessa
@@ -114,6 +128,25 @@ class ArtisanService:
                 banned_cards=banned,
             )
 
+        try:
+            return await self._validate_with_scryfall(entries, deck_name, total_cards)
+        except ScryfallUnavailable as e:
+            # Nessuna carta marcata come non trovata o illegale: il mazzo
+            # semplicemente non e' stato valutato, e va ritentato.
+            return DeckValidationResult(
+                deck_name=deck_name,
+                total_cards=total_cards,
+                main_count=sum(e.quantity for e in entries if not e.is_sideboard),
+                side_count=sum(e.quantity for e in entries if e.is_sideboard),
+                service_error=str(e),
+            )
+
+    async def _validate_with_scryfall(
+        self,
+        entries: list[DeckEntry],
+        deck_name: str,
+        total_cards: int,
+    ) -> DeckValidationResult:
         headers = {"User-Agent": "ClepshydraBot/2.0 (Discord Tournament Bot)"}
         timeout = aiohttp.ClientTimeout(total=120)
         connector = aiohttp.TCPConnector(limit=2)
@@ -189,6 +222,17 @@ class ArtisanService:
         logger = self._get_logger()
 
         result = await self.validate_deck(entries, deck_name, total_cards)
+
+        if result.service_error:
+            await interaction.edit_original_response(content=SCRYFALL_UNAVAILABLE_MESSAGE)
+            if logger:
+                await logger.send_log(
+                    level="WARN",
+                    event="SCRYFALL_UNAVAILABLE",
+                    user=member,
+                    info=f"/artisan_check_deck: mazzo non valutato ({result.service_error})",
+                )
+            return result
 
         deck_image = None
         if result.is_valid:
@@ -299,8 +343,6 @@ class ArtisanService:
             payload = {"identifiers": [{"name": n} for n in chunk]}
             label = f"collection {idx + 1}/{len(chunks)} ({len(chunk)} carte)"
             data = await self._post_with_retry(session, _COLLECTION_URL, payload, label)
-            if not data:
-                continue
 
             for card in data.get("data", []):
                 official = card.get("name", "")
@@ -338,11 +380,10 @@ class ArtisanService:
             return False
 
         arena_uri = self._arena_prints_uri(prints_uri)
+        # Un 404 (nessuna stampa Arena) arriva qui come {"data": []} e rende
+        # la carta illegale, correttamente memorizzato sotto. Un errore di
+        # Scryfall invece solleva ScryfallUnavailable e non tocca le cache.
         prints_data = await self._get_with_retry(session, arena_uri, f"{card_name} [prints]")
-        if not prints_data:
-            if oracle_id:
-                _ARENA_LEGAL_CACHE[oracle_id] = False
-            return False
 
         legal = False
         for printing in prints_data.get("data", []):
@@ -369,25 +410,8 @@ class ArtisanService:
         payload: dict,
         label: str,
         retries: int = 5
-    ) -> dict | None:
-        async with _SCRYFALL_SEMAPHORE:
-            for attempt in range(retries):
-                try:
-                    async with session.post(url, json=payload) as resp:
-                        if resp.status == 429:
-                            wait = float(resp.headers.get("Retry-After", 2 ** attempt))
-                            await asyncio.sleep(wait)
-                            continue
-                        if resp.status != 200:
-                            return None
-                        data = await resp.json()
-                        await asyncio.sleep(_MIN_REQUEST_INTERVAL)
-                        return data
-                except asyncio.TimeoutError:
-                    await asyncio.sleep(2 ** attempt)
-                except Exception:
-                    return None
-            return None
+    ) -> dict:
+        return await self._request_with_retry(session, "POST", url, label, retries, payload)
 
     async def _get_with_retry(
         self,
@@ -395,25 +419,51 @@ class ArtisanService:
         url: str,
         label: str,
         retries: int = 5
-    ) -> dict | None:
+    ) -> dict:
+        return await self._request_with_retry(session, "GET", url, label, retries)
+
+    async def _request_with_retry(
+        self,
+        session: aiohttp.ClientSession,
+        method: str,
+        url: str,
+        label: str,
+        retries: int,
+        payload: dict | None = None,
+    ) -> dict:
+        """Richiesta Scryfall serializzata dal semaforo, con retry su 429, 5xx
+        ed errori di rete. Ritorna il JSON della risposta; un 404 diventa
+        {"data": []} (su /cards/search significa "nessun risultato", l'unico
+        endpoint dove capita - /cards/collection riporta le carte mancanti in
+        `not_found` con status 200). Qualunque altro esito solleva
+        ScryfallUnavailable invece di restituire None."""
+
+        last_problem = "nessun tentativo"
         async with _SCRYFALL_SEMAPHORE:
             for attempt in range(retries):
                 try:
-                    async with session.get(url) as resp:
+                    async with session.request(method, url, json=payload) as resp:
                         if resp.status == 429:
-                            wait = float(resp.headers.get("Retry-After", 2 ** attempt))
-                            await asyncio.sleep(wait)
+                            last_problem = "HTTP 429"
+                            await asyncio.sleep(float(resp.headers.get("Retry-After", 2 ** attempt)))
                             continue
+                        if resp.status >= 500:
+                            last_problem = f"HTTP {resp.status}"
+                            await asyncio.sleep(2 ** attempt)
+                            continue
+                        if resp.status == 404:
+                            await asyncio.sleep(_MIN_REQUEST_INTERVAL)
+                            return {"data": []}
                         if resp.status != 200:
-                            return None
+                            raise ScryfallUnavailable(f"{label}: HTTP {resp.status}")
                         data = await resp.json()
                         await asyncio.sleep(_MIN_REQUEST_INTERVAL)
                         return data
-                except asyncio.TimeoutError:
+                except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                    last_problem = type(e).__name__
                     await asyncio.sleep(2 ** attempt)
-                except Exception:
-                    return None
-            return None
+
+        raise ScryfallUnavailable(f"{label}: {last_problem} dopo {retries} tentativi")
 
     def _arena_prints_uri(self, prints_search_uri: str) -> str:
         parsed = urllib.parse.urlparse(prints_search_uri)

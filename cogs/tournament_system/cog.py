@@ -13,7 +13,7 @@ from utils.tournament_embeds import (
 from database.models import Tournament, TournamentStatus, TournamentPlayer
 from database import get_session
 from repositories.banlist_repository import BanlistRepository
-from cogs.deck_validation.service import ArtisanService
+from cogs.deck_validation.service import ArtisanService, SCRYFALL_UNAVAILABLE_MESSAGE
 from cogs.deck_validation.validators import parse_decklist, validate_counts
 from config.config import GUILD_ID, TOURNAMENT_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
@@ -144,11 +144,29 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
             entries, deck_name, total_cards
         )
 
+        logger = self.bot.get_cog("Logger")
+
+        if result.service_error:
+            await interaction.followup.send(
+                f"{SCRYFALL_UNAVAILABLE_MESSAGE} La tua iscrizione resta invariata: "
+                f"reinvia con /invia_deck.",
+                ephemeral=True,
+            )
+            if logger:
+                await logger.send_log(
+                    level="WARN",
+                    event="SCRYFALL_UNAVAILABLE",
+                    user=interaction.user,
+                    info=(
+                        f"/invia_deck: mazzo non valutato ({result.service_error})\n"
+                        f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})"
+                    ),
+                )
+            return
+
         deck_image = await self.artisan_service.generate_deck_image(
             result, interaction.user.display_name
         )
-
-        logger = self.bot.get_cog("Logger")
 
         if not result.is_valid:
             embed = discord.Embed(

@@ -35,18 +35,14 @@ class ArtisanDeckCheckModal(
             "Analisi del mazzo Artisan in corso...", ephemeral=True
         )
 
-        try:
-            entries, total_cards, _ = parse_decklist(self.deck_list.value)
-            deck_name = self.titolo.value.strip() or "ARTISAN DECK"
-            await self.service.validate_and_publish(
-                interaction, entries, deck_name, total_cards
-            )
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            await interaction.edit_original_response(
-                content="Errore durante l'analisi del mazzo."
-            )
+        # Nessun try/except qui: un errore inatteso arriva a
+        # ReportingModal.on_error, che avvisa l'utente E lo staff (prima
+        # veniva solo stampato in console).
+        entries, total_cards, _ = parse_decklist(self.deck_list.value)
+        deck_name = self.titolo.value.strip() or "ARTISAN DECK"
+        await self.service.validate_and_publish(
+            interaction, entries, deck_name, total_cards
+        )
 
 
 class Tournament(commands.Cog):
