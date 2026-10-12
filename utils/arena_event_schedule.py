@@ -24,7 +24,7 @@ Approccio:
   conclusi da mesi, producendo un flood di notifiche per eventi non piu'
   rilevanti.
 - Il check del sitemap e' economico (una GET su un file statico) e viene
-  fatto quotidianamente; il fetch+parsing della singola pagina (piu'
+  fatto ogni 2 ore; il fetch+parsing della singola pagina (piu'
   costoso e fragile, essendo HTML non un formato dati) scatta solo per le
   URL il cui lastmod risulta nuovo o cambiato rispetto allo stato salvato.
 - La sezione "Full Event Calendar" di queste pagine e' HTML realmente
@@ -51,6 +51,7 @@ from utils.sitemap_monitor import (
     fetch_page_html,
     fetch_sitemap_xml,
     load_json_state,
+    log,
     pick_latest_by_lastmod,
     save_json_state,
 )
@@ -154,7 +155,7 @@ def _parse_sitemap_xml(body: str) -> dict[str, str]:
     try:
         root = ET.fromstring(body)
     except ET.ParseError as e:
-        print(f"[SITEMAP PARSE ERROR] {e}")
+        log(f"[SITEMAP PARSE ERROR] {e}")
         return {}
 
     found: dict[str, str] = {}
@@ -416,7 +417,7 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
-            print("[EVENT SCHEDULE] nessuna pagina Event Schedule trovata sul sitemap")
+            log("[EVENT SCHEDULE] nessuna pagina Event Schedule trovata sul sitemap")
             return []
 
         url, lastmod = latest
@@ -426,17 +427,17 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
             and state.get("latest_lastmod") == lastmod
         )
         if already_seen and not force:
-            print(f"[EVENT SCHEDULE] nessun cambiamento (piu' recente: {url})")
+            log(f"[EVENT SCHEDULE] nessun cambiamento (piu' recente: {url})")
             return []
 
-        print(f"[EVENT SCHEDULE] pagina nuova/aggiornata: {url}")
+        log(f"[EVENT SCHEDULE] pagina nuova/aggiornata: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
             # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
             # prossimo giro invece di marcarla come vista.
-            print(f"[EVENT SCHEDULE] fetch fallito per {url}, ritento al prossimo giro")
+            log(f"[EVENT SCHEDULE] fetch fallito per {url}, ritento al prossimo giro")
             return []
 
         categories = parse_full_event_calendar(page_html)
@@ -444,9 +445,9 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
     _save_state({"latest_url": url, "latest_lastmod": lastmod})
 
     if categories is None:
-        print(f"[EVENT SCHEDULE] {url}: sezione 'Full Event Calendar' non riconosciuta")
+        log(f"[EVENT SCHEDULE] {url}: sezione 'Full Event Calendar' non riconosciuta")
     else:
-        print(f"[EVENT SCHEDULE] {url}: {len(categories)} categorie interpretate")
+        log(f"[EVENT SCHEDULE] {url}: {len(categories)} categorie interpretate")
 
     return [{"url": url, "lastmod": lastmod, "categories": categories}]
 
@@ -455,7 +456,7 @@ async def periodic_event_schedule_check_loop(
     bot=None,
     interval_seconds: int = _CHECK_INTERVAL_SECONDS,
 ) -> None:
-    """Task in background: controlla quotidianamente il sitemap e notifica su
+    """Task in background: controlla ogni 2 ore il sitemap e notifica su
     Discord ogni pagina Event Schedule nuova o aggiornata. Il primo giro
     parte subito all'avvio, come periodic_spg_refresh_loop."""
 
@@ -470,7 +471,7 @@ async def periodic_event_schedule_check_loop(
                         await send_event_schedule_log(logger, result, user=None, forced=False)
 
         except Exception as e:
-            print(f"[EVENT SCHEDULE AUTO-CHECK] errore: {e}")
+            log(f"[EVENT SCHEDULE AUTO-CHECK] errore: {e}")
 
         await asyncio.sleep(interval_seconds)
 

@@ -21,7 +21,7 @@ class ArenaEventScheduleUpdater(commands.Cog):
 
     @app_commands.command(
         name="forced_event_schedule_check",
-        description="Ricontrolla subito l'Event Schedule Arena piu' recente (gira anche da solo ogni giorno)"
+        description="Ricontrolla subito l'Event Schedule Arena piu' recente (gira anche da solo ogni 2 ore)"
     )
     @is_admin()
     async def forced_event_schedule_check_command(

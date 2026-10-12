@@ -21,7 +21,7 @@ class BanAnnouncementUpdater(commands.Cog):
 
     @app_commands.command(
         name="forced_ban_announcement_check",
-        description="Ricontrolla subito l'ultimo Banned and Restricted Announcement (gira anche da solo ogni giorno)"
+        description="Ricontrolla subito l'ultimo Banned and Restricted Announcement (gira anche da solo ogni 2 ore)"
     )
     @is_admin()
     async def forced_ban_announcement_check_command(

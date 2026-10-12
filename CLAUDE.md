@@ -56,7 +56,7 @@ Note the env var seeding in a conftest.py must run **before** any application im
 `_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
 a fresh per-test temp DB.
 
-Suite: 186 tests total, no `pytest-asyncio` — async integration tests
+Suite: 195 tests total, no `pytest-asyncio` — async integration tests
 (`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
 `tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
 `tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
@@ -128,8 +128,8 @@ page and Banned and Restricted announcement the bot already knows about
 JSON files, no network call — distinct from the real check the periodic tasks below run moments later),
 and only THEN starts four background tasks — `periodic_save_loop()` (card cache autosave, every 60s),
 `periodic_spg_refresh_loop()` (SPG rarity override auto-refresh, every 7 days — see below),
-`periodic_event_schedule_check_loop()` (Arena Event Schedule page monitor, every 24h — see below), and
-`periodic_ban_announcement_check_loop()` (Banned and Restricted Announcement monitor, every 24h — see
+`periodic_event_schedule_check_loop()` (Arena Event Schedule page monitor, every 2h — see below), and
+`periodic_ban_announcement_check_loop()` (Banned and Restricted Announcement monitor, every 2h — see
 below). The four `self.loop.create_task(...)` calls must stay AFTER the sync+log block, not before:
 `create_task` only schedules, it doesn't block, so if scheduled earlier the background tasks' first runs
 (both do real HTTP calls, not instant) can race ahead of and finish before the `await self.tree.sync(...)`
@@ -227,14 +227,19 @@ of them coexist there — `check_event_schedule_updates()` only cares about the 
 the currently active set; without this filter, the first run on a fresh machine (empty state) would report
 every still-listed page as "new" at once (observed in production: 4 pages flooding the log channel
 simultaneously). Since there is no official API/RSS, `check_event_schedule_updates()` fetches
-`magic.wizards.com/en/sitemap.xml` (standard XML sitemap with `<lastmod>` per URL) every 24h
+`magic.wizards.com/en/sitemap.xml` (standard XML sitemap with `<lastmod>` per URL) every 2h
 (`periodic_event_schedule_check_loop()`, cheap check — a single static-file GET), and only fetches+parses
 the latest event-schedule page when its `lastmod` changed versus `data/arena_event_schedule_state.json`
 (`{latest_url, latest_lastmod}`, not tracked in git, pure bookkeeping — contrast with
-`arena_rarity_data.json`, which holds curated data and is tracked). The 24h cadence is
-deliberately much tighter than the ~6-9 week content cadence: the sitemap check itself is nearly free, so
+`arena_rarity_data.json`, which holds curated data and is tracked). The 2h cadence
+(`_CHECK_INTERVAL_SECONDS` in `utils/sitemap_monitor.py`, shared by both monitors) is deliberately much
+tighter than the ~6-9 week content cadence: the sitemap check itself is nearly free (~660 KB static GET), so
 polling often lowers notification latency without adding cost, while the fragile part (HTML parsing) only
-ever runs on an actual change. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
+ever runs on an actual change. It was 24h until 3.5.3: Wizards' sitemap lags the article itself (served with
+`Cache-Control: max-age` ~1h, regenerated after publication), so on 2026-10-12 the daily check ran before
+the October Banned and Restricted showed up there and the next one would have come almost a day later.
+Every console line from both monitors goes through `log()` (`utils/sitemap_monitor.py`), which prefixes a
+`[YYYY-MM-DD HH:MM:SS]` timestamp — needed to tell from `pm2 logs` *when* a check ran. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
 section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</li></ul>` blocks, bounded
 between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
 so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
@@ -264,7 +269,7 @@ ONE merged detail list into a single image) both remain in the module, unused by
 in case that layout is wanted again.
 
 `send_event_schedule_log()` uses this to attach one `discord.File` image per month to a single Discord
-log message (via `Logger.send_log()`'s `files` kwarg) — used by both the automatic daily check and
+log message (via `Logger.send_log()`'s `files` kwarg) — used by both the automatic periodic check and
 `/forced_event_schedule_check`, so both now post images instead of the field-per-category embeds used
 before 3.2.0. If the page's categories were parsed but none of their entries match the expected date
 format, `build_month_calendar()` returns empty and a dedicated `WARN` (`ARENA_EVENT_SCHEDULE_NO_DATES`) is
@@ -291,7 +296,7 @@ these is the Artisan homebrew format this community's own banlist governs (see "
 `docs/banlist-system.md`), so this monitor is **notification-only**: it never writes to `banned_cards`.
 Structurally it reuses the same pattern as the Arena Event Schedule monitor — these announcement pages are
 also listed in `magic.wizards.com/en/sitemap.xml` with `<lastmod>`, Wizards doesn't remove past ones, so
-only the most recent by `lastmod` is considered (`_pick_latest()`), and the cheap sitemap check runs daily
+only the most recent by `lastmod` is considered (`_pick_latest()`), and the cheap sitemap check runs every 2h
 while the page itself is only fetched+parsed on a `lastmod` change (`check_ban_announcement_updates()`).
 
 Unlike the Event Schedule page, an announcement is free-form prose per format, not a structured date list
@@ -318,6 +323,17 @@ necessarily first publish, but it's the closest thing there is). Body is a plain
 "Controllo manuale/automatico" or invoking-user mention — those stay in the log-channel `info` only.
 Admin `/forced_ban_announcement_check` forces an immediate re-check of the current latest announcement,
 ignoring the saved `lastmod` — mirrors `/forced_event_schedule_check`.
+
+Unlike the Event Schedule monitor, a `lastmod` change on the *same* URL is not new community content here:
+Wizards touches these pages days after publishing (the August 10 announcement has `lastmod` August 21), and a
+forced re-check of the already-known announcement would otherwise re-post it to the community as "Nuovo". The
+state therefore also stores `notified_url` (the last announcement whose changes reached
+`COMUNICATION_CHANNEL_ID`, set only when `changes` is non-empty, so an all-"No changes" page edited later to
+add real changes still gets announced), and `check_ban_announcement_updates()` returns `already_notified`;
+when it's True, `send_ban_announcement_log()` posts the fields to the log channel only. A state file
+predating 3.5.3 has no `notified_url` — `_notified_url()` falls back to `latest_url`, so upgrading doesn't
+re-post the last processed announcement. Observed 2026-10-12: a forced check, run before the October
+announcement reached the sitemap, re-posted August's to the community.
 
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 

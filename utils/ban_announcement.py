@@ -18,7 +18,7 @@ Approccio (stesso schema di arena_event_schedule.py):
   solo quello con il lastmod piu' recente (_pick_latest), altrimenti il primo
   avvio su una macchina nuova segnalerebbe come "nuovo" tutto lo storico in
   una volta.
-- Il check del sitemap gira quotidianamente (una GET economica su un file
+- Il check del sitemap gira ogni 2 ore (una GET economica su un file
   statico); il fetch+parsing della singola pagina (piu' fragile, HTML non
   dati strutturati) scatta solo se il lastmod dell'annuncio piu' recente e'
   cambiato rispetto allo stato salvato.
@@ -52,6 +52,7 @@ from utils.sitemap_monitor import (
     fetch_page_html,
     fetch_sitemap_xml,
     load_json_state,
+    log,
     pick_latest_by_lastmod,
     save_json_state,
 )
@@ -89,7 +90,9 @@ def _load_state() -> dict:
     if _state_cache is not None:
         return _state_cache
 
-    _state_cache = load_json_state(STATE_PATH, {"latest_url": None, "latest_lastmod": None})
+    _state_cache = load_json_state(
+        STATE_PATH, {"latest_url": None, "latest_lastmod": None, "notified_url": None}
+    )
     return _state_cache
 
 
@@ -115,6 +118,17 @@ def get_latest_known_ban_announcement() -> dict:
     return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
 
 
+def _notified_url(state: dict) -> str | None:
+    """URL dell'ultimo annuncio le cui modifiche sono state postate nel canale
+    community. Uno stato salvato prima della 3.5.3 non ha il campo: in quel
+    caso si assume notificato l'ultimo annuncio processato (latest_url), cosi'
+    l'aggiornamento non lo ripubblica, mentre uno nuovo viene notificato."""
+
+    if "notified_url" in state:
+        return state["notified_url"]
+    return state.get("latest_url")
+
+
 # ==========================================
 # SITEMAP
 # ==========================================
@@ -127,7 +141,7 @@ def _parse_sitemap_xml(body: str) -> dict[str, str]:
     try:
         root = ET.fromstring(body)
     except ET.ParseError as e:
-        print(f"[SITEMAP PARSE ERROR] {e}")
+        log(f"[SITEMAP PARSE ERROR] {e}")
         return {}
 
     found: dict[str, str] = {}
@@ -245,11 +259,19 @@ async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
     formato. Gli annunci passati ancora presenti sul sitemap vengono
     ignorati (vedi _pick_latest).
 
-    Ritorna una lista con zero o un elemento {url, lastmod, changes}
-    (changes None se il parsing e' fallito, {} se interpretato ma senza
-    formati modificati) - la forma a lista resta per coerenza con
-    check_event_schedule_updates(). Aggiorna e salva lo stato solo se la
-    pagina e' stata effettivamente processata in questa chiamata.
+    Ritorna una lista con zero o un elemento {url, lastmod, changes,
+    already_notified} (changes None se il parsing e' fallito, {} se
+    interpretato ma senza formati modificati) - la forma a lista resta per
+    coerenza con check_event_schedule_updates(). Aggiorna e salva lo stato
+    solo se la pagina e' stata effettivamente processata in questa chiamata.
+
+    already_notified e' True se le modifiche di questa stessa URL sono gia'
+    state postate nel canale community: succede con un controllo forzato
+    sull'annuncio gia' noto, o quando Wizards ritocca la pagina giorni dopo
+    (nuovo lastmod, stessa URL - es. agosto 10 -> lastmod 21 agosto). In
+    quel caso send_ban_announcement_log() posta solo nel canale log. Una
+    URL diversa resta sempre "nuova", a differenza dell'Event Schedule, dove
+    un aggiornamento in place della stessa pagina e' contenuto nuovo reale.
     """
 
     headers = {"User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"}
@@ -262,7 +284,7 @@ async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
-            print("[BAN ANNOUNCEMENT] nessun annuncio trovato sul sitemap")
+            log("[BAN ANNOUNCEMENT] nessun annuncio trovato sul sitemap")
             return []
 
         url, lastmod = latest
@@ -272,36 +294,45 @@ async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
             and state.get("latest_lastmod") == lastmod
         )
         if already_seen and not force:
-            print(f"[BAN ANNOUNCEMENT] nessun cambiamento (piu' recente: {url})")
+            log(f"[BAN ANNOUNCEMENT] nessun cambiamento (piu' recente: {url})")
             return []
 
-        print(f"[BAN ANNOUNCEMENT] annuncio nuovo/aggiornato: {url}")
+        log(f"[BAN ANNOUNCEMENT] annuncio nuovo/aggiornato: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
             # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
             # prossimo giro invece di marcarlo come visto.
-            print(f"[BAN ANNOUNCEMENT] fetch fallito per {url}, ritento al prossimo giro")
+            log(f"[BAN ANNOUNCEMENT] fetch fallito per {url}, ritento al prossimo giro")
             return []
 
         changes = parse_ban_announcement(page_html)
 
-    _save_state({"latest_url": url, "latest_lastmod": lastmod})
+    notified_url = _notified_url(state)
+    already_notified = notified_url == url
+    if changes and not already_notified:
+        # Segnato come notificato gia' qui, prima dell'invio: stesso
+        # compromesso di latest_url, uno stato salvato prima del post Discord
+        # non ripete l'invio se il post fallisce, ma non rischia nemmeno di
+        # ripubblicarlo in loop.
+        notified_url = url
+
+    _save_state({"latest_url": url, "latest_lastmod": lastmod, "notified_url": notified_url})
 
     if changes is None:
-        print(f"[BAN ANNOUNCEMENT] {url}: struttura riepilogo non riconosciuta")
+        log(f"[BAN ANNOUNCEMENT] {url}: struttura riepilogo non riconosciuta")
     else:
-        print(f"[BAN ANNOUNCEMENT] {url}: {len(changes)} formati con modifiche")
+        log(f"[BAN ANNOUNCEMENT] {url}: {len(changes)} formati con modifiche")
 
-    return [{"url": url, "lastmod": lastmod, "changes": changes}]
+    return [{"url": url, "lastmod": lastmod, "changes": changes, "already_notified": already_notified}]
 
 
 async def periodic_ban_announcement_check_loop(
     bot=None,
     interval_seconds: int = _CHECK_INTERVAL_SECONDS,
 ) -> None:
-    """Task in background: controlla quotidianamente il sitemap e notifica su
+    """Task in background: controlla ogni 2 ore il sitemap e notifica su
     Discord ogni nuovo annuncio Banned and Restricted. Il primo giro parte
     subito all'avvio, come gli altri periodic_*_loop di main.py."""
 
@@ -316,7 +347,7 @@ async def periodic_ban_announcement_check_loop(
                         await send_ban_announcement_log(logger, result, user=None, forced=False)
 
         except Exception as e:
-            print(f"[BAN ANNOUNCEMENT AUTO-CHECK] errore: {e}")
+            log(f"[BAN ANNOUNCEMENT AUTO-CHECK] errore: {e}")
 
         await asyncio.sleep(interval_seconds)
 
@@ -342,7 +373,10 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
     ("Controllo manuale forzato", l'utente che ha invocato il comando) che
     invece resta nell'`info` del canale log - solo i `fields` (le carte
     bannate/sbannate per formato) sono condivisi tra i due, sono contenuto
-    genuino anche per la community."""
+    genuino anche per la community. Se result["already_notified"] e' True
+    (annuncio gia' comunicato alla community, ricontrollato a mano o ritoccato
+    da Wizards) il post va solo nel canale log - vedi
+    check_ban_announcement_updates()."""
 
     url = result["url"]
     changes = result["changes"]
@@ -379,6 +413,19 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
         if len(value) > _FIELD_VALUE_LIMIT:
             value = value[: _FIELD_VALUE_LIMIT - 1] + "…"
         fields.append({"name": format_name, "value": value, "inline": False})
+
+    if result.get("already_notified", False):
+        await logger.send_log(
+            level="INFO",
+            event="BAN_ANNOUNCEMENT_UPDATED",
+            user=user,
+            info=(
+                f"{prefix}: Banned and Restricted Announcement ricontrollato — {url} "
+                f"(gia' notificato alla community, non ripubblicato nel canale community)"
+            ),
+            fields=fields,
+        )
+        return
 
     from config.config import COMUNICATION_CHANNEL_ID
 

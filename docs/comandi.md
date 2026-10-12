@@ -65,8 +65,8 @@
 | Comando | Descrizione |
 |---|---|
 | `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
-| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); posta l'immagine calendario sia nel canale log sia nel canale community |
-| `/forced_ban_announcement_check` | Forza subito un ricontrollo dell'ultimo Banned and Restricted Announcement, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni giorno — vedi `docs/caching.md`); se ci sono modifiche reali, posta sia nel canale log sia nel canale community — solo notifica, non tocca mai la banlist Artisan |
+| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni 2 ore — vedi `docs/caching.md`); posta l'immagine calendario sia nel canale log sia nel canale community |
+| `/forced_ban_announcement_check` | Forza subito un ricontrollo dell'ultimo Banned and Restricted Announcement, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni 2 ore — vedi `docs/caching.md`); se ci sono modifiche reali, posta sia nel canale log sia nel canale community (solo nel canale log se quell'annuncio era già stato notificato alla community) — solo notifica, non tocca mai la banlist Artisan |
 | `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
 
 ---

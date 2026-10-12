@@ -69,21 +69,29 @@ Caricate da `.env` tramite `python-dotenv`:
 
 ```bash
 source .venv/bin/activate
-pm2 start main.py --name clepshydrabot --interpreter .venv/bin/python
+pm2 start main.py --name ClepshydraBotte --interpreter .venv/bin/python
 ```
+
+Il processo in produzione si chiama **`ClepshydraBotte`** (case-sensitive — i file di log sono
+`~/.pm2/logs/ClepshydraBotte-out.log`/`-error.log`). I doc riportavano `clepshydrabot` fino alla 3.5.3:
+`pm2 logs clepshydrabot` non trova nessun processo e un `grep` a valle restituisce output vuoto senza
+errori, facile da scambiare per "nessun log".
 
 `pm2` gestisce il processo e lo riavvia automaticamente in caso di crash. Comandi utili:
 
 ```bash
 pm2 status              # stato del processo
-pm2 logs clepshydrabot  # log in tempo reale
-pm2 restart clepshydrabot
+pm2 logs ClepshydraBotte  # log in tempo reale
+pm2 restart ClepshydraBotte
 pm2 save                # persiste la process list
 pm2 startup             # riavvia pm2 (e i processi salvati) al boot della VM
+
+# storico dei controlli dei monitor sitemap (righe con timestamp dalla 3.5.3)
+pm2 logs ClepshydraBotte --lines 2000 --nostream | grep -E "BAN ANNOUNCEMENT|EVENT SCHEDULE"
 ```
 
 `main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e
-stampa un errore esplicito su stderr — visibile in `pm2 logs clepshydrabot`. Da notare: se il token è
+stampa un errore esplicito su stderr — visibile in `pm2 logs ClepshydraBotte`. Da notare: se il token è
 genuinamente scaduto/invalido, `pm2` riavvierà comunque il processo (`Restart=on-failure`-style), che
 fallirà di nuovo allo stesso modo finché non si aggiorna manualmente il token — il riavvio automatico
 non "risolve" un problema di credenziali, dà solo visibilità continua nei log.

@@ -8,6 +8,51 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.5.3 (2026-10-12)
+
+### Fixed
+- Console dei monitor sitemap senza orario: le righe `[EVENT SCHEDULE] ...`/`[BAN ANNOUNCEMENT] ...`
+  (e `[SITEMAP FAIL]`/`[... FETCH FAIL]`) erano semplici `print()` senza timestamp, a differenza dei log di
+  `discord.py` nello stesso `pm2 logs` — il 2026-10-12 e' stato impossibile stabilire a che ora fossero
+  girati i check rispetto alla pubblicazione del Banned and Restricted di ottobre. Nuova `log()` in
+  `utils/sitemap_monitor.py` (prefisso `[YYYY-MM-DD HH:MM:SS]`, stesso formato di `discord.py`), usata da
+  `utils/arena_event_schedule.py`, `utils/ban_announcement.py` e dal modulo condiviso stesso (nuovo test
+  `TestLog` in `tests/utils/test_sitemap_monitor.py`)
+- Banned and Restricted di ottobre (2026-10-12) non notificato: il check giornaliero (e anche un
+  `/forced_ban_announcement_check` lanciato poco dopo) e' girato quando l'annuncio era gia' pubblicato sul
+  sito ma non ancora presente sul sitemap Wizards — servito con `Cache-Control: max-age` ~1h e rigenerato
+  dopo la pubblicazione dell'articolo — e ha quindi trovato ancora l'annuncio di agosto come piu' recente
+  (il forzato l'ha riletto e ripostato). Il codice di discovery e parsing era corretto: verificato dal vivo
+  che, una volta comparso sul sitemap, l'annuncio di ottobre viene rilevato e interpretato (13 modifiche
+  in Competitive Brawl, nessuna negli altri 10 formati). Il problema era la latenza: il giro successivo
+  sarebbe arrivato quasi 24h dopo. `_CHECK_INTERVAL_SECONDS` (`utils/sitemap_monitor.py`, condiviso con il
+  monitor Event Schedule) ridotto da 24h a 2h — ritardo massimo ~3h, al costo di una GET da ~660 KB ogni 2
+  ore per monitor. Aggiornate di conseguenza anche le description di `/forced_ban_announcement_check` e
+  `/forced_event_schedule_check` ("gira anche da solo ogni 2 ore", entrambe sotto i 100 caratteri)
+- Banned and Restricted gia' notificato ripubblicato nel canale community: il
+  `/forced_ban_announcement_check` del 2026-10-12, girato quando il sitemap elencava ancora agosto come
+  annuncio piu' recente, ha ripostato quello di agosto nel canale community come "Nuovo Banned and
+  Restricted Announcement". Stesso effetto avrebbe avuto un semplice ritocco della pagina da parte di
+  Wizards (nuovo `lastmod`, stessa URL — l'annuncio del 10 agosto ha `lastmod` 21 agosto). Lo stato
+  `data/ban_announcement_state.json` ora salva anche `notified_url` (ultimo annuncio le cui modifiche sono
+  state postate alla community, aggiornato solo se ci sono modifiche reali) e
+  `check_ban_announcement_updates()` restituisce `already_notified`: se True, `send_ban_announcement_log()`
+  posta i campi solo nel canale log. Una URL nuova resta sempre notificata. Stato pre-3.5.3 senza il campo:
+  `_notified_url()` assume notificato `latest_url`, cosi' l'aggiornamento non ripubblica l'ultimo annuncio
+  gia' processato. Il monitor Event Schedule non cambia: li' un aggiornamento in place della stessa pagina
+  e' contenuto nuovo reale. Verificato dal vivo partendo dallo stato di produzione (agosto, formato
+  vecchio): ottobre risulta `already_notified=False`, un controllo forzato subito dopo `True`
+- `tests/utils/test_ban_announcement.py`: 7 nuovi test (`already_notified` su primo annuncio, controllo
+  forzato, ritocco `lastmod`, URL nuova, annuncio senza modifiche, stato legacy; invio solo nel canale log)
+
+### Docs
+- `docs/infrastruttura.md`: il processo pm2 in produzione si chiama `ClepshydraBotte`, non `clepshydrabot`
+  come riportato nei comandi (`pm2 start/logs/restart`) — `pm2 logs clepshydrabot | grep ...` restituiva
+  output vuoto senza errori. Aggiunto il comando per filtrare lo storico dei controlli dei monitor sitemap
+- Aggiornati `CLAUDE.md` (cadenza 2h dei monitor, `log()` con timestamp, `notified_url`/`already_notified`
+  nella sezione "Banned and Restricted Announcement monitor", conteggio test), `docs/caching.md` (sezioni
+  3/3b e tabella riepilogo), `docs/comandi.md` (cadenza e comportamento di `/forced_ban_announcement_check`)
+
 ## 3.5.2 (2026-09-21)
 
 ### Fixed

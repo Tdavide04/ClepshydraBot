@@ -229,7 +229,7 @@ pubblicazione).
 ### Soluzione
 
 `magic.wizards.com/en/sitemap.xml` è un sitemap XML standard con `<lastmod>` per ogni pagina del sito.
-Un task in background scarica quotidianamente il sitemap (richiesta economica, file statico), filtra le
+Un task in background scarica ogni 2 ore il sitemap (richiesta economica, file statico), filtra le
 URL `*-event-schedule` sotto `/en/news/mtg-arena/` e individua quella con il `lastmod` **più recente** —
 il set attualmente attivo. Wizards non rimuove dal sitemap le pagine dei set passati: senza questo filtro,
 a un dato momento il sitemap ne contiene sempre diverse (osservato in produzione: 4 pagine
@@ -237,15 +237,21 @@ contemporaneamente), e la prima esecuzione su una macchina con stato vuoto le se
 "nuove" in un colpo solo, producendo un flood di notifiche per eventi ormai conclusi. Solo se quella più
 recente è nuova o ha un `lastmod` cambiato rispetto allo stato salvato viene scaricata e interpretata la
 pagina vera e propria (fetch + parsing HTML, più costoso e fragile) — la maggior parte dei check
-giornalieri non fa nulla oltre alla GET sul sitemap, perché il contenuto reale cambia solo ogni 6-9
-settimane.
+non fa nulla oltre alla GET sul sitemap, perché il contenuto reale cambia solo ogni 6-9 settimane.
+
+La cadenza (`_CHECK_INTERVAL_SECONDS` in `utils/sitemap_monitor.py`, condivisa dai due monitor) è di 2 ore.
+Fino alla 3.5.3 era 24 ore: il sitemap di Wizards è servito con `Cache-Control: max-age` di circa 1 ora e
+viene rigenerato *dopo* la pubblicazione dell'articolo, quindi una pagina appena uscita può non comparirvi
+ancora per un po'. Il 2026-10-12 il check giornaliero è girato prima che il Banned and Restricted di ottobre
+comparisse sul sitemap, e il giro successivo sarebbe arrivato quasi 24 ore dopo. Con 2 ore il ritardo
+massimo scende a circa 3 ore, al costo di una GET da ~660 KB in più ogni 2 ore per monitor.
 
 | Funzione | Descrizione |
 |---|---|
 | `check_event_schedule_updates(force=False)` | Individua la pagina più recente sul sitemap; se nuova/cambiata (o sempre, se `force=True`) la scarica+interpreta; ritorna `[]` o `[{url, lastmod, categories}]` |
 | `_pick_latest(entries)` | Alias locale di `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (condivisa con il monitor Ban Announcement) — tra le pagine trovate, seleziona quella col `lastmod` più alto |
 | `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
-| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
+| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 2 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
 | `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
 | `build_month_calendar(categories)` | Raggruppa le voci per `(anno, mese)`, spezzando i range multi-mese ai confini del mese; anno mancante inferito dalla data corrente |
 | `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: un'immagine calendario per mese (Gantt per categoria colorato per famiglia + elenco dettagliato, generata da `EventCalendarImageGenerator`), allegata allo stesso messaggio invece di descrivere gli eventi a parole — vedi `CLAUDE.md` "Arena Event Schedule monitor" per il design completo |
@@ -258,7 +264,10 @@ cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta �
 da postare su Discord. Senza questo log, un giro che non trova cambiamenti (l'esito più comune, dato che
 il contenuto reale cambia solo ogni 6-9 settimane) è indistinguibile in console da un task che non è mai
 partito — origine di una confusione reale in produzione, dove sembrava che il check non girasse mentre in
-realtà girava e correttamente non trovava nulla di nuovo.
+realtà girava e correttamente non trovava nulla di nuovo. Ogni riga è preceduta da un timestamp
+(`[2026-10-12 15:20:04] [EVENT SCHEDULE] ...`, stesso formato dei log di `discord.py`) tramite `log()` in
+`utils/sitemap_monitor.py`, condivisa con il monitor Ban Announcement — senza, in `pm2 logs` non si
+poteva stabilire *quando* un check fosse girato rispetto alla comparsa di una pagina sul sitemap.
 
 ### Parsing e gestione dei fallimenti
 
@@ -318,8 +327,9 @@ nuovo annuncio — non scrive mai sulla banlist.
 Stesso schema del monitor Event Schedule: queste pagine sono anch'esse elencate in
 `magic.wizards.com/en/sitemap.xml` con `<lastmod>`, e Wizards non rimuove gli annunci passati dal sitemap,
 quindi si considera solo quello con `lastmod` più recente (`_pick_latest()`). Il check del sitemap gira
-quotidianamente (economico); il fetch+parsing della pagina vera e propria scatta solo se il `lastmod`
-dell'annuncio più recente è cambiato.
+ogni 2 ore (economico, stessa cadenza condivisa); il fetch+parsing della pagina vera e propria scatta solo se il `lastmod`
+dell'annuncio più recente è cambiato. Come per l'Event Schedule, ogni giro stampa in console un esito con
+timestamp (`[2026-10-12 15:20:04] [BAN ANNOUNCEMENT] ...`).
 
 A differenza dell'Event Schedule, la pagina non ha una sezione a elenco date ma prosa libera per formato.
 Ogni sezione `<h2>Formato</h2>` è però seguita da un riepilogo affidabile e strutturato:
@@ -331,11 +341,11 @@ bot che deve solo notificare).
 
 | Funzione | Descrizione |
 |---|---|
-| `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes}]` |
+| `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes, already_notified}]` — `already_notified` è `True` se le modifiche di quella stessa URL sono già state postate nel canale community |
 | `_pick_latest(entries)` | Stesso alias di `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) usato dal monitor Event Schedule |
 | `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
-| `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
-| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
+| `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 2 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali e l'annuncio non è `already_notified`, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
 | `format_lastmod(lastmod)` | Formatta il timestamp ISO-8601 del sitemap in italiano (es. "21 Agosto 2026, 18:02 UTC"), usato nel titolo dell'embed community — unico dato data+ora disponibile, la pagina mostra solo il giorno |
 | `get_latest_known_ban_announcement()` | Legge (senza rete) l'ultimo annuncio noto dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
 
@@ -344,14 +354,27 @@ bot che deve solo notificare).
 ```json
 {
   "latest_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026",
-  "latest_lastmod": "2026-08-21T18:02:33.573Z"
+  "latest_lastmod": "2026-08-21T18:02:33.573Z",
+  "notified_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026"
 }
 ```
 
 Stesso bookkeeping operativo (non dati curati) dello stato Event Schedule — non tracciato in git.
 
+`notified_url` (dalla 3.5.3) è l'ultimo annuncio le cui modifiche sono state postate nel canale community.
+Serve perché, a differenza dell'Event Schedule, un nuovo `lastmod` sulla *stessa* URL non è un contenuto
+nuovo per la community: Wizards ritocca questi annunci giorni dopo (quello del 10 agosto ha `lastmod` 21
+agosto), e un `/forced_ban_announcement_check` sull'annuncio già noto lo ripubblicherebbe come "Nuovo"
+(osservato il 2026-10-12, quando il controllo forzato è girato prima che l'annuncio di ottobre comparisse
+sul sitemap e ha ripostato quello di agosto). In questi casi il risultato viene comunque riletto e postato
+nel canale log, ma non nel canale community. `notified_url` viene aggiornato solo quando ci sono modifiche
+reali: un annuncio tutto "No changes" ritoccato in seguito con modifiche vere viene comunque comunicato. Uno
+stato salvato prima della 3.5.3 non ha il campo: si assume notificato `latest_url`, così l'aggiornamento non
+ripubblica l'ultimo annuncio già processato.
+
 Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
-confronto `lastmod`): `/forced_ban_announcement_check`.
+confronto `lastmod`): `/forced_ban_announcement_check`. Se l'annuncio più recente è già stato notificato
+alla community, il ricontrollo posta solo nel canale log.
 
 ### Log di stato all'avvio (`STARTUP_STATUS`)
 
@@ -412,6 +435,6 @@ di `ArtisanService`.
 |---|---|---|---|
 | Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
 | Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
-| Event Schedule Arena | `arena_event_schedule_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
-| Banned and Restricted | `ban_announcement_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_ban_announcement_check` (ignora `lastmod`) |
+| Event Schedule Arena | `arena_event_schedule_state.json` | Check ogni 2 ore (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
+| Banned and Restricted | `ban_announcement_state.json` | Check ogni 2 ore (parsing solo su `lastmod` cambiato) | `/forced_ban_announcement_check` (ignora `lastmod`) |
 | Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |

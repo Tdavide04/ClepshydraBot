@@ -242,6 +242,100 @@ class TestCheckBanAnnouncementUpdates:
         import os
         assert not os.path.exists(ban_announcement.STATE_PATH)
 
+    def test_first_announcement_with_changes_is_not_already_notified(self, monkeypatch):
+        calls = []
+        _install_fake_network(
+            monkeypatch,
+            sitemap={ANNOUNCEMENT_A_URL: "2026-08-21T18:02:33.573Z"},
+            pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML},
+            calls=calls,
+        )
+
+        results = run(ban_announcement.check_ban_announcement_updates())
+
+        assert results[0]["already_notified"] is False
+        with open(ban_announcement.STATE_PATH, encoding="utf-8") as f:
+            assert json.load(f)["notified_url"] == ANNOUNCEMENT_A_URL
+
+    def test_forced_recheck_of_a_notified_announcement_is_already_notified(self, monkeypatch):
+        """Regressione 2026-10-12: un /forced_ban_announcement_check lanciato
+        quando il sitemap non elencava ancora il nuovo annuncio ha ripostato
+        nel canale community quello di agosto, gia' notificato, come se fosse
+        nuovo."""
+        calls = []
+        _install_fake_network(
+            monkeypatch,
+            sitemap={ANNOUNCEMENT_A_URL: "2026-08-21T18:02:33.573Z"},
+            pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML},
+            calls=calls,
+        )
+        run(ban_announcement.check_ban_announcement_updates())
+
+        results = run(ban_announcement.check_ban_announcement_updates(force=True))
+
+        assert results[0]["already_notified"] is True
+
+    def test_lastmod_change_on_a_notified_announcement_is_already_notified(self, monkeypatch):
+        """Wizards ritocca gli annunci giorni dopo (agosto 10 -> lastmod 21
+        agosto): un nuovo lastmod sulla stessa URL non e' un nuovo annuncio."""
+        calls = []
+        sitemap = {ANNOUNCEMENT_A_URL: "2026-08-10T16:00:00.000Z"}
+        _install_fake_network(monkeypatch, sitemap=sitemap, pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML}, calls=calls)
+        run(ban_announcement.check_ban_announcement_updates())
+
+        sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
+        results = run(ban_announcement.check_ban_announcement_updates())
+
+        assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL], "il ritocco va comunque riletto e loggato"
+        assert results[0]["already_notified"] is True
+
+    def test_new_url_after_a_notified_one_is_not_already_notified(self, monkeypatch):
+        calls = []
+        sitemap = {ANNOUNCEMENT_B_URL: "2026-07-01T17:53:16.017Z"}
+        pages = {ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML, ANNOUNCEMENT_B_URL: VALID_ANNOUNCEMENT_HTML}
+        _install_fake_network(monkeypatch, sitemap=sitemap, pages=pages, calls=calls)
+        run(ban_announcement.check_ban_announcement_updates())
+
+        sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
+        results = run(ban_announcement.check_ban_announcement_updates())
+
+        assert results[0]["url"] == ANNOUNCEMENT_A_URL
+        assert results[0]["already_notified"] is False
+
+    def test_announcement_without_changes_is_not_marked_as_notified(self, monkeypatch):
+        """Nulla e' stato postato alla community: se un ritocco successivo
+        aggiunge modifiche reali, vanno comunicate."""
+        calls = []
+        pages = {ANNOUNCEMENT_A_URL: ALL_NO_CHANGES_HTML}
+        sitemap = {ANNOUNCEMENT_A_URL: "2026-08-10T16:00:00.000Z"}
+        _install_fake_network(monkeypatch, sitemap=sitemap, pages=pages, calls=calls)
+        run(ban_announcement.check_ban_announcement_updates())
+
+        pages[ANNOUNCEMENT_A_URL] = VALID_ANNOUNCEMENT_HTML
+        sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
+        results = run(ban_announcement.check_ban_announcement_updates())
+
+        assert results[0]["already_notified"] is False
+
+    def test_legacy_state_without_notified_url_treats_latest_url_as_notified(self, monkeypatch):
+        """Lo stato in produzione prima della 3.5.3 ha solo latest_url/latest_lastmod:
+        l'annuncio gia' processato non va ripostato, uno nuovo si'."""
+        with open(ban_announcement.STATE_PATH, "w", encoding="utf-8") as f:
+            json.dump({"latest_url": ANNOUNCEMENT_B_URL, "latest_lastmod": "2026-07-01T17:53:16.017Z"}, f)
+
+        calls = []
+        sitemap = {ANNOUNCEMENT_B_URL: "2026-07-01T17:53:16.017Z"}
+        pages = {ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML, ANNOUNCEMENT_B_URL: VALID_ANNOUNCEMENT_HTML}
+        _install_fake_network(monkeypatch, sitemap=sitemap, pages=pages, calls=calls)
+
+        forced = run(ban_announcement.check_ban_announcement_updates(force=True))
+        assert forced[0]["already_notified"] is True
+
+        sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
+        results = run(ban_announcement.check_ban_announcement_updates())
+        assert results[0]["url"] == ANNOUNCEMENT_A_URL
+        assert results[0]["already_notified"] is False
+
 
 class FakeLogger:
     def __init__(self):
@@ -321,3 +415,21 @@ class TestSendBanAnnouncementLog:
 
         # Data/ora dell'annuncio (dal lastmod formattato) nel titolo.
         assert community_title == "📋 Nuovo Banned and Restricted Announcement — 21 Agosto 2026, 18:02 UTC"
+
+    def test_already_notified_changes_go_to_the_log_channel_only(self, monkeypatch):
+        import config.config as config_module
+        monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
+
+        logger = FakeLogger()
+        result = {
+            "url": ANNOUNCEMENT_A_URL, "lastmod": "2026-08-21T18:02:33.573Z",
+            "changes": {"Standard": ["Badgermole Cub is banned."]}, "already_notified": True,
+        }
+
+        run(ban_announcement.send_ban_announcement_log(logger, result, user=None, forced=True))
+
+        assert len(logger.calls) == 1
+        assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UPDATED"
+        assert logger.calls[0]["extra_channel_id"] is None, "gia' comunicato alla community, niente ripost"
+        assert [f["name"] for f in logger.calls[0]["fields"]] == ["Standard"]
+        assert "gia' notificato" in logger.calls[0]["info"]

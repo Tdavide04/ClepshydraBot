@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 
 import utils.sitemap_monitor as sitemap_monitor
 
@@ -125,3 +126,13 @@ class TestFetchPageHtml:
         session = FakeSession(status=404, text="")
         body = run(sitemap_monitor.fetch_page_html(session, "https://example.com/page", log_prefix="TEST"))
         assert body is None
+
+
+class TestLog:
+
+    def test_prefixes_the_message_with_a_timestamp(self, capsys):
+        sitemap_monitor.log("[BAN ANNOUNCEMENT] nessun cambiamento")
+        out = capsys.readouterr().out.strip()
+        assert re.fullmatch(
+            r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[BAN ANNOUNCEMENT\] nessun cambiamento", out
+        )
