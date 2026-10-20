@@ -26,7 +26,8 @@ class ClepshydraBotte(commands.Bot):
             path = os.path.join("./cogs", entry)
             if entry.endswith(".py") and entry != "__init__.py":
                 await self.load_extension(f"cogs.{entry[:-3]}")
-            elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__init__.py")):
+            # Blocking os.path calls are fine here: startup only, before the bot serves interactions.
+            elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__init__.py")):  # noqa: ASYNC240
                 await self.load_extension(f"cogs.{entry}")
 
         guild = discord.Object(id=GUILD_ID)

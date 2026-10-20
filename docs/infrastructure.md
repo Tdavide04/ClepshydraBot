@@ -231,7 +231,7 @@ stays the method actually used in production until a migration is decided.
 
 `.github/workflows/ci.yml`, active on push/PR:
 - `pytest` on every push and PR — **blocking gate**
-- `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I`) — **blocking gate**: the pre-existing lint debt
+- `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in Step 8 of `docs/roadmap.md` (at the time partly by excluding `legacy/`, later
   removed from the repository — see `CHANGELOG.md`)
 - `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since roadmap step 12. The

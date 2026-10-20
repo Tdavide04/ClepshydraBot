@@ -184,7 +184,7 @@ class TournamentService:
             await session.commit()
 
             pairings = PairingEngine.generate_round(players, [], 1)
-            for i, pairing in enumerate(pairings):
+            for pairing in pairings:
                 match = Match(
                     tournament_id=tournament_id,
                     round_number=1,

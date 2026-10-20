@@ -57,7 +57,9 @@ async def load_cache() -> None:
         result = await session.execute(select(CachedCard))
         rows = result.scalars().all()
 
-        if not rows and os.path.exists(CACHE_PATH):
+        # Blocking os.path call is fine here: load_cache() runs once at startup, before the bot serves
+        # interactions.
+        if not rows and os.path.exists(CACHE_PATH):  # noqa: ASYNC240
             legacy = _load_legacy_json()
             for name, entry in legacy.items():
                 session.add(CachedCard(card_name=name, data=json.dumps(entry, ensure_ascii=False)))

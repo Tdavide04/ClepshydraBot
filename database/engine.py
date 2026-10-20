@@ -53,7 +53,8 @@ async def init_db():
 
 
 async def _migrate_banlist():
-    if not os.path.exists(BANLIST_FILE):
+    # Blocking os.path call is fine here: init_db() runs once at startup, before the bot serves interactions.
+    if not os.path.exists(BANLIST_FILE):  # noqa: ASYNC240
         return
 
     from repositories.banlist_repository import BanlistRepository

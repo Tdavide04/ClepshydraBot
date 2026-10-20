@@ -14,6 +14,14 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## Unreleased
+
+### Changed
+- Lint widened with `ruff` rule families `B` (bugbear) and `ASYNC`. The 5 `ASYNC230`/`ASYNC240` findings
+  are blocking file calls that run only once at startup, before the bot serves interactions, so they get a
+  `# noqa` with that reason instead of an `asyncio.to_thread` wrapper; the rules stay on to catch runtime
+  cases. One unused loop variable removed (`B007`, `start_tournament()`). Roadmap step 16 (part 1).
+
 ## 3.6.6 (2026-10-20)
 
 ### Fixed
