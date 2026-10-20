@@ -427,7 +427,11 @@ entries.
 
 ## Step 12 — `ruff format` + sorted imports
 
-**Status:** todo
+**Status:** done (2026-10-20). Line length 110 (the smallest reformatting diff among 88/100/110/120, and the
+width the code was already written to); Markdown excluded from the formatter, since ruff 0.16 would also
+reformat the hand-aligned Python examples in `docs/`. 43 import blocks sorted, 52 files reformatted in
+`24cff10`, with an identical AST in all 67 Python files. `ruff` pinned to 0.16.6 in `requirements-dev.txt`
+ahead of step 14, so a ruff release can't flip the CI format check.
 
 **Changes:** `ruff.toml` adds `I` (isort) to `select` and a `[format]` section. A single reformatting commit,
 with no other change. Its hash goes into `.git-blame-ignore-revs`. CI adds `ruff format --check .` to the
@@ -465,7 +469,7 @@ green (reformatting doesn't change behavior).
 **Changes:**
 - Pin in `requirements.txt` (with `==`) the versions installed in production today. They must be read with
   `pip freeze` on the VM, not from the local ones.
-- Pin `requirements-dev.txt` too.
+- Pin the rest of `requirements-dev.txt` too (`ruff` is pinned since step 12).
 - Document Python 3.12 as the target (`.python-version`) in `README.md` / `docs/infrastructure.md`.
 
 **Validation:** with a clean 3.12 venv, `pip install -r requirements-dev.txt` + pytest are green; `docker build`

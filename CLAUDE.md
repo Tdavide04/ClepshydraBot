@@ -32,7 +32,8 @@ Decided in `docs/adr/0002-development-standard.md`. Every change follows this lo
    green.
 4. **Refactor.** Remove duplication and sharpen names while the suite stays green. Keep the scope to the
    change at hand: unrelated debt goes into `docs/roadmap.md`, not into this diff.
-5. **Gate.** Run `python -m pytest` and `python -m ruff check .`. Both must pass.
+5. **Gate.** Run `python -m pytest`, `python -m ruff check .` and `python -m ruff format --check .`.
+   All must pass (CI runs the same three).
 6. **Truthful docs.** Update every doc whose description the change made stale (`docs/`, `README.md`,
    this file). Then:
    - add a `CHANGELOG.md` entry in the existing format
@@ -87,8 +88,8 @@ Type → `VERSION` bump (MAJOR moves only when the user decides it explicitly):
 **A mechanical change across several areas is one point** (for example the translation): several
 commits, one per area, but a single CHANGELOG entry and a single bump, in the last commit.
 
-Enforcement through `pre-commit` and CI is not in place yet (roadmap steps 12-13). Until it lands, apply
-these rules by hand.
+CI enforces lint and formatting; nothing checks commit messages yet (`pre-commit`, roadmap step 13). Until
+then, apply these rules by hand.
 
 ### Branches and versions
 
@@ -120,6 +121,7 @@ TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/chann
 python -m pytest                              # CI runs `pytest tests/ -v`
 python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
+python -m ruff format .                       # CI runs `ruff format --check .`
 ```
 
 Target Python is 3.12 (CI, Docker, `ruff.toml`).

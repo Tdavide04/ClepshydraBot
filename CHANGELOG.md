@@ -11,6 +11,21 @@ from commit type to bump is in `CLAUDE.md` → "Conventional Commits".
 **Language:** from 3.6.4 onward entries are written in English (`docs/adr/0003-project-language.md`).
 Entries up to 3.6.3 stay in Italian as an archive, including the old doc file names they mention.
 
+Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
+**Unreleased** and move into the next numbered version.
+
+## Unreleased
+
+### Changed
+- Code formatted with `ruff format` (line length 110) and imports sorted (`ruff` rule `I`), in a single
+  mechanical commit (`24cff10`, listed in `.git-blame-ignore-revs`); identical AST in every Python file. CI
+  now also runs `ruff format --check .`, and `ruff` is pinned to 0.16.6 in `requirements-dev.txt` so a ruff
+  release can't flip that check. Roadmap step 12.
+
+### Docs
+- `docs/commands.md`: "Line" column recomputed after the reformatting.
+- `CLAUDE.md`, `README.md`, `docs/infrastructure.md`: the format check joins the gate.
+
 ## 3.6.5 (2026-10-20)
 
 Project translated to English for developers (roadmap step 11, ADR-0003). Nothing changes for members: every

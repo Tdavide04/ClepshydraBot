@@ -170,9 +170,10 @@ pip install -r requirements-dev.txt   # adds pytest and ruff
 # Test mode (uses separate channels and test database)
 TEST_MODE=True python main.py
 
-# Tests and lint (both are blocking gates in CI)
+# Tests, lint and formatting (all blocking gates in CI)
 python -m pytest
 python -m ruff check .
+python -m ruff format --check .   # `python -m ruff format .` to fix
 ```
 
 The working standard (test-first, Conventional Commits, docs kept truthful) is described in `CLAUDE.md`.
