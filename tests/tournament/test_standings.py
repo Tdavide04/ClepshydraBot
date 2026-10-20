@@ -32,7 +32,7 @@ def get_deck(pid: int) -> str:
 
 class TestCalculateOmw:
 
-    def test_omw_minimo_33(self):
+    def test_omw_minimum_33(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win"),
@@ -45,7 +45,7 @@ class TestCalculateOmw:
         alice = next(e for e in entries if e.player_id == 1)
         assert alice.opponent_win_percent == 0.33
 
-    def test_omw_senza_avversari(self):
+    def test_omw_without_opponents(self):
         players = [MockPlayer(1)]
         matches = []
 
@@ -55,7 +55,7 @@ class TestCalculateOmw:
         alice = next(e for e in entries if e.player_id == 1)
         assert alice.opponent_win_percent == 0.0
 
-    def test_omw_bye_non_conta(self):
+    def test_omw_bye_does_not_count(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3)]
         matches = [
             MockMatch(player1_id=1, player2_id=3, winner_id=1, result="win"),
@@ -69,7 +69,7 @@ class TestCalculateOmw:
         assert p1.opponent_win_percent > 0.0
         assert p2.opponent_win_percent == 0.0
 
-    def test_omw_formula_corretta(self):
+    def test_omw_formula_correct(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win"),
@@ -80,8 +80,8 @@ class TestCalculateOmw:
             1, players, matches, get_name, get_deck
         )
         p1 = next(e for e in entries if e.player_id == 1)
-        p2_wins_2 = 1  # player1 2 ha 1 vittoria (contro 3)
-        p2_matches_2 = 2  # ha giocato 2 partite (contro 1 e 3)
+        p2_wins_2 = 1  # player 2 has 1 win (against 3)
+        p2_matches_2 = 2  # played 2 matches (against 1 and 3)
         p2_ratio = max(p2_wins_2 / p2_matches_2, 0.33)
         p3_wins_3 = 0
         p3_matches_3 = 2
@@ -92,7 +92,7 @@ class TestCalculateOmw:
 
 class TestSortStandings:
 
-    def test_ordinamento_per_punti(self):
+    def test_sorted_by_points(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win"),
@@ -126,7 +126,7 @@ class TestSortStandings:
             elif e.player_id == 3:
                 assert e.points == 3.0
 
-    def test_tiebreaker_nome(self):
+    def test_tiebreaker_name(self):
         players = [MockPlayer(2), MockPlayer(1)]
         matches = []
 
@@ -140,8 +140,8 @@ class TestSortStandings:
 class TestDroppedPlayers:
 
     def test_match_against_player_missing_from_list_does_not_crash(self):
-        """Regressione: get_standings() passava i soli iscritti attivi, ma le
-        partite giocate da un droppato restano - KeyError su /classifica."""
+        """Regression: get_standings() passed only active registrations, but
+        the matches a dropped player played remain - KeyError on /classifica."""
         players = [MockPlayer(2)]
         matches = [MockMatch(player1_id=1, player2_id=2, winner_id=2, result="win")]
 
@@ -163,9 +163,9 @@ class TestDroppedPlayers:
 class TestPendingMatches:
 
     def test_unplayed_match_does_not_change_standings(self):
-        """Regressione: una partita del round in corso ancora senza risultato
-        contava come 1-1 in game e il suo avversario entrava nell'OMW, quindi
-        /classifica a meta' round alterava GWP e OMW."""
+        """Regression: a current-round match with no result yet counted as a
+        1-1 in games and its opponent entered the OMW, so /classifica
+        mid-round skewed GWP and OMW."""
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         played = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win", p1_game_wins=2, p2_game_wins=1),

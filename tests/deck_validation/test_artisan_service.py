@@ -10,14 +10,14 @@ from cogs.deck_validation.service import ArtisanService, ScryfallUnavailable
 from database import init_db, close_db, get_session
 from repositories.banlist_repository import BanlistRepository
 
-# isolated_db, isolated_card_cache, isolated_banlist_cache sono definite in
-# conftest.py (condivise con test_card_cache.py).
+# isolated_db, isolated_card_cache, isolated_banlist_cache are defined in
+# conftest.py (shared with test_card_cache.py).
 
 
 def run_with_db(scenario):
-    """Esegue init_db + logica + close_db in un unico event loop (stesso motivo
-    di tests/tournament/test_tournament_service.py: aiosqlite lega le
-    connessioni al loop che le ha create)."""
+    """Runs init_db + logic + close_db in a single event loop (same reason as
+    tests/tournament/test_tournament_service.py: aiosqlite binds connections
+    to the loop that created them)."""
     async def _wrapper():
         await init_db()
         try:
@@ -38,7 +38,7 @@ async def _seed_banlist(*card_names: str) -> None:
 
 
 def _card_data(name: str, *, cmc: float = 1.0) -> dict:
-    """Dati Scryfall minimi per una carta di test."""
+    """Minimal Scryfall data for a test card."""
     query = urllib.parse.urlencode({"q": name})
     return {
         "name": name,
@@ -69,15 +69,15 @@ def _make_fake_get(prints_by_name: dict):
         prints = prints_by_name.get(name)
         if isinstance(prints, Exception):
             raise prints
-        # Nessuna stampa nota = 404 di Scryfall, che _get_with_retry traduce in
-        # un risultato vuoto (carta senza stampe Arena).
+        # No known printing = Scryfall 404, which _get_with_retry turns into an
+        # empty result (card without Arena printings).
         return {"data": prints or []}
     return fake_get
 
 
 @pytest.fixture
 def isolated_arena_legal_cache(monkeypatch):
-    """_ARENA_LEGAL_CACHE e' di modulo: ogni test parte vuoto."""
+    """_ARENA_LEGAL_CACHE is module-level: every test starts empty."""
     monkeypatch.setattr(service_module, "_ARENA_LEGAL_CACHE", {})
 
 
@@ -87,7 +87,7 @@ class TestValidateDeck:
         async def scenario():
             await _seed_banlist("Banned Card")
             service = ArtisanService()
-            service._post_with_retry = _make_fake_post({})  # non deve essere chiamato
+            service._post_with_retry = _make_fake_post({})  # must not be called
             entries = [DeckEntry(quantity=60, name="Banned Card", is_sideboard=False)]
             return await service.validate_deck(entries, "Test Deck", 60)
 
@@ -97,16 +97,16 @@ class TestValidateDeck:
         assert result.mainboard == []
 
     def test_banned_double_faced_card_matches_front_face_only(self, isolated_db):
-        """Regressione: cards.txt/banned_cards salva le double-faced col nome
-        completo ("Fronte // Retro"), ma parse_decklist() tronca al fronte
-        quando legge il deck dell'utente. Senza espandere la banlist con la
-        sola meta' fronte, check_banlist() non faceva mai match per queste
-        carte, che restavano bandite solo sulla carta ma mai catturate."""
+        """Regression: cards.txt/banned_cards stores double-faced cards with
+        the full name ("Front // Back"), but parse_decklist() truncates to the
+        front face when reading the user's deck. Without expanding the banlist
+        with the front half alone, check_banlist() never matched these cards,
+        which stayed banned on paper only and were never caught."""
         async def scenario():
             await _seed_banlist("Test Front // Test Back")
             service = ArtisanService()
-            service._post_with_retry = _make_fake_post({})  # non deve essere chiamato
-            # come lo produrrebbe parse_decklist(): solo il fronte
+            service._post_with_retry = _make_fake_post({})  # must not be called
+            # as parse_decklist() would produce it: front face only
             entries = [DeckEntry(quantity=60, name="Test Front", is_sideboard=False)]
             return await service.validate_deck(entries, "Test Deck", 60)
 
@@ -115,10 +115,10 @@ class TestValidateDeck:
         assert result.is_valid is False
 
     def test_public_banlist_listing_is_not_expanded(self, isolated_db):
-        """La sola meta' fronte sintetica (vedi test sopra) deve restare
-        confinata alla cache di ArtisanService: BanlistRepository.get_all_for_format()
-        (usata anche da /banlist, il comando pubblico) deve elencare solo le
-        carte davvero salvate nel DB, non varianti derivate."""
+        """The synthetic front half (see the test above) must stay confined to
+        the ArtisanService cache: BanlistRepository.get_all_for_format() (also
+        used by /banlist, the public command) must list only the cards
+        actually stored in the DB, not derived variants."""
         async def scenario():
             await _seed_banlist("Test Front // Test Back")
             session = get_session()
@@ -129,9 +129,9 @@ class TestValidateDeck:
                 await session.close()
 
         raw = run_with_db(scenario)
-        # cards.txt reale viene comunque importato nel DB di test (_migrate_banlist
-        # gira su ogni init_db()), quindi raw contiene anche quelle ~219 carte:
-        # controlliamo presenza/assenza, non uguaglianza dell'intero set.
+        # The real cards.txt is imported into the test DB anyway (_migrate_banlist
+        # runs on every init_db()), so raw also holds those ~219 cards: check
+        # presence/absence, not equality of the whole set.
         assert "test front // test back" in raw
         assert "test front" not in raw
 
@@ -178,14 +178,14 @@ class TestValidateDeck:
         assert result.illegal_rarity_cards == ["Test Rare"]
 
     def test_banlist_cache_shared_across_instances(self, isolated_db):
-        """Regressione per il fix dello Step 1: il bot crea due ArtisanService
-        separate (tournament_system e deck_validation). Un'invalidazione
-        chiamata su una deve essere visibile dall'altra."""
+        """Regression for the Step 1 fix: the bot creates two separate
+        ArtisanService instances (tournament_system and deck_validation). An
+        invalidation called on one must be visible from the other."""
         async def scenario():
-            registering_service = ArtisanService()   # es. tournament_system
-            checking_service = ArtisanService()       # es. deck_validation
+            registering_service = ArtisanService()   # e.g. tournament_system
+            checking_service = ArtisanService()       # e.g. deck_validation
 
-            # nessuna carta bandita ancora: il deck passa il controllo banlist
+            # no banned card yet: the deck passes the banlist check
             entries = [DeckEntry(quantity=60, name="Later Banned", is_sideboard=False)]
             card = _card_data("Later Banned")
             checking_service._post_with_retry = _make_fake_post({"Later Banned": card})
@@ -195,7 +195,7 @@ class TestValidateDeck:
             first = await checking_service.validate_deck(entries, "Test Deck", 60)
             assert first.banned_cards == []
 
-            # un admin bandisce la carta tramite la PRIMA istanza...
+            # an admin bans the card through the FIRST instance...
             session = get_session()
             try:
                 repo = BanlistRepository(session)
@@ -204,7 +204,7 @@ class TestValidateDeck:
                 await session.close()
             await registering_service.reload_banlist()
 
-            # ...e la SECONDA istanza (mai toccata direttamente) deve vederlo subito
+            # ...and the SECOND instance (never touched directly) must see it right away
             return await checking_service.validate_deck(entries, "Test Deck", 60)
 
         result = run_with_db(scenario)
@@ -215,17 +215,17 @@ class TestValidateDeck:
 class TestArtisanLegalTTL:
 
     def test_stale_cache_entry_is_rechecked(self, isolated_db):
-        """Regressione per lo Step 3: una entry cacheata come legale ma scaduta
-        (o senza timestamp, dato 'legacy') deve essere ri-verificata via
-        Scryfall invece di essere considerata valida a tempo indeterminato."""
+        """Regression for Step 3: an entry cached as legal but stale (or with
+        no timestamp, 'legacy' data) must be re-checked against Scryfall
+        instead of being considered valid forever."""
         async def scenario():
             card = _card_data("Reprinted Card")
-            # entry "legacy": artisan_legal=True ma nessun artisan_legal_checked_at
+            # "legacy" entry: artisan_legal=True but no artisan_legal_checked_at
             card_cache.set_cached_card("Reprinted Card", {**card, "artisan_legal": True})
 
             service = ArtisanService()
             service._post_with_retry = _make_fake_post({"Reprinted Card": card})
-            # la ristampa via API ora risulta rara: non piu' legale
+            # the API now reports the reprint as rare: no longer legal
             service._get_with_retry = _make_fake_get({
                 "Reprinted Card": [_arena_print("rare")],
             })
@@ -235,8 +235,8 @@ class TestArtisanLegalTTL:
 
         result = run_with_db(scenario)
         assert result.illegal_rarity_cards == ["Reprinted Card"], (
-            "la entry legacy senza timestamp deve essere trattata come scaduta "
-            "e ri-verificata, non presa per buona"
+            "the legacy entry without a timestamp must be treated as stale "
+            "and re-checked, not taken at face value"
         )
 
 
@@ -245,8 +245,8 @@ class TestScryfallUnavailable:
     def test_prints_lookup_failure_is_a_service_error_not_an_illegal_card(
         self, isolated_db, isolated_arena_legal_cache
     ):
-        """Regressione: un errore di rete sulla ricerca stampe salvava la carta
-        come illegale in _ARENA_LEGAL_CACHE fino al riavvio del bot."""
+        """Regression: a network error on the printings search stored the card
+        as illegal in _ARENA_LEGAL_CACHE until the bot restarted."""
         async def scenario():
             card = _card_data("Flaky Card")
             service = ArtisanService()
@@ -255,7 +255,7 @@ class TestScryfallUnavailable:
             entries = [DeckEntry(quantity=60, name="Flaky Card", is_sideboard=False)]
             failed = await service.validate_deck(entries, "Test Deck", 60)
 
-            # Scryfall torna disponibile: la stessa carta deve risultare legale.
+            # Scryfall is back: the same card must come out legal.
             service._get_with_retry = _make_fake_get({"Flaky Card": [_arena_print("common")]})
             recovered = await service.validate_deck(entries, "Test Deck", 60)
             return failed, recovered
@@ -271,8 +271,8 @@ class TestScryfallUnavailable:
     def test_collection_failure_is_a_service_error_not_missing_cards(
         self, isolated_db, isolated_arena_legal_cache
     ):
-        """Un blocco /cards/collection fallito faceva risultare le carte come
-        'Carte non trovate' invece di segnalare Scryfall non raggiungibile."""
+        """A failed /cards/collection block made the cards show up as
+        'Carte non trovate' instead of reporting Scryfall as unreachable."""
         async def scenario():
             service = ArtisanService()
 
@@ -291,8 +291,8 @@ class TestScryfallUnavailable:
     def test_card_without_arena_prints_is_still_illegal_and_cached(
         self, isolated_db, isolated_arena_legal_cache
     ):
-        """Il 404 di Scryfall (nessuna stampa Arena) resta un esito legittimo:
-        carta illegale, e va ricordato."""
+        """Scryfall's 404 (no Arena printings) stays a legitimate outcome: the
+        card is illegal, and that must be remembered."""
         async def scenario():
             card = _card_data("Paper Only")
             service = ArtisanService()
@@ -324,7 +324,7 @@ class FakeResponse:
 
 
 class FakeSession:
-    """Restituisce in ordine le risposte (o solleva le eccezioni) date."""
+    """Returns the given responses (or raises the given exceptions) in order."""
 
     def __init__(self, *outcomes):
         self.outcomes = list(outcomes)

@@ -8,7 +8,7 @@ import utils.ban_announcement as ban_announcement
 
 @pytest.fixture(autouse=True)
 def isolated_state(tmp_path, monkeypatch):
-    """Ogni test parte da uno stato pulito su disco e in cache, come
+    """Every test starts from a clean state on disk and in cache, like
     isolated_state in test_arena_event_schedule.py."""
     monkeypatch.setattr(ban_announcement, "STATE_PATH", str(tmp_path / "ban_announcement_state.json"))
     monkeypatch.setattr(ban_announcement, "_state_cache", None)
@@ -35,10 +35,10 @@ def _install_fake_network(monkeypatch, sitemap: dict, pages: dict, calls: list):
 ANNOUNCEMENT_A_URL = "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026"
 ANNOUNCEMENT_B_URL = "https://magic.wizards.com/en/news/announcements/banned-and-restricted-june-29-2026"
 
-# Frammento realistico osservato dal vivo sulla pagina reale
-# banned-and-restricted-august-10-2026: heading di formato seguito da un
-# riepilogo <p style="padding-left: 30px;"> con <auto-card> e <br/> tra le
-# voci, oppure il letterale "No changes".
+# Realistic fragment observed live on the real page
+# banned-and-restricted-august-10-2026: a format heading followed by a
+# <p style="padding-left: 30px;"> summary with <auto-card> and <br/> between
+# the lines, or the literal "No changes".
 VALID_ANNOUNCEMENT_HTML = """
 <html><body><article>
 <h2 id="Standard" style="scroll-margin-top: 70px;">Standard</h2>
@@ -66,10 +66,10 @@ ALL_NO_CHANGES_HTML = """
 </article></body></html>
 """
 
-NO_STRUCTURE_HTML = "<html><body><article><h1>Some Other Page</h1><p>niente qui</p></article></body></html>"
+NO_STRUCTURE_HTML = "<html><body><article><h1>Some Other Page</h1><p>nothing here</p></article></body></html>"
 
-# Frammento realistico del sitemap: mix di annunci ban, pagine Event Schedule
-# (da escludere) e pagine di prodotto totalmente estranee (da escludere).
+# Realistic sitemap fragment: a mix of ban announcements, Event Schedule
+# pages (to exclude) and completely unrelated product pages (to exclude).
 SAMPLE_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026</loc><lastmod>2026-08-21T18:02:33.573Z</lastmod></url>
@@ -122,9 +122,9 @@ class TestParseBanAnnouncement:
         assert "Lots of prose analysis here that must not be extracted." not in changes["Standard"]
 
     def test_all_formats_with_no_changes_returns_empty_dict_not_none(self):
-        """Un annuncio interpretato correttamente ma senza modifiche in
-        nessun formato e' un esito valido (nulla da segnalare), non un
-        errore di parsing - va distinto da 'struttura non riconosciuta'."""
+        """An announcement parsed correctly but with no change in any format
+        is a valid outcome (nothing to report), not a parsing error - it must
+        be told apart from 'structure not recognized'."""
         changes = ban_announcement.parse_ban_announcement(ALL_NO_CHANGES_HTML)
 
         assert changes == {}
@@ -140,9 +140,9 @@ class TestFormatLastmod:
         assert formatted == "21 Agosto 2026, 18:02 UTC"
 
     def test_returns_the_original_string_unchanged_on_unexpected_format(self):
-        """Un dettaglio cosmetico rotto non deve far fallire la notifica -
-        stessa filosofia 'degrada, non crasha' del resto del modulo."""
-        assert ban_announcement.format_lastmod("non-un-timestamp") == "non-un-timestamp"
+        """A broken cosmetic detail must not make the notification fail -
+        same 'degrade, don't crash' philosophy as the rest of the module."""
+        assert ban_announcement.format_lastmod("not-a-timestamp") == "not-a-timestamp"
 
 
 class TestPickLatest:
@@ -175,7 +175,7 @@ class TestCheckBanAnnouncementUpdates:
         results = run(ban_announcement.check_ban_announcement_updates())
 
         assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL]
-        assert ANNOUNCEMENT_B_URL not in calls, "l'annuncio passato non va nemmeno scaricato"
+        assert ANNOUNCEMENT_B_URL not in calls, "the past announcement must not even be downloaded"
 
     def test_second_check_skips_when_latest_is_unchanged(self, monkeypatch):
         calls = []
@@ -190,7 +190,7 @@ class TestCheckBanAnnouncementUpdates:
         calls.clear()
         results = run(ban_announcement.check_ban_announcement_updates())
 
-        assert results == [], "lastmod invariato: non deve rifare il fetch della pagina"
+        assert results == [], "lastmod unchanged: the page must not be fetched again"
         assert ANNOUNCEMENT_A_URL not in calls
         assert "sitemap" in calls
 
@@ -258,10 +258,9 @@ class TestCheckBanAnnouncementUpdates:
             assert json.load(f)["notified_url"] == ANNOUNCEMENT_A_URL
 
     def test_forced_recheck_of_a_notified_announcement_is_already_notified(self, monkeypatch):
-        """Regressione 2026-10-12: un /forced_ban_announcement_check lanciato
-        quando il sitemap non elencava ancora il nuovo annuncio ha ripostato
-        nel canale community quello di agosto, gia' notificato, come se fosse
-        nuovo."""
+        """Regression 2026-10-12: a /forced_ban_announcement_check run while
+        the sitemap didn't list the new announcement yet reposted the August
+        one, already notified, to the community channel as if it were new."""
         calls = []
         _install_fake_network(
             monkeypatch,
@@ -276,8 +275,8 @@ class TestCheckBanAnnouncementUpdates:
         assert results[0]["already_notified"] is True
 
     def test_lastmod_change_on_a_notified_announcement_is_already_notified(self, monkeypatch):
-        """Wizards ritocca gli annunci giorni dopo (agosto 10 -> lastmod 21
-        agosto): un nuovo lastmod sulla stessa URL non e' un nuovo annuncio."""
+        """Wizards touches announcements days later (August 10 -> lastmod
+        August 21): a new lastmod on the same URL is not a new announcement."""
         calls = []
         sitemap = {ANNOUNCEMENT_A_URL: "2026-08-10T16:00:00.000Z"}
         _install_fake_network(monkeypatch, sitemap=sitemap, pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML}, calls=calls)
@@ -286,7 +285,7 @@ class TestCheckBanAnnouncementUpdates:
         sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
         results = run(ban_announcement.check_ban_announcement_updates())
 
-        assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL], "il ritocco va comunque riletto e loggato"
+        assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL], "the edit must still be re-read and logged"
         assert results[0]["already_notified"] is True
 
     def test_new_url_after_a_notified_one_is_not_already_notified(self, monkeypatch):
@@ -303,8 +302,8 @@ class TestCheckBanAnnouncementUpdates:
         assert results[0]["already_notified"] is False
 
     def test_announcement_without_changes_is_not_marked_as_notified(self, monkeypatch):
-        """Nulla e' stato postato alla community: se un ritocco successivo
-        aggiunge modifiche reali, vanno comunicate."""
+        """Nothing was posted to the community: if a later edit adds real
+        changes, they must be announced."""
         calls = []
         pages = {ANNOUNCEMENT_A_URL: ALL_NO_CHANGES_HTML}
         sitemap = {ANNOUNCEMENT_A_URL: "2026-08-10T16:00:00.000Z"}
@@ -318,8 +317,8 @@ class TestCheckBanAnnouncementUpdates:
         assert results[0]["already_notified"] is False
 
     def test_legacy_state_without_notified_url_treats_latest_url_as_notified(self, monkeypatch):
-        """Lo stato in produzione prima della 3.5.3 ha solo latest_url/latest_lastmod:
-        l'annuncio gia' processato non va ripostato, uno nuovo si'."""
+        """The production state before 3.5.3 has only latest_url/latest_lastmod:
+        the announcement already processed must not be reposted, a new one must."""
         with open(ban_announcement.STATE_PATH, "w", encoding="utf-8") as f:
             json.dump({"latest_url": ANNOUNCEMENT_B_URL, "latest_lastmod": "2026-07-01T17:53:16.017Z"}, f)
 
@@ -363,7 +362,7 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UNPARSEABLE"
         assert logger.calls[0]["fields"] == []
-        assert logger.calls[0]["extra_channel_id"] is None, "solo lo staff deve vedere i WARN non interpretabili"
+        assert logger.calls[0]["extra_channel_id"] is None, "only staff must see the unparseable WARNs"
 
     def test_no_changes_sends_a_plain_info_with_no_fields(self):
         logger = FakeLogger()
@@ -375,7 +374,7 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["level"] == "INFO"
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_NO_CHANGES"
         assert logger.calls[0]["fields"] == []
-        assert logger.calls[0]["extra_channel_id"] is None, "nulla da comunicare alla community se non cambia niente"
+        assert logger.calls[0]["extra_channel_id"] is None, "nothing to tell the community if nothing changes"
 
     def test_changes_are_posted_as_one_field_per_format_and_to_the_community_channel(self, monkeypatch):
         import config.config as config_module
@@ -395,25 +394,25 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UPDATED"
         assert logger.calls[0]["extra_channel_id"] == 999
         assert "banlist" not in logger.calls[0]["info"].lower(), (
-            "l'Artisan homebrew di questa community non e' toccata da questi annunci, "
-            "quindi il messaggio non deve menzionarla"
+            "this community's homebrew Artisan is not affected by these announcements, "
+            "so the message must not mention it"
         )
         field_names = {f["name"] for f in logger.calls[0]["fields"]}
         assert field_names == {"Standard", "Brawl"}
         brawl_field = next(f for f in logger.calls[0]["fields"] if f["name"] == "Brawl")
         assert brawl_field["value"] == "Some Card is banned.\nOther Card is unbanned."
 
-        # Il canale community e' pubblico (si fa anche @everyone): il suo
-        # embed dedicato non deve contenere gergo da staff ("Controllo
-        # manuale/automatico") ne' l'URL grezzo senza contesto - solo un
-        # titolo e un testo puliti, distinti dall'`info` del canale log.
+        # The community channel is public (@everyone gets pinged): its
+        # dedicated embed must contain neither staff jargon ("Forced manual
+        # check"/"Automatic check") nor the raw URL without context - only a
+        # clean title and text, distinct from the log channel's `info`.
         community_title = logger.calls[0]["community_title"]
         community_info = logger.calls[0]["community_info"]
         assert community_title and "banned" in community_title.lower()
         assert "check" not in community_info.lower()
         assert ANNOUNCEMENT_A_URL in community_info
 
-        # Data/ora dell'annuncio (dal lastmod formattato) nel titolo.
+        # The announcement's date/time (from the formatted lastmod) in the title.
         assert community_title == "📋 Nuovo Banned and Restricted Announcement — 21 Agosto 2026, 18:02 UTC"
 
     def test_already_notified_changes_go_to_the_log_channel_only(self, monkeypatch):
@@ -430,6 +429,6 @@ class TestSendBanAnnouncementLog:
 
         assert len(logger.calls) == 1
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UPDATED"
-        assert logger.calls[0]["extra_channel_id"] is None, "gia' comunicato alla community, niente ripost"
+        assert logger.calls[0]["extra_channel_id"] is None, "already shared with the community, no repost"
         assert [f["name"] for f in logger.calls[0]["fields"]] == ["Standard"]
         assert "already notified" in logger.calls[0]["info"]

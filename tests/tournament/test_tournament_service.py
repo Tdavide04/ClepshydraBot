@@ -1,9 +1,9 @@
 import asyncio
 
-# Le variabili d'ambiente di test (TEST_MODE, GUILD_ID_TEST, ecc.) sono
-# impostate da tests/tournament/conftest.py, caricato da pytest prima di
-# questo modulo: necessario perche' services/__init__.py importa eagerly
-# TournamentService, che richiede config.config popolato.
+# The test env vars (TEST_MODE, GUILD_ID_TEST, etc.) are set by
+# tests/tournament/conftest.py, which pytest loads before this module:
+# required because services/__init__.py eagerly imports TournamentService,
+# which needs a populated config.config.
 import pytest
 
 import database.engine as db_engine
@@ -14,9 +14,8 @@ from services.tournament_service import TournamentService
 
 @pytest.fixture
 def isolated_db(tmp_path, monkeypatch):
-    """Ogni test riceve un DB SQLite temporaneo e isolato, cosi' gli id
-    autoincrementali (usati per dedurre i tournament_player.id nei test)
-    restano deterministici."""
+    """Every test gets a temporary, isolated SQLite DB, so autoincrement ids
+    (used to infer tournament_player.id in the tests) stay deterministic."""
     monkeypatch.setattr(db_engine, "DB_PATH", str(tmp_path / "tournament_service_test.db"))
     db_engine._engine = None
     db_engine._async_session_maker = None
@@ -24,9 +23,9 @@ def isolated_db(tmp_path, monkeypatch):
 
 
 def run_with_db(scenario):
-    """Esegue l'intero scenario (init_db + logica + close_db) in un unico
-    event loop: aiosqlite lega le connessioni al loop che le ha create,
-    quindi init/uso/chiusura non possono essere sparsi su piu' asyncio.run()."""
+    """Runs the whole scenario (init_db + logic + close_db) in a single event
+    loop: aiosqlite binds connections to the loop that created them, so
+    init/use/close can't be spread over several asyncio.run() calls."""
     async def _wrapper():
         await init_db()
         try:
@@ -51,7 +50,7 @@ class TestRegistration:
     def test_max_players_enforced(self, isolated_db):
         async def scenario():
             service = TournamentService()
-            t = await service.create_tournament("Piccolo", max_players=1)
+            t = await service.create_tournament("Small Cup", max_players=1)
             await service.register_player(t.id, discord_id=1)
             msg = await service.register_player(t.id, discord_id=2)
             assert "massimo" in msg
@@ -68,9 +67,9 @@ class TestRegistration:
         run_with_db(scenario)
 
     def test_max_players_enforced_under_concurrent_registrations(self, isolated_db):
-        """Due /iscriviti simultanei per l'ultimo posto: il controllo del limite
-        e l'inserimento non erano atomici, entrambi passavano (riprodotto: 3
-        iscritti con max 2)."""
+        """Two simultaneous /iscriviti for the last seat: the limit check and
+        the insert were not atomic, both got through (reproduced: 3
+        registrations with max 2)."""
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Full Cup", max_players=2)
@@ -87,8 +86,8 @@ class TestRegistration:
         run_with_db(scenario)
 
     def test_seed_is_unique_after_a_player_leaves(self, isolated_db):
-        """Il seed era count(iscritti attivi) + 1: dopo un'uscita il nuovo
-        iscritto riceveva lo stesso seed di uno gia' presente."""
+        """The seed was count(active registrations) + 1: after a drop, the new
+        registration got the same seed as an existing one."""
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Seed Cup")
@@ -121,7 +120,7 @@ class TestDeckSubmission:
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Deck Cup")
-            await service.register_player(t.id, discord_id=1)  # senza mazzo
+            await service.register_player(t.id, discord_id=1)  # no deck
             msg = await service.submit_deck(t.id, discord_id=1, deck_name="Mono Red")
             assert "Mono Red" in msg
 
@@ -130,17 +129,17 @@ class TestDeckSubmission:
         run_with_db(scenario)
 
     def test_submit_deck_can_be_resent_before_start(self, isolated_db):
-        """Un giocatore puo' correggere il mazzo inviato piu' volte finche' il
-        torneo resta in registrazione: l'ultimo invio valido sovrascrive."""
+        """A player can fix the submitted deck several times while the
+        tournament is in registration: the latest valid submission wins."""
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Deck Cup")
             await service.register_player(t.id, discord_id=1)
-            await service.submit_deck(t.id, discord_id=1, deck_name="Bozza Sbagliata")
-            await service.submit_deck(t.id, discord_id=1, deck_name="Versione Finale")
+            await service.submit_deck(t.id, discord_id=1, deck_name="Wrong Draft")
+            await service.submit_deck(t.id, discord_id=1, deck_name="Final Version")
 
             players = await service.get_registered_players(t.id)
-            assert players[0].deck_name == "Versione Finale"
+            assert players[0].deck_name == "Final Version"
         run_with_db(scenario)
 
     def test_submit_deck_requires_existing_registration(self, isolated_db):
@@ -159,7 +158,7 @@ class TestDeckSubmission:
             await service.register_player(t.id, discord_id=2, deck_name="Mono Blue")
             await service.start_tournament(t.id)
 
-            msg = await service.submit_deck(t.id, discord_id=1, deck_name="Nuovo Mazzo")
+            msg = await service.submit_deck(t.id, discord_id=1, deck_name="New Deck")
             assert "non accetta piu" in msg
         run_with_db(scenario)
 
@@ -187,7 +186,7 @@ class TestTournamentFlow:
             service = TournamentService()
             t = await service.create_tournament("Swiss Cup")
             await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
-            await service.register_player(t.id, discord_id=2)  # nessun mazzo inviato
+            await service.register_player(t.id, discord_id=2)  # no deck submitted
             msg = await service.start_tournament(t.id)
             assert "non hanno ancora inviato un mazzo" in msg
 
@@ -281,7 +280,7 @@ class TestTournamentFlow:
             t, _ = await self._start_with_players(service, 2)
             match = (await service.get_matches(t.id))[0]
 
-            # Primo iscritto su un DB isolato e vuoto -> tournament_player.id == 1
+            # First registration on an isolated, empty DB -> tournament_player.id == 1
             await service.force_drop_player(t.id, discord_id=1000)
 
             updated = next(m for m in await service.get_matches(t.id) if m.id == match.id)
@@ -290,16 +289,16 @@ class TestTournamentFlow:
         run_with_db(scenario)
 
     def test_standings_after_active_drop_keep_the_dropped_player(self, isolated_db):
-        """Regressione: dopo un /drop_giocatore a torneo attivo /classifica
-        andava in KeyError (le partite del droppato restano, lui no)."""
+        """Regression: after a /drop_giocatore on an active tournament,
+        /classifica raised KeyError (the dropped player's matches stay, the
+        player doesn't)."""
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 4)
             for m in await service.get_matches(t.id):
                 await service.submit_result(m.id, m.player1_id, "win", 2, 0)
 
-            # Il round 1 e' casuale: si droppa il vincitore di una partita,
-            # qualunque esso sia.
+            # Round 1 is random: drop the winner of a match, whoever it is.
             winner = (await service.get_matches(t.id))[0].player1
             await service.force_drop_player(t.id, discord_id=winner.user.discord_id)
             entries = await service.get_standings(t.id)
@@ -324,8 +323,8 @@ class TestTournamentFlow:
         run_with_db(scenario)
 
     def test_ratings_count_matches_against_a_dropped_player(self, isolated_db):
-        """_update_ratings() saltava le partite contro chi e' stato poi
-        droppato: il vincitore non vedeva cambiare il proprio rating."""
+        """_update_ratings() skipped matches against a player who was later
+        dropped: the winner's rating didn't change."""
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 2)
@@ -343,9 +342,9 @@ class TestTournamentFlow:
         run_with_db(scenario)
 
     def test_force_drop_during_registration_unblocks_start(self, isolated_db):
-        """Un iscritto che non invia mai il mazzo bloccava /avvia_torneo, e lo
-        staff non poteva rimuoverlo: force_drop_player() accettava solo tornei
-        ACTIVE."""
+        """A registered player who never submits a deck blocked
+        /avvia_torneo, and staff couldn't remove them: force_drop_player()
+        only accepted ACTIVE tournaments."""
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("AFK Cup")
@@ -395,8 +394,8 @@ class TestStandings:
 
 
 class TestCorrectResult:
-    """/correggi_risultato: lo staff sovrascrive (o inserisce) il risultato di
-    una partita - prima un risultato sbagliato si correggeva solo a mano sul DB."""
+    """/correggi_risultato: staff overwrites (or enters) a match result -
+    before, a wrong result could only be fixed by hand in the DB."""
 
     async def _start(self, service, count):
         t = await service.create_tournament("Fix Cup")
@@ -463,8 +462,8 @@ class TestCorrectResult:
         run_with_db(scenario)
 
     def test_rejected_on_a_completed_tournament(self, isolated_db):
-        """A torneo concluso il rating e' gia' stato applicato: una correzione
-        lo renderebbe incoerente."""
+        """Once the tournament is concluded the rating has already been
+        applied: a correction would make it inconsistent."""
         async def scenario():
             service = TournamentService()
             t = await self._start(service, 2)

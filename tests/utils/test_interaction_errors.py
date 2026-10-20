@@ -62,7 +62,7 @@ class FakeCommand:
 
 
 class FakeInteraction:
-    """Solo gli attributi letti da report_interaction_error()/ErrorHandler."""
+    """Only the attributes read by report_interaction_error()/ErrorHandler."""
 
     def __init__(self, done=False, logger=None, followup_raises=None):
         self.response = FakeResponse(done)
@@ -91,8 +91,8 @@ class TestReportInteractionError:
         assert interaction.followup.sent == []
 
     def test_replies_with_followup_after_a_defer(self):
-        """Il caso del crash di /classifica: defer() gia' fatto, quindi solo il
-        followup puo' rispondere - senza, l'utente restava su 'sta pensando'."""
+        """The /classifica crash case: defer() already done, so only the
+        followup can reply - without it, the user was left on 'thinking'."""
         interaction = FakeInteraction(done=True, logger=FakeLogger())
 
         run(report_interaction_error(interaction, _raise_and_capture(KeyError(1)), "/classifica"))
@@ -165,8 +165,8 @@ class TestReportingBaseClasses:
 class TestErrorHandlerCog:
 
     def test_check_failure_is_not_logged_as_an_error(self):
-        """@is_admin() risponde gia' da se': nessun log ERROR per un permesso
-        mancante, e nessuna seconda risposta."""
+        """@is_admin() already replies on its own: no ERROR log for a missing
+        permission, and no second reply."""
         logger = FakeLogger()
         interaction = FakeInteraction(done=True, logger=logger)
 

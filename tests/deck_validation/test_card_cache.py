@@ -7,8 +7,8 @@ from database.models import CachedCard
 
 
 def run_with_db(scenario):
-    """Stesso pattern di test_artisan_service.py / test_tournament_service.py:
-    init_db + logica + close_db in un unico event loop."""
+    """Same pattern as test_artisan_service.py / test_tournament_service.py:
+    init_db + logic + close_db in a single event loop."""
     async def _wrapper():
         await init_db()
         try:
@@ -19,8 +19,8 @@ def run_with_db(scenario):
 
 
 async def _raw_rows() -> dict:
-    """Legge direttamente la tabella cached_cards, bypassando _card_cache, per
-    verificare cosa e' stato davvero scritto su SQLite."""
+    """Reads the cached_cards table directly, bypassing _card_cache, to check
+    what was actually written to SQLite."""
     session = get_session()
     try:
         from sqlalchemy import select
@@ -53,7 +53,7 @@ class TestLoadCache:
 
         in_memory, on_disk = run_with_db(scenario)
         assert in_memory == {"lightning bolt": {"name": "Lightning Bolt", "artisan_legal": True}}
-        assert on_disk == in_memory, "la migrazione deve scrivere subito su SQLite, non solo in RAM"
+        assert on_disk == in_memory, "the migration must write to SQLite right away, not only to RAM"
 
 
 class TestSaveCache:
@@ -67,11 +67,11 @@ class TestSaveCache:
 
         rows = run_with_db(scenario)
         assert rows == {"card a": {"name": "Card A"}, "card b": {"name": "Card B"}}
-        assert card_cache._dirty_upserts == set(), "save_cache deve svuotare i dirty dopo il commit"
+        assert card_cache._dirty_upserts == set(), "save_cache must clear the dirty sets after the commit"
 
     def test_save_cache_is_noop_without_dirty_entries(self, isolated_db):
         async def scenario():
-            await card_cache.save_cache()  # nessuna modifica pendente
+            await card_cache.save_cache()  # no pending change
             return await _raw_rows()
 
         assert run_with_db(scenario) == {}
@@ -104,8 +104,8 @@ class TestSaveCache:
         assert rows == {}
 
     def test_invalidate_card_never_persisted_is_noop(self, isolated_db):
-        """Invalida una carta aggiunta e mai salvata: non deve generare una
-        DELETE per una riga mai esistita ne' un errore."""
+        """Invalidates a card added and never saved: it must produce neither a
+        DELETE for a row that never existed nor an error."""
         async def scenario():
             card_cache.set_cached_card("Card A", {"name": "Card A"})
             removed = card_cache.invalidate_card("card a")
@@ -117,8 +117,8 @@ class TestSaveCache:
         assert rows == {}
 
     def test_reload_after_restart_reads_persisted_data(self, isolated_db):
-        """Simula un riavvio del bot: dopo save_cache(), azzerare lo stato in
-        memoria e richiamare load_cache() deve ripristinare gli stessi dati."""
+        """Simulates a bot restart: after save_cache(), clearing the in-memory
+        state and calling load_cache() again must restore the same data."""
         async def scenario():
             card_cache.set_cached_card("Card A", {"name": "Card A"})
             await card_cache.save_cache()
@@ -135,9 +135,9 @@ class TestSaveCache:
 class TestPeriodicSaveLoop:
 
     def test_a_failed_save_does_not_stop_the_loop(self, monkeypatch, capsys):
-        """Regressione: il ciclo non gestiva le eccezioni - un solo errore di
-        save_cache() (es. DB bloccato) uccideva il task in silenzio, e la cache
-        non veniva piu' salvata fino al riavvio."""
+        """Regression: the loop didn't handle exceptions - a single
+        save_cache() error (e.g. a locked DB) silently killed the task, and the
+        cache was no longer saved until restart."""
         calls = []
 
         async def flaky_save():
@@ -145,8 +145,8 @@ class TestPeriodicSaveLoop:
             if len(calls) == 1:
                 raise RuntimeError("database is locked")
             if len(calls) == 3:
-                # Uscita dal ciclo infinito: e' cosi' che il task viene
-                # fermato davvero (cancellazione), e non va intercettata.
+                # Exit from the infinite loop: this is how the task really
+                # gets stopped (cancellation), and it must not be swallowed.
                 raise asyncio.CancelledError
 
         monkeypatch.setattr(card_cache, "save_cache", flaky_save)
@@ -156,12 +156,12 @@ class TestPeriodicSaveLoop:
         except asyncio.CancelledError:
             pass
 
-        assert len(calls) == 3, "dopo l'errore il ciclo deve continuare a salvare"
+        assert len(calls) == 3, "after the error the loop must keep saving"
         assert "[CARD CACHE] save failed" in capsys.readouterr().out
 
     def test_dirty_entries_survive_a_failed_save(self, isolated_db, monkeypatch):
-        """Il ritentativo ha senso solo se le modifiche restano in sospeso:
-        save_cache() svuota _dirty_upserts solo dopo un commit riuscito."""
+        """Retrying only makes sense if the changes stay pending: save_cache()
+        clears _dirty_upserts only after a successful commit."""
         async def scenario():
             card_cache.set_cached_card("Lightning Bolt", {"name": "Lightning Bolt"})
 

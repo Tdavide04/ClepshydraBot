@@ -25,8 +25,8 @@ class FakeResponse:
 
 
 class FakeSession:
-    """Fake minimale di aiohttp.ClientSession: solo il metodo get(), usato
-    come context manager asincrono - riproduce la sola interfaccia usata da
+    """Minimal fake of aiohttp.ClientSession: only the get() method, used as
+    an async context manager - reproduces just the interface used by
     fetch_sitemap_xml()/fetch_page_html()."""
 
     def __init__(self, status: int = 200, text: str = ""):
@@ -48,7 +48,7 @@ class TestLoadJsonState:
         result = sitemap_monitor.load_json_state(path, default)
 
         assert result == default
-        assert result is not default, "non deve ritornare lo stesso oggetto default (mutabile e condiviso)"
+        assert result is not default, "must not return the same default object (mutable and shared)"
 
     def test_loads_existing_file_content(self, tmp_path):
         path = tmp_path / "state.json"
@@ -131,8 +131,8 @@ class TestFetchPageHtml:
 class TestLog:
 
     def test_prefixes_the_message_with_a_timestamp(self, capsys):
-        sitemap_monitor.log("[BAN ANNOUNCEMENT] nessun cambiamento")
+        sitemap_monitor.log("[BAN ANNOUNCEMENT] no change")
         out = capsys.readouterr().out.strip()
         assert re.fullmatch(
-            r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[BAN ANNOUNCEMENT\] nessun cambiamento", out
+            r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[BAN ANNOUNCEMENT\] no change", out
         )
