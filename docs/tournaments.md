@@ -1,307 +1,313 @@
-# Sistema Tornei Swiss
+# Swiss Tournament System
 
-## Panoramica
+## Overview
 
-Il sistema tornei gestisce l'intero ciclo di vita di un torneo Swiss per Magic: The Gathering Arena. Supporta registrazione, pairing automatico, registrazione risultati, classifiche con tiebreaker e rating Glicko-2.
+The tournament system manages the whole lifecycle of a Swiss tournament for Magic: The Gathering Arena. It
+supports registration, automatic pairing, result submission, standings with tiebreakers and Glicko-2 rating.
 
 ---
 
-## Struttura
+## Structure
 
 ```
 services/
-├── tournament_service.py   # Orchestratore: coordina tutte le operazioni
-├── pairing_engine.py       # Algoritmo Swiss pairing
-├── standings.py            # Classifiche con tiebreaker
-└── rating.py               # Sistema rating Glicko-2
+├── tournament_service.py   # Orchestrator: coordinates every operation
+├── pairing_engine.py       # Swiss pairing algorithm
+├── standings.py            # Standings with tiebreakers
+├── rating.py               # Glicko-2 rating system
+└── results.py              # ServiceResult(ok, message)
 
 cogs/tournament_system/
-└── cog.py                  # 17 comandi slash + modali + view
+└── cog.py                  # 18 slash commands + modals + views
 
 utils/
-├── tournament_logic.py     # Utility (barra OMW, label rank, colonne)
-└── tournament_embeds.py    # Builder embed (classifica, pairing, start, top8)
+├── tournament_logic.py     # Utilities (OMW bar, rank label, columns)
+└── tournament_embeds.py    # Embed builders (standings, pairings, start, top8)
 ```
 
 ---
 
-## Ciclo di Vita del Torneo
+## Tournament Lifecycle
 
 ```
-CREAZIONE (admin)
-    │ /crea_torneo → nome, formato, max_giocatori
+CREATION (admin)
+    │ /crea_torneo → name, format, max players
     ▼
-REGISTRAZIONE
-    │ /iscriviti → registrazione diretta, nessun mazzo richiesto
-    │ /invia_deck → InviaDeckModal (deck validation + submit), ripetibile
-    │ /iscrizioni_torneo → chi è iscritto e chi ha già inviato il mazzo
-    │ /left_torneo → uscita volontaria
-    │ /drop_giocatore (admin) → rimuove un iscritto (es. chi non invia mai
-    │                           il mazzo e altrimenti bloccherebbe l'avvio)
+REGISTRATION
+    │ /iscriviti → direct registration, no deck required
+    │ /invia_deck → InviaDeckModal (deck validation + submit), repeatable
+    │ /iscrizioni_torneo → who is registered and who has already submitted a deck
+    │ /left_torneo → voluntary leave
+    │ /drop_giocatore (admin) → removes a registration (e.g. a player who never
+    │                           submits a deck and would otherwise block the start)
     ▼
-AVVIO (admin)
-    │ /avvia_torneo → bloccato se un iscritto attivo non ha ancora
-    │                 inviato un mazzo valido (elenca chi manca)
-    │               → altrimenti: calcolo round, pairing round 1
+START (admin)
+    │ /avvia_torneo → blocked if an active registered player hasn't
+    │                 submitted a valid deck yet (lists who is missing)
+    │               → otherwise: round count, round 1 pairings
     ▼
-ATTIVO
-    │ /turni → visualizza pairing round corrente
-    │ /risultato → submit risultato (win/loss/draw + game wins)
-    │ /torneo_next_turn (admin) → genera prossimo round
-    │ /drop_giocatore (admin) → rimozione forzata con auto-loss
-    │ /correggi_risultato (admin) → sovrascrive/inserisce un risultato
+ACTIVE
+    │ /turni → shows the current round's pairings
+    │ /risultato → submits a result (win/loss/draw + game wins)
+    │ /torneo_next_turn (admin) → generates the next round
+    │ /drop_giocatore (admin) → forced removal with an auto-loss
+    │ /correggi_risultato (admin) → overwrites/enters a result
     ▼
-COMPLETATO
-    │ /classifica → classifica finale
-    │ /concludi_torneo (admin) → conclusione forzata
+COMPLETED
+    │ /classifica → final standings
+    │ /concludi_torneo (admin) → forced conclusion
     ▼
-AGGIORNAMENTO RATING
-    └── Glicko-2 applicato a tutti i match del torneo
+RATING UPDATE
+    └── Glicko-2 applied to every match of the tournament
 ```
 
 ---
 
 ## PairingEngine (`services/pairing_engine.py`)
 
-### Algoritmo Swiss
+### Swiss Algorithm
 
 ```
-function generate_round(players, existing_matches, round_num):
-    if round_num == 1:
-        shuffle players
-        pair consecutively: (1,2), (3,4), ...
-    else:
-        sort players by score (desc)
-        group by score bracket
-        for each bracket:
-            sort by OMW (desc)
-            pair consecutive, skip if already played (anti-rematch)
-        handle unpaired players (slide down to next bracket)
-        assign bye to lowest-ranked player if odd count
-    return list of Match objects
+function generate_round(players, existing_matches, round_number):
+    keep active (non-dropped) players only
+    group them into score brackets, highest score first
+    for each bracket:
+        sort by OMW (desc), then seed (desc); round 1: shuffle instead
+        pair each player with the next one they haven't played (anti-rematch)
+        a player left without an opponent drops down to the next bracket
+    every player still unpaired at the end gets a bye, lowest score first,
+        preferring players who haven't had a bye yet
+    return the list of Pairing objects (with table numbers)
 ```
 
-### Regole
+### Rules
 
-- **Round 1**: pairing casuale (shuffle)
-- **Round successivi**: pairing per bracket di punteggio
-- **Anti-rematch**: stesso pairing non ripetuto
-- **Bye**: assegnato al giocatore con punteggio più basso tra quelli che non hanno già avuto bye (se numero dispari)
-- **Calcolo round**: `ceil(log2(numero_giocatori))`
+- **Round 1**: random pairing (shuffle)
+- **Later rounds**: pairing by score bracket
+- **Anti-rematch**: the same pairing is not repeated (`_existing_pairs()`)
+- **Bye**: to whoever is left unpaired; usually a single player with an odd count, but more than one if
+  anti-rematch leaves no legal opponent
+- **Round count**: `max(1, ceil(log2(player_count)))` (`calculate_rounds()`)
 
 ### Bye Handling
 
-- Il bye assegna 3 punti (come una vittoria)
-- Il giocatore con bye è `player1`, `player2` è `NULL`
-- `winner_id` = `player1_id` (automatico)
-- Un giocatore non può ricevere bye più di una volta se possibile
+- A bye is worth 3 points (like a win)
+- The player with the bye is `player1`, `player2` is `NULL`
+- Players who already had a bye are sorted after the others when byes are assigned (`_bye_history()`), so a
+  second bye is avoided when possible
 
 ---
 
 ## StandingsCalculator (`services/standings.py`)
 
-### Punteggi
+### Points
 
-| Risultato | Punti |
+| Result | Points |
 |---|---|
-| Vittoria | 3 |
-| Pareggio | 1 |
-| Sconfitta | 0 |
+| Win | 3 |
+| Draw | 1 |
+| Loss | 0 |
 | Bye | 3 |
 
-### Tiebreaker (in ordine di priorità)
+### Tiebreakers (in priority order)
 
-1. **Match Points** (punteggio totale)
-2. **Opponent Match Win % (OMW)** — media delle percentuali di vittoria degli avversari (floor 33%)
-3. **Game Win % (GWP)** — percentuale di game vinti (floor 33%)
-4. **Opponent Game Win % (OGW)** — media GWP degli avversari
-5. **Nome giocatore** (ordine alfabetico, ascendente)
+1. **Match Points** (total score)
+2. **Opponent Match Win % (OMW)** — average of the opponents' win percentages (33% floor)
+3. **Game Win % (GWP)** — percentage of games won (33% floor)
+4. **Opponent Game Win % (OGW)** — average GWP of the opponents
+5. **Player name** (alphabetical, ascending)
 
-Le partite del round in corso **ancora senza risultato** non contano: né come game né per l'OMW/OGW
-dell'avversario (i bye invece contano subito, 3 punti). Fino alla 3.6.1 valevano come un 1-1 in game, e una
-`/classifica` a metà round alterava GWP e OMW; la classifica finale non ne era toccata.
+Current-round matches **with no result yet** don't count: neither as games nor toward the opponent's OMW/OGW
+(byes count right away, 3 points). Until 3.6.1 they counted as a 1-1 in games, and a mid-round `/classifica`
+skewed GWP and OMW; the final standings were not affected.
 
-### Giocatori droppati
+### Dropped Players
 
-Un giocatore rimosso a torneo avviato (`/drop_giocatore`) **resta in classifica**, marcato _(drop)_, con i
-punti delle partite già giocate: quelle partite continuano a contare per l'OMW/OGW dei suoi avversari, come
-nei tornei Wizards. Chi è uscito durante le iscrizioni (nessuna partita giocata) non compare. Non viene più
-abbinato nei round successivi (`PairingEngine` riceve solo gli iscritti attivi). Le partite contro un
-droppato contano anche per il rating Glicko-2 di fine torneo.
+A player removed after the start (`/drop_giocatore`) **stays in the standings**, marked _(drop)_, with the
+points from the matches already played: those matches keep counting toward their opponents' OMW/OGW, as in
+Wizards tournaments. Someone who left during registration (no match played) doesn't appear. They are no
+longer paired in later rounds (`PairingEngine` only gets active registrations). Matches against a dropped
+player also count toward the end-of-tournament Glicko-2 rating.
 
-Fino alla 3.5.4 `get_standings()` passava al calcolo solo gli iscritti attivi mentre le partite del droppato
-restavano: `/classifica` andava in `KeyError` dopo qualunque drop a torneo avviato, e `_update_ratings()`
-saltava in silenzio le partite contro di lui. `compute()` ora tollera comunque un giocatore presente solo
-nelle partite (`stats.setdefault`), invece di andare in errore.
+Until 3.5.4 `get_standings()` passed only active registrations to the calculation while the dropped player's
+matches remained: `/classifica` raised `KeyError` after any drop on a started tournament, and
+`_update_ratings()` silently skipped matches against them. `compute()` now tolerates a player present only in
+the matches (`stats.setdefault`) instead of failing.
 
 ### OMW Progress Bar
 
-La barra OMW è visualizzata nelle classifiche come indicatore visuale:
+The OMW bar is shown in the standings as a visual indicator (10 cells, `omw_bar()`):
 ```
 ████████░░ 82.3%
 ```
 
 ---
 
-## Rating Glicko-2 (`services/rating.py`)
+## Glicko-2 Rating (`services/rating.py`)
 
-### Parametri
+### Parameters
 
-| Parametro | Valore |
+| Parameter | Value |
 |---|---|
-| Rating iniziale | 1500.0 |
-| Deviazione iniziale (RD) | 350.0 |
-| Volatilità iniziale | 0.06 |
+| Initial rating | 1500.0 |
+| Initial deviation (RD) | 350.0 |
+| Initial volatility | 0.06 |
 | Tau (τ) | 0.5 |
 | Rating floor | 100.0 |
-| Soglia convergenza | 1e-6 |
+| Convergence threshold | 1e-6 |
 
-### Funzioni
+### Functions
 
-| Funzione | Utilizzo |
+| Function | Use |
 |---|---|
-| `rate_1vs1(rating1, rd1, vol1, rating2, rd2, vol2, score)` | Match win/loss con game score |
-| `rate_draw(rating1, rd1, vol1, rating2, rd2, vol2)` | Match pareggio |
+| `rate_1vs1(winner, loser, winner_game_wins=2, loser_game_wins=0)` | Win/loss match. Takes and returns `Rating` objects; the game-win arguments are accepted but don't affect the result (2-0 and 2-1 rate the same) |
+| `rate_draw(player_a, player_b)` | Drawn match |
 
-### Conversione scale
+### Scale Conversion
 
-`mu = (rating - 1500.0) / 173.7178`  
+`mu = (rating - 1500.0) / 173.7178`
 `phi = rd / 173.7178`
 
 ### Leaderboard
 
-La leaderboard mostra `lb_rating = rating - 2 * rating_deviation` (limite inferiore dell'intervallo di confidenza al 95%).
+The leaderboard shows `lb_rating = rating - 2 * rating_deviation` (lower bound of the 95% confidence
+interval).
 
 ---
 
 ## TournamentService (`services/tournament_service.py`)
 
-Metodo principale orchestratore che coordina tutte le operazioni del torneo.
+Main orchestrator, coordinating every tournament operation. Methods return Italian user-facing messages
+(a `str`, or a `ServiceResult` for the methods already migrated, see roadmap step 17).
 
-| Metodo | Descrizione |
+| Method | Description |
 |---|---|
-| `create_tournament(name, format, max_players)` | Crea torneo in stato `registration` |
-| `register_player(tournament_id, discord_id, deck_name=None)` | Registra utente, mazzo opzionale (di norma `None`: si invia separatamente). Serializzata da un `asyncio.Lock` per istanza, così due iscrizioni simultanee non superano `max_players`; seed = massimo seed già assegnato nel torneo + 1 (droppati inclusi), quindi unico anche dopo un'uscita. Chi si reiscrive dopo un'uscita mantiene il proprio seed |
-| `submit_deck(tournament_id, discord_id, deck_name)` | Aggiorna il mazzo di un'iscrizione già esistente; fallisce se non iscritto o se il torneo non è più in `registration` |
-| `unregister_player(tournament_id, discord_id)` | Uscita volontaria (`/left_torneo`), solo in `registration`; un secondo tentativo risponde "Non sei iscritto" invece di ripetere l'uscita |
-| `start_tournament(tournament_id)` | Avvia, calcola round, genera round 1 — **rifiuta** se un iscritto attivo ha `deck_name is None` |
-| `submit_result(match_id, winner_id, result, p1_wins, p2_wins)` | Registra risultato; restituisce `ServiceResult(ok, message)` (`services/results.py`), rifiuta se la partita ha già un risultato |
-| `correct_result(tournament_id, round, table, winner_discord_id, winner_games, loser_games)` | Correzione staff: sovrascrive o inserisce il risultato di un tavolo (`winner_discord_id=None` = pareggio, `round=None` = round in corso); solo a torneo `active`; `ServiceResult` con il prima → dopo |
-| `generate_next_round(tournament_id)` | Round successivo o conclusione |
-| `force_drop_player(tournament_id, discord_id)` | Rimozione decisa dallo staff: in `registration` marca solo l'iscrizione come droppata (sblocca un `start_tournament()` fermo per un mazzo mancante); in `active` assegna anche la vittoria all'avversario nel match pendente del round corrente |
-| `force_conclude_tournament(tournament_id)` | Conclusione anticipata |
-| `get_standings(tournament_id)` | Classifica con nomi; include i droppati che hanno giocato almeno una partita (`StandingsEntry.dropped`) |
-| `get_leaderboard(limit)` | Top N rating |
-| `_update_ratings(tournament_id)` | Glicko-2 su tutti i match, anche quelli contro giocatori poi droppati |
+| `create_tournament(name, format, max_players)` | Creates a tournament in `registration` |
+| `register_player(tournament_id, discord_id, deck_name=None)` | Registers a user, deck optional (normally `None`: submitted separately). Serialized by a per-instance `asyncio.Lock`, so two simultaneous registrations can't exceed `max_players`; seed = highest seed already assigned in the tournament + 1 (dropped players included), so it stays unique after a leave. Someone who registers again after leaving keeps their seed |
+| `submit_deck(tournament_id, discord_id, deck_name)` | Updates the deck of an existing registration; fails if not registered or if the tournament is no longer in `registration` |
+| `unregister_player(tournament_id, discord_id)` | Voluntary leave (`/left_torneo`), `registration` only; a second attempt answers "Non sei iscritto" instead of repeating the leave |
+| `start_tournament(tournament_id)` | Starts, computes the rounds, generates round 1 — **refuses** if an active registered player has `deck_name is None` |
+| `submit_result(match_id, winner_tp_id, result, p1_game_wins, p2_game_wins)` | Records a result; returns `ServiceResult(ok, message)` (`services/results.py`), refuses if the match already has a result |
+| `correct_result(tournament_id, round_number, table_number, winner_discord_id, winner_games, loser_games)` | Staff correction: overwrites or enters a table's result (`winner_discord_id=None` = draw, `round_number=None` = current round); `active` tournaments only; `ServiceResult` with the before → after |
+| `generate_next_round(tournament_id)` | Next round or conclusion |
+| `force_drop_player(tournament_id, discord_id)` | Removal decided by staff: in `registration` it only marks the registration as dropped (unblocks a `start_tournament()` stuck on a missing deck); in `active` it also gives the win to the opponent in the current round's pending match |
+| `force_conclude_tournament(tournament_id)` | Early conclusion |
+| `get_standings(tournament_id)` | Standings with names; includes dropped players who played at least one match (`StandingsEntry.dropped`) |
+| `get_leaderboard(limit)` | Top N by rating |
+| `_update_ratings(tournament_id)` | Glicko-2 on every match, including those against players later dropped |
 
-Coperto da test end-to-end in `tests/tournament/test_tournament_service.py` (iscrizione, invio/reinvio mazzo, blocco avvio se manca un mazzo, avvio, pairing, submit risultato, generazione round, drop forzato, standings, aggiornamento rating) su un DB SQLite temporaneo isolato per test — nessun mock sul layer di persistenza.
+Covered by end-to-end tests in `tests/tournament/test_tournament_service.py` (registration, deck
+submission/resubmission, start blocked by a missing deck, start, pairing, result submission and
+correction, round generation, forced drop, standings, rating update) on a temporary SQLite DB isolated per
+test — no mocks on the persistence layer.
 
 ---
 
-## Comandi Slash
+## Slash Commands
 
-Tutti i comandi in `cogs/tournament_system/cog.py`:
+Every command lives in `cogs/tournament_system/cog.py`:
 
-| Comando | Accesso | Descrizione |
+| Command | Access | Description |
 |---|---|---|
-| `/crea_torneo` | Admin | Crea nuovo torneo |
-| `/avvia_torneo` | Admin | Inizia torneo |
-| `/torneo_next_turn` | Admin | Prossimo round |
-| `/drop_giocatore` | Admin | Rimuovi giocatore (torneo attivo o in iscrizione) |
-| `/concludi_torneo` | Admin | Concludi forzatamente |
-| `/correggi_risultato` | Admin | Correggi o inserisci il risultato di una partita |
-| `/iscriviti` | Pubblico | Iscrizione (senza mazzo) |
-| `/invia_deck` | Pubblico | Invia/aggiorna il mazzo per un'iscrizione esistente |
-| `/iscrizioni_torneo` | Pubblico | Chi è iscritto e chi ha già inviato il mazzo |
-| `/left_torneo` | Pubblico | Disiscrizione |
-| `/risultato` | Pubblico | Invia risultato |
-| `/classifica` | Pubblico | Visualizza classifica |
-| `/turni` | Pubblico | Pairing round corrente |
-| `/lista_tornei` | Pubblico | Lista tornei |
-| `/leaderboard` | Pubblico | Classifica rating |
-| `/banlist` | Pubblico | Lista carte bannate |
-| `/banlist_aggiungi` | Admin | Aggiungi carta bannata |
-| `/banlist_rimuovi` | Admin | Rimuovi carta bannata |
+| `/crea_torneo` | Admin | Creates a new tournament |
+| `/avvia_torneo` | Admin | Starts the tournament |
+| `/torneo_next_turn` | Admin | Next round |
+| `/drop_giocatore` | Admin | Removes a player (active tournament or during registration) |
+| `/concludi_torneo` | Admin | Forced conclusion |
+| `/correggi_risultato` | Admin | Fixes or enters a match result |
+| `/iscriviti` | Public | Registration (no deck) |
+| `/invia_deck` | Public | Submits/updates the deck for an existing registration |
+| `/iscrizioni_torneo` | Public | Who is registered and who has already submitted a deck |
+| `/left_torneo` | Public | Unregisters |
+| `/risultato` | Public | Submits a result |
+| `/classifica` | Public | Shows the standings |
+| `/turni` | Public | Current round's pairings |
+| `/lista_tornei` | Public | Tournament list |
+| `/leaderboard` | Public | Rating leaderboard |
+| `/banlist` | Public | Banned card list |
+| `/banlist_aggiungi` | Admin | Adds a banned card |
+| `/banlist_rimuovi` | Admin | Removes a banned card |
 
 ### InviaDeckModal (`cog.py`)
 
-Invocato da `/invia_deck`, non da `/iscriviti` (che oggi non apre nessun modal: registra e basta).
-Richiede un'iscrizione già esistente — `submit_deck()` rifiuta altrimenti. Modal con:
-- Campo `titolo` (nome mazzo, obbligatorio)
-- Campo `deck_list` (obbligatorio, testo Arena decklist)
+Opened by `/invia_deck`, not by `/iscriviti` (which opens no modal today: it just registers). It requires an
+existing registration — `submit_deck()` refuses otherwise. Modal with:
+- `titolo` field (deck name, required)
+- `deck_list` field (required, Arena decklist text)
 
-All'invio:
-1. Parsing decklist
-2. Validazione Artisan (banlist + rarità)
-3. Se valido: `TournamentService.submit_deck()` aggiorna l'iscrizione esistente + pubblicazione deck su
-   canale pubblico + log `TOURNAMENT_DECK_SUBMITTED` (INFO)
-4. Se invalido: embed con errori, l'iscrizione/il mazzo precedente restano invariati, log
-   `TOURNAMENT_DECK_SUBMITTED` (WARN)
+On submit:
+1. Decklist parsing
+2. Artisan validation (banlist + rarity)
+3. If valid: `TournamentService.submit_deck()` updates the existing registration + deck published to the
+   public channel + `TOURNAMENT_DECK_SUBMITTED` log (INFO)
+4. If invalid: embed with the errors, the registration and any previous deck stay unchanged,
+   `TOURNAMENT_DECK_SUBMITTED` log (WARN)
 
-Richiamabile più volte finché il torneo resta in `registration`: l'ultimo invio valido sovrascrive.
+Can be used repeatedly while the tournament stays in `registration`: the latest valid submission wins.
 
 ### RisultatoView (`cogs/tournament_system/cog.py`)
 
-Un unico select menu dal punto di vista di chi invia (Vittoria 2-0 / 2-1, Pareggio, Sconfitta 1-2 / 0-2),
-con pulsanti Conferma e Annulla. Alla conferma:
-1. Determina vincitore (o pareggio) e game win per player1/player2
-2. Chiama `TournamentService.submit_result()`, che restituisce un `ServiceResult`
-3. Se `ok`: embed verde nel messaggio ephemeral, annuncio nel canale torneo, log `MATCH_RESULT` INFO
-4. Se rifiutato (tipicamente: l'avversario l'aveva già inserito): solo il messaggio ephemeral con il
-   motivo, **nessun annuncio pubblico**, log `MATCH_RESULT` WARN
+A single select menu from the submitter's point of view ("Vittoria 2-0 / 2-1", "Pareggio", "Sconfitta
+1-2 / 0-2"), with confirm and cancel buttons. On confirm:
+1. Determines the winner (or a draw) and the game wins for player1/player2
+2. Calls `TournamentService.submit_result()`, which returns a `ServiceResult`
+3. If `ok`: green embed in the ephemeral message, announcement in the tournament channel, INFO `MATCH_RESULT`
+   log
+4. If refused (typically: the opponent had already entered it): only the ephemeral message with the reason,
+   **no public announcement**, WARN `MATCH_RESULT` log
 
-### Chi inserisce il risultato
+### Who Enters the Result
 
-Basta uno dei due giocatori: vale il primo che lo inserisce, senza conferma dell'avversario (scelta
-deliberata — la conferma bilaterale aggiungerebbe un click a ogni partita e bloccherebbe il round se un
-avversario sparisce). Un risultato sbagliato lo corregge lo staff con `/correggi_risultato`
-(`correct_result()`), che sovrascrive anche partite di round passati — la classifica si ricalcola da
-sola, mentre gli abbinamenti dei round successivi già generati restano quelli (il comando lo avvisa). È
-rifiutato a torneo concluso, perché il rating Glicko-2 è già stato applicato. Serve anche a inserire il
-risultato di una partita mai riportata.
+Either player is enough: the first to enter it wins, with no confirmation from the opponent (deliberate — a
+two-sided confirmation would add a click to every match and block the round if an opponent disappears). Staff
+fixes a wrong result with `/correggi_risultato` (`correct_result()`), which also overwrites matches of past
+rounds — the standings recompute on their own, while the pairings of later rounds already generated stay as
+they are (the command warns about it). It is refused once the tournament is concluded, because the Glicko-2
+rating has already been applied. It is also how a never-reported match gets its result.
 
-Fino alla 3.5.7 un secondo invio rifiutato veniva comunque annunciato pubblicamente ("ha registrato il
-risultato"), e ogni risultato riuscito finiva a log come `WARN` arancione: il cog cercava `"Registrato"`
-con la maiuscola mentre il servizio restituiva `"Risultato registrato!"`.
+Until 3.5.7 a refused second submission was still announced publicly ("ha registrato il risultato"), and
+every successful result was logged as an orange `WARN`: the cog looked for `"Registrato"` capitalized while
+the service returned `"Risultato registrato!"`.
 
 ---
 
-## Log su Discord (`cogs/logger.py`, canale `LOG_CHANNEL_ID`)
+## Discord Logs (`cogs/logger.py`, `LOG_CHANNEL_ID` channel)
 
-| Evento | Livello | Quando |
+| Event | Level | When |
 |---|---|---|
 | `TOURNAMENT_CREATED` | INFO | `/crea_torneo` |
-| `REGISTRATION_CONFIRMED` | INFO | `/iscriviti` (registrazione, mazzo non ancora inviato) |
-| `TOURNAMENT_DECK_SUBMITTED` | INFO/WARN | `/invia_deck` — INFO se il mazzo è valido e registrato, WARN se non valido o rifiutato (non iscritto / torneo non più in registrazione) |
-| `PLAYER_UNREGISTERED` | INFO | `/left_torneo` (uscita volontaria) |
-| `PLAYER_DROPPED` | INFO | `/drop_giocatore` (rimozione forzata admin, anche durante le iscrizioni) |
-| `TOURNAMENT_START_BLOCKED` | WARN | `/avvia_torneo` rifiutato (torneo non trovato/non in registrazione, meno di 2 giocatori, o mazzi mancanti) |
-| `TOURNAMENT_STARTED` | INFO | `/avvia_torneo` riuscito — include l'elenco partecipanti e il nome del mazzo di ciascuno (primi 25, poi "...e altri N") |
-| `MATCH_RESULT` | INFO/WARN | `/risultato` — INFO se registrato, WARN se rifiutato (es. già inserito) |
-| `RESULT_CORRECTED` | INFO | `/correggi_risultato` (risultato prima → dopo) |
-| `ROUND_GENERATED` | INFO | `/torneo_next_turn` (nuovo round) |
-| `TOURNAMENT_CONCLUDED` | INFO | `/concludi_torneo` (conclusione forzata) |
-| `TOURNAMENT_COMPLETED` | INFO | Ultimo round completato, torneo concluso naturalmente |
+| `REGISTRATION_CONFIRMED` | INFO | `/iscriviti` (registration, deck not submitted yet) |
+| `TOURNAMENT_DECK_SUBMITTED` | INFO/WARN | `/invia_deck` — INFO if the deck is valid and recorded, WARN if invalid or refused (not registered / tournament no longer in registration) |
+| `SCRYFALL_UNAVAILABLE` | WARN | `/invia_deck` with Scryfall unreachable: deck not evaluated |
+| `PLAYER_UNREGISTERED` | INFO | `/left_torneo` (voluntary leave) |
+| `PLAYER_DROPPED` | INFO | `/drop_giocatore` (forced admin removal, during registration too) |
+| `TOURNAMENT_START_BLOCKED` | WARN | `/avvia_torneo` refused (tournament not found/not in registration, fewer than 2 players, or missing decks) |
+| `TOURNAMENT_STARTED` | INFO | `/avvia_torneo` succeeded — includes the participant list with each deck name (first 25, then "...and N more") |
+| `MATCH_RESULT` | INFO/WARN | `/risultato` — INFO if recorded, WARN if refused (e.g. already entered) |
+| `RESULT_CORRECTED` | INFO | `/correggi_risultato` (result before → after) |
+| `ROUND_GENERATED` | INFO | `/torneo_next_turn` (new round) |
+| `TOURNAMENT_CONCLUDED` | INFO | `/concludi_torneo` (forced conclusion) |
+| `TOURNAMENT_COMPLETED` | INFO | Last round completed, tournament concluded naturally |
 | `BANLIST_ADD` / `BANLIST_REMOVE` | INFO | `/banlist_aggiungi` / `/banlist_rimuovi` |
 
 ---
 
-## Embed (`utils/tournament_embeds.py`)
+## Embeds (`utils/tournament_embeds.py`)
 
-| Funzione | Contenuto |
+| Function | Content |
 |---|---|
-| `build_standings_embed()` | Classifica con rank, nome (marcato _(drop)_ se ritirato), punti, OMW bar, record |
-| `build_pairings_embed()` | Pairing con table number, giocatori, link profilo |
-| `build_start_embed()` | Annuncio inizio torneo con round totali |
-| `build_top8_embed()` | Bracket top 8 (da implementare) |
+| `build_standings_embed()` | Standings with rank, name (marked _(drop)_ if dropped), points, OMW bar, record |
+| `build_pairings_embed()` | Pairings with table number and players, byes at the bottom |
+| `build_start_embed()` | Tournament start announcement with total rounds |
+| `build_top8_embed()` | Top 8 bracket (quarterfinals onward); implemented but not called by any command yet |
 
 ---
 
-## Utility (`utils/tournament_logic.py`)
+## Utilities (`utils/tournament_logic.py`)
 
-| Funzione | Descrizione |
+| Function | Description |
 |---|---|
-| `omw_bar(omw, width=12)` | Genera barra progresso OMW testuale |
-| `rank_label(rank)` | Restituisce medaglia/testo per posizione (1°🥇, 2°🥈, 3°🥉) |
-| `split_into_columns(items, max_rows)` | Divide lista in colonne per embed |
-| `split_field_value(items, max_length=1024)` | Tronca valori campo embed a 1024 caratteri |
+| `omw_bar(pct)` | Text OMW progress bar, 10 cells + percentage |
+| `rank_label(position)` | Medal for positions 1-3 (🥇🥈🥉), `"N."` otherwise |
+| `split_into_columns(items)` | Splits a list into two columns, the left one taking the extra item |
+| `split_field_value(lines, max_chars=1000)` | Splits lines into chunks of at most `max_chars`, for embed fields (1024 limit) |

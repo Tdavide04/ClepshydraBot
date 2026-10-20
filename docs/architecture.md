@@ -1,18 +1,19 @@
-# Architettura del Sistema
+# System Architecture
 
-## Panoramica
+## Overview
 
-ClepshydraBot adotta un'architettura **three-tier** con separazione netta delle responsabilità:
+ClepshydraBot uses a **three-tier** architecture with a clean separation of responsibilities:
 
-1. **Discord Layer (Cogs)** — Interfaccia utente, comandi slash, componenti interattivi
-2. **Service Layer** — Logica di business, algoritmi, orchestrazione
-3. **Repository Layer** — Accesso ai dati, CRUD, query
+1. **Discord Layer (Cogs)** — user interface, slash commands, interactive components
+2. **Service Layer** — business logic, algorithms, orchestration
+3. **Repository Layer** — data access, CRUD, queries
 
-A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities Layer** (funzioni cross-cutting).
+On top of these sit the **Database Layer** (SQLAlchemy ORM) and the **Utilities Layer** (cross-cutting
+functions).
 
 ---
 
-## Diagramma Architetturale
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -24,18 +25,24 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 │                                                                       │
 │  ┌─────────────────────┐  ┌──────────────────────┐                   │
 │  │  PresentationCog    │  │  TournamentSystemCog  │                   │
-│  │  /presentati        │  │  14 comandi slash     │                   │
-│  │  on_member_join     │  │  modali, select menu  │                   │
+│  │  /presentati        │  │  18 slash commands    │                   │
+│  │  on_member_join     │  │  modals, select menus │                   │
 │  └────────┬────────────┘  └───────────┬──────────┘                   │
 │           │                            │                              │
 │  ┌────────┴────────────┐  ┌───────────┴──────────┐                   │
-│  │  TournamentCog      │  │  Logger               │                   │
-│  │  /artisan_check_deck│  │  send_log()           │                   │
-│  └────────┬────────────┘  └──────────────────────┘                   │
-│           │                                                           │
-│  ┌────────┴────────────┐                                             │
-│  │  SPGOverrideUpdater │                                             │
-│  │  /update_spg_overr. │                                             │
+│  │  Tournament         │  │  Logger               │                   │
+│  │  (deck_validation)  │  │  send_log()           │                   │
+│  │  /artisan_check_deck│  ├──────────────────────┤                   │
+│  └────────┬────────────┘  │  ErrorHandler         │                   │
+│           │               │  tree.on_error        │                   │
+│  ┌────────┴────────────┐  └──────────────────────┘                   │
+│  │  Maintenance cogs   │                                             │
+│  │  SPGOverrideUpdater │  /forced_rarity_refresh,                    │
+│  │                     │  /invalidate_card_cache                     │
+│  │  ArenaEventSchedule │  /forced_event_schedule_check               │
+│  │  Updater            │                                             │
+│  │  BanAnnouncement    │  /forced_ban_announcement_check             │
+│  │  Updater            │                                             │
 │  └─────────────────────┘                                             │
 └─────────────────────────────────┬───────────────────────────────────┘
                                   │
@@ -46,19 +53,21 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 │  │  TournamentService  │  │  ArtisanService       │                   │
 │  │  • create_tournament│  │  • validate_deck()    │                   │
 │  │  • register_player  │  │  • _fetch_collection  │                   │
-│  │  • start_tournament │  │  • _is_arena_legal    │                   │
-│  │  • submit_result    │  └──────────────────────┘                   │
-│  │  • generate_round   │                                              │
-│  │  • force_drop       │  ┌──────────────────────┐                   │
-│  │  • force_conclude   │  │  PresentationService  │                   │
-│  │  • get_standings    │  │  • publish()          │                   │
-│  └────────┬────────────┘  │  • assign_roles()     │                   │
-│           │               └──────────────────────┘                   │
-│  ┌────────┴────────────┐                                              │
-│  │  PairingEngine      │  ┌──────────────────────┐                   │
-│  │  • generate_round() │  │  StandingsCalculator  │                   │
-│  │  • calculate_rounds │  │  • compute()          │                   │
-│  └─────────────────────┘  └──────────────────────┘                   │
+│  │  • submit_deck      │  │  • _is_arena_legal    │                   │
+│  │  • start_tournament │  └──────────────────────┘                   │
+│  │  • submit_result    │                                              │
+│  │  • correct_result   │  ┌──────────────────────┐                   │
+│  │  • generate_round   │  │  PresentationService  │                   │
+│  │  • force_drop       │  │  • publish()          │                   │
+│  │  • force_conclude   │  │  • _assign_*_role()   │                   │
+│  │  • get_standings    │  └──────────────────────┘                   │
+│  └────────┬────────────┘                                              │
+│           │                                                           │
+│  ┌────────┴────────────┐  ┌──────────────────────┐                   │
+│  │  PairingEngine      │  │  StandingsCalculator  │                   │
+│  │  • generate_round() │  │  • compute()          │                   │
+│  │  • calculate_rounds │  └──────────────────────┘                   │
+│  └─────────────────────┘                                              │
 │                                                                       │
 │  ┌─────────────────────┐                                              │
 │  │  Rating (Glicko-2)  │                                              │
@@ -81,15 +90,18 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 │                            │  TournamentRepository│                   │
 │  ┌─────────────────────┐  │  • get_by_status     │                   │
 │  │  MatchRepository    │  │  • get_with_players  │                   │
+│  │  • get_by_tournament│  │  • find_by_name      │                   │
 │  │  • get_by_tournament│  └──────────────────────┘                   │
-│  │  • get_current_round│                                              │
-│  │  • get_pairings_for │  ┌──────────────────────┐                   │
-│  └─────────────────────┘  │  BanlistRepository   │                   │
-│                            │  • get_all_for_format│                   │
-│  ┌─────────────────────┐  │  • add_card          │                   │
-│  │  TournamentPlayer   │  │  • remove_card       │                   │
-│  │  Repository         │  │  • import_from_file  │                   │
-│  └─────────────────────┘  └──────────────────────┘                   │
+│  │    _and_round       │                                              │
+│  │  • get_current_round│  ┌──────────────────────┐                   │
+│  │  • get_existing_    │  │  BanlistRepository   │                   │
+│  │    pairings         │  │  • get_all_for_format│                   │
+│  └─────────────────────┘  │  • add_card          │                   │
+│                            │  • remove_card       │                   │
+│  ┌─────────────────────┐  │  • import_from_file  │                   │
+│  │  TournamentPlayer   │  └──────────────────────┘                   │
+│  │  Repository         │                                              │
+│  └─────────────────────┘                                              │
 └─────────────────────────────────┬───────────────────────────────────┘
                                   │
 ┌─────────────────────────────────┴───────────────────────────────────┐
@@ -111,96 +123,111 @@ A questi si aggiungono il **Database Layer** (SQLAlchemy ORM) e il **Utilities L
 
 ---
 
-## Pattern Utilizzati
+## Patterns Used
 
-| Pattern | Dove | Descrizione |
+| Pattern | Where | Description |
 |---|---|---|
-| **Repository** | `repositories/` | Astrae l'accesso ai dati dietro interfacce dedicate |
-| **Service Layer** | `services/` | Incapsula la logica di business in classi service |
-| **Strategy** | `PairingEngine`, `StandingsCalculator` | Algoritmi intercambiabili e stateless |
-| **Observer** | Cogs `on_member_join`, `on_message` | Listener per eventi Discord |
-| **Dependency Injection** | Costruttori service | Bot e session passati via costruttore |
-| **Singleton** | `database/engine.py` | Engine e session factory globali con lazy init |
-| **Data Mapper** | `database/models.py` | SQLAlchemy ORM con classi modello esplicite |
-| **MVP-like** | Cog = Controller, Service = Model, Embed = View | Separazione UI/logica |
+| **Repository** | `repositories/` | Hides data access behind dedicated interfaces |
+| **Service Layer** | `services/` | Encapsulates business logic in service classes |
+| **Strategy** | `PairingEngine`, `StandingsCalculator` | Interchangeable, stateless algorithms |
+| **Observer** | Cogs' `on_member_join`, `on_message` | Listeners for Discord events |
+| **Dependency Injection** | Service constructors | Bot and session passed in through the constructor |
+| **Singleton** | `database/engine.py` | Global engine and session factory with lazy init |
+| **Data Mapper** | `database/models.py` | SQLAlchemy ORM with explicit model classes |
+| **MVP-like** | Cog = Controller, Service = Model, Embed = View | UI/logic separation |
 
 ---
 
-## Flussi Principali
+## Main Flows
 
-### Presentazione Utente
+### User Presentation
 
 ```
 User joins server
-  → on_member_join() → ruolo 'Viandante' + messaggio welcome
+  → on_member_join() → 'Viandante' role + welcome message
   → /presentati
-    → BasicPresentationModal (5 campi)
-    → PreferencesView (4 select menu)
-    → OptionalPresentationModal (4 campi opzionali)
-    → PreviewView (conferma/cancella)
+    → BasicPresentationModal (5 fields)
+    → PreferencesView (4 select menus)
+    → OptionalPresentationModal (4 optional fields)
+    → PreviewView (confirm/cancel)
     → PresentationService.publish()
-      → Validazione campi
-      → Cambio ruolo: Viandante → Planeswalker
-      → Embed pubblicato su canale presentazioni
+      → Field validation
+      → Role change: Viandante → Planeswalker
+      → Embed published to the presentation channel
       → Logger.send_log(INFO)
 ```
 
-### Validazione Mazzo Artisan
+### Artisan Deck Validation
 
 ```
 User → /artisan_check_deck → ArtisanDeckCheckModal
   → ArtisanService.validate_deck()
     1. _load_banlist() ← BanlistRepository (SQLite)
-    2. check_banlist() → se banned → STOP
-    3. _fetch_collection() → Scryfall API (o cache)
-    4. _is_arena_artisan_legal() per ogni carta
+    2. check_banlist() → if banned → STOP
+    3. _fetch_collection() → Scryfall API (or cache)
+    4. _is_arena_artisan_legal() for each card
        → arena_overrides (SPG check)
        → prints_search_uri + game:arena
-    5. Conteggio: mainboard >= 60, sideboard <= 15
+    5. Count: mainboard >= 60, sideboard <= 15
   → DeckValidationResult
-  → DeckImageGenerator.create_deck_showcase() (se valido)
-  → Embed + immagine → canali log e deck
+  → DeckImageGenerator.create_deck_showcase() (if valid)
+  → Embed + image → log and deck channels
 ```
 
-### Ciclo di Vita Torneo
+### Tournament Lifecycle
 
 ```
 Admin → /crea_torneo → TournamentService.create_tournament()
-User  → /iscriviti → IscrivitiModal (deck validation) → register_player()
-Admin → /avvia_torneo → start_tournament()
-  → PairingEngine.generate_round(1) → pairing casuali
-  → Embed pubblicato su canale torneo
-[Round giocato]
+User  → /iscriviti → register_player() (no deck yet)
+User  → /invia_deck → InviaDeckModal (deck validation) → submit_deck() (repeatable before the start)
+Admin → /avvia_torneo → start_tournament() (refused while a player has no deck)
+  → PairingEngine.generate_round(1) → random pairings
+  → Embed published to the tournament channel
+[Round played]
 User  → /risultato → RisultatoView → submit_result()
+Staff → /correggi_risultato → correct_result() (fixes a wrong or missing result)
 Admin → /torneo_next_turn → generate_next_round()
-  → Se ultimo round → conclude torneo → _update_ratings() (Glicko-2)
-  → Altrimenti → PairingEngine.generate_round(N) → pairing Swiss
-User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreaker)
+  → If last round → concludes the tournament → _update_ratings() (Glicko-2)
+  → Otherwise → PairingEngine.generate_round(N) → Swiss pairings
+User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 ```
 
 ---
 
-## Gestione Errori
+## Error Handling
 
-- **Catch-all interazioni** (dalla 3.5.6): un'eccezione non gestita in uno slash command, in un modal o in una view
-  viene intercettata da `utils/interaction_errors.py` — l'utente riceve un messaggio ephemeral ("errore inatteso,
-  lo staff è stato avvisato", via `followup` se l'interazione aveva già risposto con un `defer()`), il canale log
-  riceve un `ERROR` `INTERACTION_ERROR` con origine, eccezione e coda del traceback, la console il traceback
-  completo. Tre punti d'ingresso, perché discord.py instrada gli errori in modo diverso: `cogs/error_handler.py`
-  aggancia `CommandTree.on_error` (slash command; i `CheckFailure` come quelli di `@is_admin()` non vengono
-  loggati, il check ha già risposto), `ReportingModal`/`ReportingView` fanno da classe base a tutti i modal e le
-  view del bot. Prima della 3.5.6 non esisteva: un'eccezione dopo un `defer()` lasciava l'utente su "sta
-  pensando..." e finiva solo in console
-- **Retry**: chiamate Scryfall con backoff esponenziale (max 5 tentativi)
-- **Rate limiting**: semaforo asyncio per rispettare limiti Scryfall
-- **Scrittura atomica**: cache JSON scritta su `.tmp` poi `os.replace()`
-- **Lock asincrono**: `asyncio.Lock()` per salvataggio cache concorrente
-- **Avvio bot**: `main.py` intercetta `discord.LoginFailure` (token invalido/scaduto) e qualunque altra eccezione di startup, stampa un errore esplicito su stderr ed esce con codice diverso da zero, cosi' un supervisore di processo (es. systemd, vedi `deploy/clepshydrabot.service`) puo' rilevare il fallimento invece di un arresto silenzioso
+- **Interaction catch-all** (since 3.5.6): an unhandled exception in a slash command, modal or view is caught
+  by `utils/interaction_errors.py` — the user gets an ephemeral message ("unexpected error, staff has been
+  notified", via `followup` if the interaction had already answered with a `defer()`), the log channel gets
+  an `ERROR` `INTERACTION_ERROR` with source, exception and traceback tail, the console the full traceback.
+  Three entry points, because discord.py routes errors differently: `cogs/error_handler.py` hooks
+  `CommandTree.on_error` (slash commands; `CheckFailure`s such as those from `@is_admin()` are not logged,
+  the check has already replied), and `ReportingModal`/`ReportingView` are the base class of every modal and
+  view of the bot. Before 3.5.6 it didn't exist: an exception after a `defer()` left the user on
+  "thinking..." and only reached the console
+- **Retry**: Scryfall calls with exponential backoff (max 5 attempts)
+- **Rate limiting**: asyncio semaphore to respect Scryfall limits
+- **Scryfall outage ≠ illegal card**: `ScryfallUnavailable` leaves the deck unevaluated instead of marking
+  cards illegal (see `docs/deck-validation.md`)
+- **Atomic writes**: the monitors' state files are written to `.tmp` then `os.replace()`
+  (`save_json_state()` in `utils/sitemap_monitor.py`)
+- **Async lock**: `asyncio.Lock()` around concurrent card cache saves
+- **Bot startup**: `main.py` catches `discord.LoginFailure` (invalid/expired token) and any other startup
+  exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor
+  (`pm2` in production, see `docs/infrastructure.md`) can detect the failure instead of a silent stop
 
 ---
 
 ## Testing
 
-- `tests/tournament/`: suite pytest per il layer di servizio torneo — `PairingEngine`, `Rating`, `StandingsCalculator`, embed builder, utility, e `TournamentService` (orchestrazione end-to-end: iscrizione, avvio, pairing, submit risultato, round successivo, drop forzato, standings, rating).
-- I test di `TournamentService` non usano mock: eseguono contro un SQLite temporaneo isolato per test (`tmp_path` + monkeypatch su `database.engine.DB_PATH`), incapsulando l'intero ciclo `init_db → logica → close_db` in un unico event loop (richiesto da aiosqlite, che lega le connessioni al loop che le ha create).
-- CI: `.github/workflows/ci.yml` esegue `pytest` e `ruff check .` ad ogni push/PR, entrambi come gate bloccanti (il lint lo è dalla 1.7.1, una volta sanato il debito pre-esistente).
+- `tests/tournament/`: the tournament service layer — `PairingEngine`, `Rating`, `StandingsCalculator`, embed
+  builders, utilities, and `TournamentService` end to end (registration, deck submission, start, pairing,
+  results and corrections, next round, forced drop, standings, rating).
+- `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
+  SQLite card cache, SPG overrides.
+- `tests/utils/`: the Wizards monitors, the shared sitemap logic, interaction error handling.
+- Integration tests don't mock the DB: they run against a temporary SQLite per test (`tmp_path` + monkeypatch
+  on `database.engine.DB_PATH`), wrapping the whole `init_db → logic → close_db` cycle in a single event loop
+  (required by aiosqlite, which binds connections to the loop that created them).
+- CI: `.github/workflows/ci.yml` runs `pytest` and `ruff check .` on every push/PR, both as blocking gates
+  (lint since 1.7.1, once the pre-existing debt was cleared).

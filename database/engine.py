@@ -69,7 +69,7 @@ async def _migrate_banlist():
 
 
 # (table, column, DDL): each entry adds a missing column to an existing schema.
-# Cumulative list, entries are never removed - see database.md "Migrazioni Automatiche".
+# Cumulative list, entries are never removed - see docs/database.md "Automatic Migrations".
 _SCHEMA_MIGRATIONS: list[tuple[str, str, str]] = [
     ("tournament_players", "deck_name", "ALTER TABLE tournament_players ADD COLUMN deck_name VARCHAR(200)"),
     ("matches", "p1_game_wins", "ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER"),

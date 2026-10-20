@@ -1,82 +1,86 @@
-# Riferimento Comandi
+# Command Reference
 
-## Comandi Pubblici
+Command and parameter names are the real slash-command names, in Italian, as users type them.
 
-### Presentazioni
+## Public Commands
 
-| Comando | Descrizione | Modalità |
+### Onboarding
+
+| Command | Description | Mode |
 |---|---|---|
-| `/presentati` | Avvia wizard presentazione multi-step | Modal + Select + Preview |
+| `/presentati` | Starts the multi-step presentation wizard | Modal + Select + Preview |
 
-### Validazione Mazzi
+### Deck Validation
 
-| Comando | Descrizione | Modalità |
+| Command | Description | Mode |
 |---|---|---|
-| `/artisan_check_deck` | Verifica legalità mazzo Artisan | Modal (decklist testuale) |
+| `/artisan_check_deck` | Checks an Artisan deck's legality | Modal (text decklist) |
 
-### Tornei — Iscrizione
+### Tournaments — Registration
 
-| Comando | Descrizione | Sinonimi |
-|---|---|---|
-| `/iscriviti [torneo_id]` | Iscrizione al torneo (nessun mazzo richiesto qui) | `/register` |
-| `/invia_deck [torneo_id]` | Invia/aggiorna il mazzo per un'iscrizione già fatta — richiesto prima dell'avvio, ripetibile | — |
-| `/iscrizioni_torneo [torneo_id]` | Elenco iscritti con stato mazzo (✅ inviato / ⏳ in attesa) | — |
-| `/left_torneo [torneo_id]` | Disiscrizione prima dell'avvio | `/unregister` |
-
-### Tornei — Partecipazione
-
-| Comando | Descrizione |
+| Command | Description |
 |---|---|
-| `/risultato [torneo]` | Invia risultato match (select menu game wins). Vale il primo dei due giocatori che lo inserisce: un secondo invio viene rifiutato in privato, senza annuncio pubblico — se il risultato è sbagliato lo corregge lo staff con `/correggi_risultato` |
-| `/classifica [torneo_id]` | Visualizza classifica con punti e OMW |
-| `/turni [torneo_id]` | Pairing del round corrente |
+| `/iscriviti [torneo_id]` | Registers for the tournament (no deck required here) |
+| `/invia_deck [torneo_id]` | Submits/updates the deck for an existing registration — required before the start, repeatable |
+| `/iscrizioni_torneo [torneo_id]` | Lists registrations with deck status (✅ submitted / ⏳ pending) |
+| `/left_torneo [torneo_id]` | Unregisters before the start |
 
-### Tornei — Informazioni
+### Tournaments — Playing
 
-| Comando | Descrizione |
+| Command | Description |
 |---|---|
-| `/lista_tornei` | Elenco di tutti i tornei con ID, nome, stato, giocatori |
-| `/leaderboard [limite]` | Classifica rating Glicko-2 (default: 10) |
-| `/banlist` | Lista carte bannate in embed paginato |
+| `/risultato [torneo]` | Submits a match result (game-wins select menu). The first of the two players to submit wins: a second submission is refused privately, with no public announcement — if the result is wrong, staff fixes it with `/correggi_risultato` |
+| `/classifica [torneo_id]` | Shows the standings with points and OMW |
+| `/turni [torneo_id]` | Pairings of the current round |
+
+### Tournaments — Information
+
+| Command | Description |
+|---|---|
+| `/lista_tornei` | Lists every tournament with ID, name, status, players |
+| `/leaderboard [limite]` | Glicko-2 rating leaderboard (default: 10) |
+| `/banlist` | List of banned cards in a paginated embed |
 
 ---
 
-## Comandi Admin (ruolo `Staff`)
+## Admin Commands (`Staff` role)
 
-### Gestione Tornei
+### Tournament Management
 
-| Comando | Descrizione |
+| Command | Description |
 |---|---|
-| `/crea_torneo` | Apre modale per creare nuovo torneo (nome, formato, max player) |
-| `/avvia_torneo [torneo]` | Avvia registrazione → stato attivo, genera round 1 — rifiuta se un iscritto attivo non ha ancora inviato un mazzo valido |
-| `/torneo_next_turn [torneo]` | Genera prossimo round o completa torneo |
-| `/drop_giocatore <giocatore> [torneo]` | Rimozione forzata: durante le iscrizioni toglie l'iscritto (sblocca `/avvia_torneo` se non ha mai inviato il mazzo), a torneo attivo con auto-loss |
-| `/concludi_torneo [torneo]` | Conclusione anticipata con rating update |
-| `/correggi_risultato <tavolo> <esito> [vincitore] [turno] [torneo]` | Sovrascrive (o inserisce, se manca) il risultato di una partita del torneo in corso: `esito` 2-0 / 2-1 / pareggio, `vincitore` obbligatorio tranne che per il pareggio, `turno` di default quello in corso. Anche round passati: la classifica si ricalcola, gli abbinamenti già generati restano. Rifiutato a torneo concluso (rating già calcolato). Annuncio pubblico + log `RESULT_CORRECTED` |
+| `/crea_torneo` | Opens a modal to create a new tournament (name, format, max players) |
+| `/avvia_torneo [torneo]` | Moves registration → active status, generates round 1 — refuses if an active registered player hasn't submitted a valid deck yet |
+| `/torneo_next_turn [torneo]` | Generates the next round or completes the tournament |
+| `/drop_giocatore <giocatore> [torneo]` | Forced removal: during registration it removes the registration (unblocks `/avvia_torneo` if the player never submitted a deck), on an active tournament with an auto-loss |
+| `/concludi_torneo [torneo]` | Early conclusion with rating update |
+| `/correggi_risultato <tavolo> <esito> [vincitore] [turno] [torneo]` | Overwrites (or enters, if missing) a match result of the running tournament: `esito` 2-0 / 2-1 / draw, `vincitore` required except for a draw, `turno` defaults to the current round. Past rounds too: standings recompute, pairings already generated stay. Refused once the tournament is concluded (ratings already computed). Public announcement + `RESULT_CORRECTED` log |
 
-### Gestione Banlist
+### Banlist Management
 
-| Comando | Descrizione |
+| Command | Description |
 |---|---|
-| `/banlist_aggiungi <carta>` | Aggiunge carta alla banlist (invalida subito la cache in memoria) |
-| `/banlist_rimuovi <carta>` | Rimuove carta dalla banlist (invalida subito la cache in memoria) |
+| `/banlist_aggiungi <carta>` | Adds a card to the banlist (invalidates the in-memory cache right away) |
+| `/banlist_rimuovi <carta>` | Removes a card from the banlist (invalidates the in-memory cache right away) |
 
-### Manutenzione
+### Maintenance
 
-| Comando | Descrizione |
+| Command | Description |
 |---|---|
-| `/forced_rarity_refresh` | Forza subito un controllo degli override SPG (gira anche da solo ogni settimana — vedi `docs/caching.md`) |
-| `/forced_event_schedule_check` | Forza subito un ricontrollo della pagina "Event Schedule" Arena più recente, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni 2 ore — vedi `docs/caching.md`); posta l'immagine calendario sia nel canale log sia nel canale community |
-| `/forced_ban_announcement_check` | Forza subito un ricontrollo dell'ultimo Banned and Restricted Announcement, ignorando l'ultimo `lastmod` salvato (gira anche da solo ogni 2 ore — vedi `docs/caching.md`); se ci sono modifiche reali, posta sia nel canale log sia nel canale community (solo nel canale log se quell'annuncio era già stato notificato alla community) — solo notifica, non tocca mai la banlist Artisan |
-| `/invalidate_card_cache <carta>` | Rimuove una carta dalla cache Scryfall, forzando un ricontrollo completo alla prossima validazione (senza attendere il TTL di 30 giorni) |
+| `/forced_rarity_refresh` | Forces an immediate SPG override check (it also runs on its own every week — see `docs/caching.md`) |
+| `/forced_event_schedule_check` | Forces an immediate re-check of the latest Arena "Event Schedule" page, ignoring the last saved `lastmod` (it also runs on its own every 2 hours — see `docs/caching.md`); posts the calendar image to both the log channel and the community channel |
+| `/forced_ban_announcement_check` | Forces an immediate re-check of the latest Banned and Restricted Announcement, ignoring the last saved `lastmod` (it also runs on its own every 2 hours — see `docs/caching.md`); if there are real changes, posts to both the log channel and the community channel (log channel only if that announcement was already notified to the community) — notify-only, never touches the Artisan banlist |
+| `/invalidate_card_cache <carta>` | Removes a card from the Scryfall cache, forcing a full re-check on the next validation (without waiting for the 30-day TTL) |
 
 ---
 
-## Dettaglio Implementazione
+## Implementation Details
 
-### Location File
+### File Locations
 
-| Comando | File | Linea |
+The "Line" column points at each command's `async def`: recompute it whenever `cogs/` files shift.
+
+| Command | File | Line |
 |---|---|---|
 | `/presentati` | `cogs/presentation/cog.py` | 48 |
 | `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 58 |
@@ -105,17 +109,20 @@
 
 ---
 
-## Helper e Utility
+## Helpers and Utilities
 
-### TournamentSystemCog — Helper
+### TournamentSystemCog — Helpers
 
-| Helper | Descrizione | Linea |
-|---|---|---|
-| `_get_tournament(interaction, torneo_id)` | Autocomplete + fetch torneo | 464 |
-| `_get_tournament_autocomplete()` | Autocomplete per parametri torneo | 440 |
+| Helper | Description |
+|---|---|
+| `_resolve_tournament(torneo, torneo_id)` | Finds the tournament by name/ID (`torneo`), by ID (`torneo_id`), or falls back to the latest one |
+| `_check_tournament_channel(interaction)` | Refuses the command outside `TOURNAMENT_CHANNEL_ID` (no-op when it is `0`) |
+| `_resolve_name(tp)` / `_player_display(tp)` | Display name of a tournament player (server nickname, `Giocatore #id` fallback); `_player_display` adds the deck name |
+| `_show_pairings(interaction, torneo_id)` | Shared body of `/turni` |
+| `_log(level, event, user, info)` | Shortcut to `Logger.send_log()` |
 
-### Permessi
+### Permissions
 
 `is_admin()` check (`utils/permissions.py`):
-- Verifica che l'utente abbia il ruolo `ADMIN_ROLE` (default: `Staff`)
-- Usato come decoratore su comandi admin: `@app_commands.check(is_admin)`
+- Checks that the user has the `ADMIN_ROLE` role (default: `Staff`)
+- Used as a decorator on admin commands: `@is_admin()`

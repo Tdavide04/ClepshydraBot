@@ -2,6 +2,9 @@
 
 Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automates user verification, Artisan format deck validation, and Swiss tournament management.
 
+The bot talks to its users in Italian (command names, replies, community announcements); code, logs and
+documentation are in English (see `docs/adr/0003-project-language.md`).
+
 ## Features
 
 - **Presentation System** — Multi-step modal wizard (`/presentati`) with role assignment
@@ -162,9 +165,17 @@ validated and ready to use.
 ## Development
 
 ```bash
+pip install -r requirements-dev.txt   # adds pytest and ruff
+
 # Test mode (uses separate channels and test database)
 TEST_MODE=True python main.py
+
+# Tests and lint (both are blocking gates in CI)
+python -m pytest
+python -m ruff check .
 ```
+
+The working standard (test-first, Conventional Commits, docs kept truthful) is described in `CLAUDE.md`.
 
 The bot auto-creates `data/clepshydra.db` on first run (`data/clepshydra_test.db` in test mode). View it
 with [DB Browser for SQLite](https://sqlitebrowser.org) — a desktop app, not a pip package (e.g.
@@ -173,6 +184,20 @@ with [DB Browser for SQLite](https://sqlitebrowser.org) — a desktop app, not a
 ```bash
 sqlitebrowser data/clepshydra.db
 ```
+
+## Documentation
+
+| Topic | Document |
+|---|---|
+| Architecture | `docs/architecture.md` |
+| Commands | `docs/commands.md` |
+| Tournaments | `docs/tournaments.md` |
+| Deck validation and banlist | `docs/deck-validation.md`, `docs/banlist-system.md` |
+| Caching, Scryfall, Wizards monitors | `docs/caching.md` |
+| Onboarding | `docs/onboarding.md` |
+| Database | `docs/database.md` |
+| Infrastructure and deployment | `docs/infrastructure.md`, `docs/technical-report.md` |
+| Roadmap and decisions | `docs/roadmap.md`, `docs/adr/` |
 
 ## License
 

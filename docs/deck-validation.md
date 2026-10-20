@@ -1,54 +1,55 @@
-# Validazione Mazzi Artisan
+# Artisan Deck Validation
 
-## Panoramica
+## Overview
 
-Il sistema di validazione verifica che i mazzi rispettino le regole del formato **Artisan** (solo carte Common e Uncommon su MTG Arena). Combina banlist locale, API Scryfall, override di rarità SPG e caching intelligente.
+The validation system checks that decks follow the rules of the **Artisan** format (only Common and Uncommon
+cards on MTG Arena). It combines a local banlist, the Scryfall API, SPG rarity overrides and caching.
 
 ---
 
-## Struttura
+## Structure
 
 ```
 cogs/deck_validation/
-├── __init__.py           # ArtisanDeckCheckModal + Tournament cog
+├── __init__.py           # ArtisanDeckCheckModal + Tournament cog (/artisan_check_deck)
 ├── models.py             # DeckEntry, ArtisanCard, DeckValidationResult
-├── validators.py         # parse_decklist(), check_banlist(), count validation
+├── validators.py         # parse_decklist(), check_banlist(), validate_counts()
 ├── service.py            # ArtisanService.validate_deck()
-└── embeds.py             # Embed builder per risultati validazione
+└── embeds.py             # Embed builder for validation results
 
 utils/
-├── card_cache.py         # Cache persistente Scryfall
-├── arena_overrides.py    # Override rarità SPG
-└── deck_image_generator.py  # Generazione immagine showcase
+├── card_cache.py         # Persistent Scryfall cache (SQLite)
+├── arena_overrides.py    # SPG rarity overrides
+└── deck_image_generator.py  # Showcase image generation
 ```
 
 ---
 
-## Flusso di Validazione
+## Validation Flow
 
 ```
-                    DECK LIST (testo incollato dall'utente)
+                    DECK LIST (text pasted by the user)
                                 │
                                 ▼
                     ┌───────────────────────┐
                     │   parse_decklist()     │
-                    │   • estrae blocco About│
-                    │   • separa main/side   │
-                    │   • strip set code     │
+                    │   • reads About block  │
+                    │   • splits main/side   │
+                    │   • strips set code    │
                     └───────────┬───────────┘
                                 │
                                 ▼
                     ┌───────────────────────┐
                     │    check_banlist()     │
-                    │   • O(1) lookup set    │
+                    │   • O(1) set lookup    │
                     └───────────┬───────────┘
                                 │
                     ┌───────────┴───────────┐
                     ▼                       ▼
-            BANNATE TROVATE         NESSUNA BANNATA
+            BANNED FOUND             NONE BANNED
                     │                       │
                     ▼                       ▼
-            DECK INVALIDO           ┌───────────────────────┐
+            DECK INVALID            ┌───────────────────────┐
             (stop, no API)          │  _fetch_collection()   │
                                     │  • cache check         │
                                     │  • Scryfall batch API  │
@@ -57,123 +58,128 @@ utils/
                                                 ▼
                                     ┌───────────────────────┐
                                     │ _is_arena_artisan_     │
-                                    │ legal() per ogni carta │
-                                    │ • override SPG check   │
-                                    │ • prints search Arena  │
+                                    │ legal() for each card  │
+                                    │ • SPG override check   │
+                                    │ • Arena prints search  │
                                     └───────────┬───────────┘
                                                 │
                                     ┌───────────┴───────────┐
                                     ▼                       ▼
-                            ILLEGALI TROVATE        TUTTE LEGALI
+                            ILLEGAL FOUND            ALL LEGAL
                                     │                       │
                                     ▼                       ▼
-                            DECK INVALIDO           ┌───────────────────────┐
+                            DECK INVALID            ┌───────────────────────┐
                                                     │ count validation      │
                                                     │ main >= 60, side<=15 │
                                                     └───────────┬───────────┘
                                                                 │
                                                     ┌───────────┴───────────┐
                                                     ▼                       ▼
-                                            CONTEGGIO ERRORE     CONTEGGIO OK
+                                            COUNT ERROR             COUNT OK
                                                     │                       │
                                                     ▼                       ▼
-                                            DECK INVALIDO           ┌───────────────────────┐
+                                            DECK INVALID            ┌───────────────────────┐
                                                                     │ generate deck image   │
-                                                                    │ pubblica embed        │
+                                                                    │ publish embed         │
                                                                     └───────────────────────┘
 ```
 
 ---
 
-## Componenti
+## Components
 
-### 1. Parser Decklist (`parse_decklist()` in `validators.py`)
+### 1. Decklist Parser (`parse_decklist()` in `validators.py`)
 
-`parse_decklist(text: str) -> tuple[str | None, list[DeckEntry], list[DeckEntry]]`
+`parse_decklist(raw: str) -> tuple[list[DeckEntry], int, str]` — returns `(entries, total_cards, deck_name)`.
 
-- Riconosce il blocco `About` per il nome del mazzo
-- Separa mainboard e sideboard (righe vuote come separatore)
-- Formatta: `3 Lightning Bolt (ONE) 123` → nome, quantità
-- Strip il set code e collector number dal nome
+- Reads the deck name from an initial `About` block (default `"ARTISAN DECK"`)
+- Skips the `Deck` header; everything after a `Sideboard` line is sideboard
+- Parses lines like `3 Lightning Bolt (ONE) 123` → quantity, name; strips the set code and collector number
+- Normalizes typographic quotes and keeps only the front face of `Front // Back` names (MTG Arena's export
+  format)
 
 ### 2. Banlist Check (`check_banlist()` in `validators.py`)
 
 `check_banlist(entries, banlist) -> list[str]`
 
-- Confronto case-insensitive (`nome.lower()`)
-- O(1) lookup su `set[str]`
-- Nessuna duplicazione nei risultati
-- Se lista non vuota → deck invalido
+- Case-insensitive comparison (`name.lower()`)
+- O(1) lookup on a `set[str]`
+- No duplicates in the result
+- Non-empty list → deck invalid
 
-### 3. Fetch Scryfall (`_fetch_collection()` in `service.py`)
+The banlist set comes from `ArtisanService._load_banlist()` (DB + front halves of double-faced cards, see
+`docs/banlist-system.md`). `load_banlist()`, a file-based version in the same module, is no longer used.
 
-`async _fetch_collection(session, card_names)`
+### 3. Scryfall Fetch (`_fetch_collection()` in `service.py`)
 
-- Raggruppa carte non in cache
-- Chiama `POST /cards/collection` in chunk da 75
-- Aggiorna `card_cache.json` con i risultati
-- Rate limiting: semaforo 1 richiesta, delay 110ms
+`async _fetch_collection(session, names)`
 
-### 4. Verifica Legalità Arena (`_is_arena_artisan_legal()` in `service.py`)
+- Groups the cards not in cache
+- Calls `POST /cards/collection` in chunks of 75
+- Stores the results in the card cache (`set_cached_card()`, persisted to the `cached_cards` table)
+- Rate limiting: semaphore with 1 request at a time, 110ms delay
+
+### 4. Arena Legality Check (`_is_arena_artisan_legal()` in `service.py`)
 
 `async _is_arena_artisan_legal(session, card_data, card_name) -> bool`
 
-Ordine dei controlli:
-1. **Override locale** → `get_override_rarity(card_name)` → se common/uncommon → legale
-2. **Cache disco** → `artisan_legal` field in `card_cache.json`, **solo se non scaduto**
-   (`is_artisan_legal_stale()`, TTL 30 giorni — vedi `docs/caching.md`); una entry senza
-   `artisan_legal_checked_at` (cacheata prima dell'introduzione del TTL) è considerata scaduta
-3. **Cache memoria** → `oracle_id` già verificato (`_ARENA_LEGAL_CACHE`, per la durata del processo —
-   non soggetta a TTL)
-4. **API Scryfall** → `GET prints_search_uri + ?game=arena`
+Order of the checks:
+1. **Local override** → `get_override_rarity(card_name)` → if common/uncommon → legal
+2. **Card cache** → the `artisan_legal` field of the cached entry, **only if not stale**
+   (`is_artisan_legal_stale()`, 30-day TTL — see `docs/caching.md`); an entry without
+   `artisan_legal_checked_at` (cached before the TTL existed) counts as stale
+3. **Memory cache** → `oracle_id` already checked (`_ARENA_LEGAL_CACHE`, for the life of the process — no TTL)
+4. **Scryfall API** → `GET prints_search_uri` with `game:arena` added to the query
 
-Nella chiamata API:
-- Filtra `set_type=alchemy` (escluso da Artisan)
-- Controlla se esiste una stampa common/uncommon su Arena
-- Salva risultato in cache con timestamp (`mark_artisan_legal()`)
+In the API call:
+- Skips `set_type=alchemy` printings (excluded from Artisan)
+- Checks whether a common/uncommon printing exists on Arena
+- Stores the result in cache with a timestamp (`mark_artisan_legal()`)
 
-### Scryfall non raggiungibile
+### Scryfall Unreachable
 
-`_request_with_retry()` (usata da `_post_with_retry`/`_get_with_retry`) distingue due esiti che fino alla
-3.5.6 diventavano entrambi `None`:
+`_request_with_retry()` (used by `_post_with_retry`/`_get_with_retry`) tells apart two outcomes that until
+3.5.6 both became `None`:
 
-- **404** → `{"data": []}`: su `/cards/search` significa "nessuna stampa trovata", quindi la carta non ha
-  stampe Arena ed è **illegale** — esito valido, memorizzato in cache come prima
-- **errore di rete, timeout, 5xx o 429 oltre i 5 tentativi, altro status inatteso** → solleva
-  `ScryfallUnavailable`. I 5xx vengono ora ritentati con backoff come i timeout (prima: abbandono immediato)
+- **404** → `{"data": []}`: on `/cards/search` it means "no printings found", so the card has no Arena
+  printings and is **illegal** — a valid outcome, cached as before
+- **network error, timeout, 5xx or 429 past the 5 attempts, any other unexpected status** → raises
+  `ScryfallUnavailable`. 5xx responses are now retried with backoff like timeouts (before: immediate give-up)
 
-`validate_deck()` intercetta `ScryfallUnavailable` e restituisce un `DeckValidationResult` con
-`service_error` valorizzato e nessuna carta in `invalid_cards`/`illegal_rarity_cards`: il mazzo **non è
-stato valutato**, né valido né invalido. Nessuna cache viene toccata. `/invia_deck` e
-`/artisan_check_deck` rispondono "Scryfall non risponde, riprova tra qualche minuto" (l'iscrizione al
-torneo resta invariata) e loggano `WARN` `SCRYFALL_UNAVAILABLE`.
+`validate_deck()` catches `ScryfallUnavailable` and returns a `DeckValidationResult` with `service_error`
+set and no card in `invalid_cards`/`illegal_rarity_cards`: the deck **was not evaluated**, neither valid nor
+invalid. No cache is touched. `/invia_deck` and `/artisan_check_deck` reply that Scryfall isn't answering
+and to retry in a few minutes (the tournament registration stays unchanged) and log WARN
+`SCRYFALL_UNAVAILABLE`.
 
-Prima della 3.5.7 un singolo timeout sulla ricerca stampe salvava la carta come illegale in
-`_ARENA_LEGAL_CACHE` fino al riavvio del bot (ogni mazzo che la conteneva veniva rifiutato con "Non legali
-in Artisan Arena"), e un blocco `/cards/collection` fallito faceva comparire le sue carte in "Carte non
-trovate".
+Before 3.5.7 a single timeout on the printings search stored the card as illegal in `_ARENA_LEGAL_CACHE`
+until the bot restarted (every deck containing it was refused as "Non legali in Artisan Arena"), and a
+failed `/cards/collection` block made its cards show up under "Carte non trovate".
 
-Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TTL), l'admin può usare
+To force an immediate re-check of a single card (without waiting for the TTL), an admin can use
 `/invalidate_card_cache <carta>`.
 
-### 5. Conteggio (`validate_counts()` in `validators.py`)
+### 5. Counts
 
-- Mainboard: minimo 60 carte
-- Sideboard: massimo 15 carte
-- Deck vuoto o nessun mainboard → invalido
+- Mainboard: at least 60 cards
+- Sideboard: at most 15 cards
 
-### 6. Generazione Immagine (`utils/deck_image_generator.py`)
+`DeckValidationResult.is_valid` applies these limits itself. `validate_counts(main_count, side_count)` in
+`validators.py` returns the human-readable count errors, used by `/invia_deck` in the tournament cog.
 
-`DeckImageGenerator.create_deck_showcase(entries, sideboard, deck_name, player_name, color_identity) -> io.BytesIO`
+### 6. Image Generation (`utils/deck_image_generator.py`)
 
-- Seleziona sfondo per gilda/colore da `assets/backgrounds/`
-- Scarica immagini carte da Scryfall
-- Compositing: header, griglia mainboard, colonna sideboard
-- Watermark logo Clepshydra in basso a destra
+`DeckImageGenerator.create_deck_showcase(session, mainboard, sideboard, player_name=None, deck_name="ARTISAN DECK") -> BytesIO`
+
+- Picks a guild/color background from `assets/backgrounds/`, based on the deck's colors
+- Downloads the card images from Scryfall
+- Compositing: header, mainboard grid by section, sideboard column
+- Clepshydra logo watermark at the bottom, centered on the sideboard column, tinted with the background's
+  dominant color
 
 ---
 
-## Modelli Dati (`models.py`)
+## Data Models (`models.py`)
 
 ```python
 @dataclass
@@ -198,34 +204,35 @@ class DeckValidationResult:
     main_count: int
     side_count: int
     banned_cards: list[str]          # default []
-    invalid_cards: list[str]         # "Carte non trovate"
-    illegal_rarity_cards: list[str]  # "Non legali in Artisan Arena"
+    invalid_cards: list[str]         # shown as "Carte non trovate"
+    illegal_rarity_cards: list[str]  # shown as "Non legali in Artisan Arena"
     mainboard: list[ArtisanCard]
     sideboard: list[ArtisanCard]
-    service_error: str | None = None # Scryfall non raggiungibile: mazzo non valutato
+    service_error: str | None = None # Scryfall unreachable: deck not evaluated
 
     @property
-    def is_valid(self) -> bool: ...  # False anche se service_error e' valorizzato
+    def is_valid(self) -> bool: ...  # also False when service_error is set
 ```
 
 ---
 
-## Override Rarità SPG
+## SPG Rarity Overrides
 
-Vedi [banlist-system.md](banlist-system.md) per dettagli sul sistema di override.
+See [caching.md](caching.md) for the details of the override system.
 
-Flusso rapido:
-1. `get_override_rarity(nome)` controlla `arena_rarity_data.json`
-2. Se trovato come `"common"` o `"uncommon"` → carta legale (salta API)
-3. Contiene ~40 carte del set SPG (Special Guest)
-4. Aggiornato automaticamente ogni settimana (`periodic_spg_refresh_loop`); forzabile subito via `/forced_rarity_refresh` (admin)
+Quick flow:
+1. `get_override_rarity(name)` checks `data/arena_rarity_data.json`
+2. If found as `"common"` or `"uncommon"` → card legal (skips the API)
+3. Covers the SPG (Special Guests) cards that are rare/mythic on Arena but common/uncommon on paper
+4. Refreshed automatically every week (`periodic_spg_refresh_loop`); can be forced right away with
+   `/forced_rarity_refresh` (admin)
 
 ---
 
 ## Caching
 
-Vedi [caching.md](caching.md) per dettagli completi.
+See [caching.md](caching.md) for full details.
 
-- `card_cache.json`: cache persistente Scryfall con field `artisan_legal`
-- Salvataggio automatico ogni 60 secondi (scrittura atomica)
-- Cache elimina ~90% delle chiamate API per deck già verificati
+- `cached_cards` SQLite table: persistent Scryfall cache with the `artisan_legal` field
+- Incremental save every 60 seconds, plus one last save at shutdown
+- Decks already checked mostly hit the cache instead of the API

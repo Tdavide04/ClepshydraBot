@@ -1,105 +1,110 @@
-# Infrastruttura
+# Infrastructure
 
-## Panoramica
+## Overview
 
-ClepshydraBot è ospitato su **Oracle Cloud Infrastructure (OCI) Free Tier** in esecuzione su una VM `VM.Standard.E2.1.Micro` con 1 GB RAM.
+ClepshydraBot is hosted on **Oracle Cloud Infrastructure (OCI) Free Tier**, running on a
+`VM.Standard.E2.1.Micro` VM with 1 GB RAM.
 
 ---
 
-## Specifiche VM
+## VM Specifications
 
-| Parametro | Valore |
+| Parameter | Value |
 |---|---|
 | Provider | OCI Free Tier |
 | Shape | VM.Standard.E2.1.Micro |
-| Regione | eu-milan-1 (Milano) |
-| OCPU | 1 (ARM, non ridimensionabile) |
+| Region | eu-milan-1 (Milan) |
+| OCPU | 1 (AMD x86, not resizable) |
 | RAM | 1 GB |
-| Rete | 0.5 Gbps |
+| Network | 0.5 Gbps |
 | Storage | Block Storage |
 | OS | Ubuntu 24.04 LTS |
-| IP Pubblico | 80.225.91.142 |
+| Public IP | 80.225.91.142 |
 
-### Vincoli
+### Constraints
 
-1 GB RAM ha guidato scelte architetturali chiave:
-- **SQLite** invece di PostgreSQL (nessun processo DB separato)
-- **Cache JSON** invece di Redis (nessun servizio in-memory esterno)
-- **Scritture atomiche** su file invece di journal WAL pesante
+1 GB RAM drove key architectural choices:
+- **SQLite** instead of PostgreSQL (no separate DB process)
+- **SQLite tables and local JSON files** for caches instead of Redis (no external in-memory service)
+- **Atomic file writes** (`.tmp` + `os.replace`) for the monitors' state files instead of a heavier journal
 
 ---
 
-## Configurazione Ambiente (`config/config.py`)
+## Environment Configuration (`config/config.py`)
 
-### Variabili d'Ambiente
+### Environment Variables
 
-Caricate da `.env` tramite `python-dotenv`:
+Loaded from `.env` via `python-dotenv` (template: `.env.example`):
 
-| Variabile | Descrizione | Test Mode |
+| Variable | Description | Test Mode |
 |---|---|---|
-| `DISCORD_TOKEN` | Token bot produzione | `DISCORD_TOKEN_TEST` |
-| `GUILD_ID` | Server Discord | `GUILD_ID_TEST` |
-| `PRESENTATION_CHANNEL_ID` | Canale presentazioni | `*_TEST` |
-| `TOURNAMENT_CHANNEL_ID` | Canale torneo | `*_TEST` |
-| `PUBLIC_DECK_CHANNEL_ID` | Canale deck pubblici | `*_TEST` |
-| `LOG_CHANNEL_ID` | Canale logging | `*_TEST` |
-| `INITIAL_ROLE` | Ruolo iniziale (default: Viandante) | stessi |
-| `FINAL_ROLE` | Ruolo verificato (default: Planeswalker) | stessi |
-| `ADMIN_ROLE` | Ruolo admin (default: Staff) | stessi |
-| `DB_PATH` | Percorso DB (default: `data/clepshydra.db`) | suffisso `_test.db` |
-| `TEST_MODE` | Flag test | — |
+| `DISCORD_TOKEN` | Production bot token | `DISCORD_TOKEN_TEST` |
+| `GUILD_ID` | Discord server | `GUILD_ID_TEST` |
+| `PRESENTATION_CHANNEL_ID` | Presentation channel | `*_TEST` |
+| `TOURNAMENT_CHANNEL_ID` | Tournament channel (optional, `0` = any channel) | `*_TEST` |
+| `PUBLIC_DECK_CHANNEL_ID` | Public deck channel | `*_TEST` |
+| `COMUNICATION_CHANNEL_ID` | Public community channel for monitor notifications (optional, `0` = off; note the spelling) | `*_TEST` |
+| `LOG_CHANNEL_ID` | Staff log channel | none: shared by both modes |
+| `INITIAL_ROLE` | Role given on join (e.g. `Viandante`), no default in code | same |
+| `FINAL_ROLE` | Verified role (e.g. `Planeswalker`), no default in code | same |
+| `ADMIN_ROLE` | Admin role (default: `Staff`) | same |
+| `DB_PATH` | DB path (default: `data/clepshydra.db`) | `_test.db` suffix |
+| `TEST_MODE` | Test flag | — |
 
-`VERSION` **non** è una variabile d'ambiente: è una costante hardcoded in `config/config.py` (append
-`-test` se `TEST_MODE`), aggiornata a mano ad ogni release insieme a `CHANGELOG.md` — vedi la nota
-"Versioning" in cima a quel file per la convenzione (MINOR per feature, PATCH per fix).
+`.env.example` still has `DB_PATH=data/clepsydra.db` (missing "h"): copying it as is gives a DB file name
+different from the code default.
+
+`VERSION` is **not** an environment variable: it is a hardcoded constant in `config/config.py` (`-test` is
+appended when `TEST_MODE` is on), bumped by hand on every release together with `CHANGELOG.md` — see
+"Versioning" at the top of that file for the convention (MINOR for features, PATCH for fixes).
 
 ### Test Mode
 
-`TEST_MODE` cambia:
-- Token Discord (produzione vs test)
-- Server Discord (guild ID)
-- Canali di destinazione
+`TEST_MODE` switches:
+- Discord token (production vs test)
+- Discord server (guild ID)
+- Destination channels (except the log channel)
 - Database (`clepshydra.db` → `clepshydra_test.db`)
 
 ---
 
 ## Deployment
 
-### Avvio con pm2 (attuale)
+### Running with pm2 (current)
 
 ```bash
 source .venv/bin/activate
 pm2 start main.py --name ClepshydraBotte --interpreter .venv/bin/python
 ```
 
-Il processo in produzione si chiama **`ClepshydraBotte`** (case-sensitive — i file di log sono
-`~/.pm2/logs/ClepshydraBotte-out.log`/`-error.log`). I doc riportavano `clepshydrabot` fino alla 3.5.3:
-`pm2 logs clepshydrabot` non trova nessun processo e un `grep` a valle restituisce output vuoto senza
-errori, facile da scambiare per "nessun log".
+The production process is called **`ClepshydraBotte`** (case-sensitive — the log files are
+`~/.pm2/logs/ClepshydraBotte-out.log`/`-error.log`). The docs said `clepshydrabot` until 3.5.3:
+`pm2 logs clepshydrabot` finds no process, and a downstream `grep` returns empty output with no error,
+easy to mistake for "no logs".
 
-`pm2` gestisce il processo e lo riavvia automaticamente in caso di crash. Comandi utili:
+`pm2` manages the process and restarts it automatically on crash. Useful commands:
 
 ```bash
-pm2 status              # stato del processo
-pm2 logs ClepshydraBotte  # log in tempo reale
+pm2 status              # process status
+pm2 logs ClepshydraBotte  # live logs
 pm2 restart ClepshydraBotte
-pm2 save                # persiste la process list
-pm2 startup             # riavvia pm2 (e i processi salvati) al boot della VM
+pm2 save                # persists the process list
+pm2 startup             # restarts pm2 (and the saved processes) when the VM boots
 
-# storico dei controlli dei monitor sitemap (righe con timestamp dalla 3.5.3)
+# history of the sitemap monitor checks (timestamped lines since 3.5.3)
 pm2 logs ClepshydraBotte --lines 2000 --nostream | grep -E "BAN ANNOUNCEMENT|EVENT SCHEDULE"
 ```
 
-`main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, esce con codice non-zero e
-stampa un errore esplicito su stderr — visibile in `pm2 logs ClepshydraBotte`. Da notare: se il token è
-genuinamente scaduto/invalido, `pm2` riavvierà comunque il processo (`Restart=on-failure`-style), che
-fallirà di nuovo allo stesso modo finché non si aggiorna manualmente il token — il riavvio automatico
-non "risolve" un problema di credenziali, dà solo visibilità continua nei log.
+`main.py` catches `discord.LoginFailure` and other startup exceptions, exits with a non-zero code and prints
+an explicit error to stderr — visible in `pm2 logs ClepshydraBotte`. Note: if the token is genuinely
+expired/invalid, `pm2` restarts the process anyway, and it fails again the same way until the token is
+updated by hand — automatic restart doesn't "fix" a credentials problem, it only keeps it visible in the
+logs.
 
-### Avvio con systemd (alternativa non in uso)
+### Running with systemd (unused alternative)
 
-Il unit file e' disponibile in `deploy/clepshydrabot.service` (da copiare in `/etc/systemd/system/`),
-mantenuto come alternativa nel repository ma non installato sulla VM di produzione (dove si usa `pm2`):
+The unit file is in `deploy/clepshydrabot.service` (to copy into `/etc/systemd/system/`), kept in the
+repository as an alternative but not installed on the production VM (which uses `pm2`):
 
 ```
 [Unit]
@@ -119,11 +124,12 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-Con systemd, lo stesso comportamento di `main.py` (uscita non-zero su errori di startup) sarebbe visibile in `journalctl -u clepshydrabot` invece che in `pm2 logs`.
+With systemd, the same `main.py` behavior (non-zero exit on startup errors) would show up in
+`journalctl -u clepshydrabot` instead of `pm2 logs`.
 
 ---
 
-## Dipendenze (`requirements.txt`)
+## Dependencies (`requirements.txt`)
 
 ```
 discord.py
@@ -134,7 +140,9 @@ sqlalchemy[asyncio]
 aiosqlite
 ```
 
-Installazione (produzione):
+Versions are not pinned yet (roadmap step 14).
+
+Installation (production):
 
 ```bash
 python -m venv .venv
@@ -142,82 +150,89 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Installazione (sviluppo, aggiunge `pytest` e `ruff`):
+Installation (development, adds `pytest` and `ruff`):
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-`pytest.ini` (`pythonpath = .`) aggiunge esplicitamente la root del repo a `sys.path`: senza, l'invocazione nuda `pytest tests/` (usata dalla CI, a differenza di `python -m pytest` che aggiunge la cwd automaticamente) fallisce con `ModuleNotFoundError` sui moduli di primo livello (`services`, `database`, `utils`), perché non esiste un `tests/__init__.py` a catena fino alla root.
+`pytest.ini` (`pythonpath = .`) explicitly adds the repo root to `sys.path`: without it, the bare
+`pytest tests/` invocation (used by CI, unlike `python -m pytest`, which adds the cwd automatically) fails
+with `ModuleNotFoundError` on the top-level modules (`services`, `database`, `utils`), because there is no
+chain of `tests/__init__.py` up to the root.
 
 ---
 
 ## Logging
 
-### Sistema di Log (`cogs/logger.py`)
+### Log System (`cogs/logger.py`)
 
-Tutti gli eventi vengono loggati su un canale Discord dedicato tramite embed:
+Events are logged to a dedicated Discord channel as embeds:
 
-| Livello | Colore | Eventi |
+| Level | Color | Events |
 |---|---|---|
-| `INFO` | Verde | Operazioni completate (presentazioni, verifiche ok, torneo creato) |
-| `WARN` | Giallo | Validazioni fallite, carte bannate, campi non validi |
-| `ERROR` | Rosso | Eccezioni non gestite, errori Scryfall, problemi DB |
-| `DEBUG` | Grigio | Startup, migrazioni, sync comandi |
+| `INFO` | Green | Completed operations (presentations, successful checks, tournament created) |
+| `WARN` | Yellow | Failed validations, banned cards, invalid fields |
+| `ERROR` | Red | Unhandled exceptions, Scryfall errors, DB problems |
+| `DEBUG` | Blue | Startup, migrations, command sync |
 
-Gli altri cog recuperano il Logger con `bot.get_cog('Logger')` e chiamano
-`send_log(level, event, info, ...)`. Argomenti opzionali:
+Other cogs get the Logger with `bot.get_cog('Logger')` and call `send_log(level, event, info, ...)`.
+Optional arguments:
 
-- `fields`: lista di `{"name", "value", "inline"}`, ognuno aggiunto all'embed come campo separato.
-- `files`: lista di `discord.File`, allegati allo stesso messaggio.
-- `extra_channel_id`: ripubblica l'aggiornamento in un secondo canale, di norma
-  `config.COMUNICATION_CHANNEL_ID`. Se vale `0`/`None` non fa nulla. Nel secondo canale va un embed
-  **separato**, costruito da `community_title`/`community_info`, non una copia di quello del canale log:
-  l'embed di log contiene dettagli per lo staff (chi ha forzato il controllo, "Controllo
-  manuale/automatico") che non vanno mostrati nel canale pubblico, dove viene pingato `@everyone`. I
-  `files` vengono invece reinviati tali e quali: prima si chiama `discord.File.reset()` su ciascuno,
-  perché il primo `send()` ha già consumato lo stream.
+- `fields`: list of `{"name", "value", "inline"}`, each added to the embed as a separate field.
+- `files`: list of `discord.File`, attached to the same message.
+- `extra_channel_id`: republishes the update to a second channel, normally
+  `config.COMUNICATION_CHANNEL_ID`. It does nothing when it is `0`/`None`. The second channel gets a
+  **separate** embed, built from `community_title`/`community_info`, not a copy of the log-channel one: the
+  log embed carries staff details (who forced the check, "Forced manual check"/"Automatic check") that must
+  not show up in the public channel, where `@everyone` gets pinged. The `files` are resent as they are:
+  `discord.File.reset()` is called on each one first, because the first `send()` already consumed the
+  stream.
 
-`fields` e `files` sono usati dai monitor Event Schedule e Banned and Restricted (`docs/caching.md`).
+`fields` and `files` are used by the Event Schedule and Banned and Restricted monitors (`docs/caching.md`).
 
-### Log su Console
+Log-channel text is in English; the community embed is in Italian (`docs/adr/0003-project-language.md`).
 
-Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I fallimenti di avvio (token invalido, eccezioni non gestite in `setup_hook`) vengono sempre scritti su stderr con prefisso `FATAL:`, anche quando il canale Discord di log non e' raggiungibile.
+### Console Logs
+
+Besides the Discord channel, the bot writes logs to stdout/stderr for debugging over SSH; lines written with
+`log()` (`utils/console.py`) carry a `[YYYY-MM-DD HH:MM:SS]` timestamp. Startup failures (invalid token,
+unhandled exceptions in `setup_hook`) are always written to stderr with the `FATAL:` prefix, even when the
+Discord log channel is unreachable.
 
 ---
 
-## Roadmap Infrastrutturale
+## Infrastructure Roadmap
 
-### Sprint 7 — Docker (completato)
+### Sprint 7 — Docker (done)
 
-`Dockerfile` multi-stage: uno stage `builder` installa le dipendenze in un venv isolato
-(`/opt/venv`), lo stage finale copia solo il venv già pronto + il codice applicativo, gira come utente
-non-root (`clepshydra`, uid 1000). `.dockerignore` esclude `.git`, `data/` (mai bakato nell'immagine —
-contiene solo dati runtime/cache, ricreato a ogni avvio dal volume), `.env` (mai nell'immagine, iniettato
-a runtime), test/docs.
+Multi-stage `Dockerfile`: a `builder` stage installs the dependencies into an isolated venv (`/opt/venv`), the
+final stage copies only the prebuilt venv + the application code and runs as a non-root user (`clepshydra`,
+uid 1000). `.dockerignore` excludes `.git`, `data/` (never baked into the image — it only holds runtime/cache
+data, recreated from the volume on every start), `.env` (never in the image, injected at runtime), tests/docs.
 
 `docker-compose.yml`:
 - `restart: unless-stopped`
-- `env_file: .env` (letto dall'host all'avvio, non copiato nell'immagine)
-- volume Docker nominato `clepshydra-data` montato su `/app/data` — persiste tra i riavvii del container
+- `env_file: .env` (read from the host at startup, not copied into the image)
+- named Docker volume `clepshydra-data` mounted on `/app/data` — persists across container restarts
 
 ```bash
-docker compose up -d --build   # build + avvio
-docker compose logs -f bot     # log in tempo reale
-docker compose down            # ferma (il volume dati resta)
+docker compose up -d --build   # build + start
+docker compose logs -f bot     # live logs
+docker compose down            # stop (the data volume stays)
 ```
 
-Questa è un'opzione di deployment **aggiuntiva**, non sostituisce `pm2` (sezione "Deployment" sopra),
-che resta il metodo effettivamente in uso in produzione finché non si decide di migrare.
+This is an **additional** deployment option, it doesn't replace `pm2` ("Deployment" section above), which
+stays the method actually used in production until a migration is decided.
 
-### Sprint 8 — CI/CD (completato)
+### Sprint 8 — CI/CD (done)
 
-`.github/workflows/ci.yml`, attivo su push/PR:
-- `pytest` su ogni push e PR — **gate bloccante**
-- `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`) — **gate bloccante**: il debito di lint
-  pre-esistente (~54 problemi) è stato sanato nello Step 8 di `docs/roadmap.md` (allora
-  in parte escludendo `legacy/`, poi rimosso dal repository — vedi `CHANGELOG.md`)
+`.github/workflows/ci.yml`, active on push/PR:
+- `pytest` on every push and PR — **blocking gate**
+- `ruff` lint (`ruff.toml`, minimal rules `E4,E7,E9,F`) — **blocking gate**: the pre-existing lint debt
+  (~54 issues) was cleared in Step 8 of `docs/roadmap.md` (at the time partly by excluding `legacy/`, later
+  removed from the repository — see `CHANGELOG.md`)
 
-Ancora da fare:
-- `build` check Docker in CI (verifica che l'immagine si costruisca ad ogni push, senza deploy)
-- Deploy automatico su OCI via SSH/deploy key
+Still to do:
+- Docker `build` check in CI (verify the image builds on every push, without deploying)
+- Automatic deployment to OCI via SSH/deploy key

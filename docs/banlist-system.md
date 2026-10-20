@@ -1,32 +1,34 @@
-# Sistema Banlist Carte Magic — Clepshydra Bot
+# Card Banlist System — Clepshydra Bot
 
-## Panoramica
+## Overview
 
-Il sistema gestisce le carte bandite nel formato **Artisan** (solo carte Common e Uncommon su MTG Arena). La banlist è un elenco di carte che, pur essendo di rarità comune o non comune, sono bandite perché considerate troppo forti per il formato.
+The system manages the cards banned in the **Artisan** format (only Common and Uncommon cards on MTG Arena).
+The banlist lists cards that, although common or uncommon, are banned because they are considered too strong
+for the format.
 
-**Nota**: `utils/ban_announcement.py` monitora i "Banned and Restricted Announcement" ufficiali di Wizards
-e notifica quando ne esce uno nuovo (vedi `docs/caching.md` sezione 3b), ma è **solo un promemoria** — non
-scrive mai su `banned_cards`. Nessuno dei formati ufficiali coperti da quegli annunci (Standard, Modern,
-Alchemy, ecc.) è l'Artisan homebrew di questa community, quindi l'aggiornamento della banlist resta sempre
-manuale via `/banlist_aggiungi`/`/banlist_rimuovi`.
+**Note**: `utils/ban_announcement.py` watches Wizards' official "Banned and Restricted Announcement" posts
+and notifies when a new one comes out (see `docs/caching.md` section 3b), but it is **only a reminder** — it
+never writes to `banned_cards`. None of the official formats those announcements cover (Standard, Modern,
+Alchemy, etc.) is this community's homebrew Artisan, so updating the banlist always stays manual via
+`/banlist_aggiungi`/`/banlist_rimuovi`.
 
 ---
 
-## Architettura
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Avvio Bot                            │
+│                    Bot startup                          │
 │  database/engine.py:_migrate_banlist()                  │
-│    → importa cards.txt nel DB SQLite                    │
-│    → solo se il DB è vuoto                              │
+│    → imports cards.txt into the SQLite DB               │
+│    → only if the table is empty                         │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
 │             BanlistRepository                           │
 │  repositories/banlist_repository.py                     │
-│  • CRUD su tabella banned_cards                         │
+│  • CRUD on the banned_cards table                       │
 │  • get_all_for_format() → set[str]                     │
 │  • add_card() / remove_card()                           │
 │  • import_from_file()                                   │
@@ -35,63 +37,65 @@ manuale via `/banlist_aggiungi`/`/banlist_rimuovi`.
           ┌────────────┴────────────┐
           ▼                         ▼
 ┌──────────────────┐    ┌──────────────────────────────┐
-│  Tournaments     │    │  Slash Commands (Admin)       │
-│  (deck check)    │    │  /banlist                     │
-│                  │    │  /banlist_aggiungi            │
-│                  │    │  /banlist_rimuovi             │
+│  Deck validation │    │  Slash commands               │
+│  (ArtisanService)│    │  /banlist (public)            │
+│                  │    │  /banlist_aggiungi (admin)    │
+│                  │    │  /banlist_rimuovi (admin)     │
 └──────────────────┘    └──────────────────────────────┘
 ```
 
 ---
 
-## Componenti nel dettaglio
+## Components in Detail
 
 ### 1. Seed Data — `cards.txt`
 
-File di testo con 220 carte bandite, una per riga. Include:
-- Carte con prefisso `A-` (versione Alchemy su Arena)
-- Carte double-faced (`Nome // Nome`)
-- Carte "normali" bandite (es. `Abiding Grace`, `Mishra's Bauble`)
+Text file with 219 banned cards, one per line. It includes:
+- Cards with the `A-` prefix (Alchemy versions on Arena)
+- Double-faced cards (`Name // Name`)
+- "Normal" banned cards (e.g. `Abiding Grace`, `Mishra's Bauble`)
 
-### 2. Migrazione all'avvio — `_migrate_banlist()` in `database/engine.py`
+### 2. Startup Migration — `_migrate_banlist()` in `database/engine.py`
 
-Allo startup, `_migrate_banlist()`:
-1. Controlla se `cards.txt` esiste
-2. Chiama `BanlistRepository.import_from_file()`
-3. Se il DB è vuoto, importa tutte le carte con format=`"Artisan"`
-4. Se il DB ha già dati, salta l'import (non duplica)
+At startup, `_migrate_banlist()`:
+1. Checks whether `cards.txt` exists
+2. Calls `BanlistRepository.import_from_file()`
+3. If the table is empty, imports every card with format=`"Artisan"`
+4. If the table already has data, skips the import (no duplicates)
 
-### 3. Modello Dati — `BannedCard` in `database/models.py`
+### 3. Data Model — `BannedCard` in `database/models.py`
 
 ```python
 class BannedCard(Base):
     __tablename__ = "banned_cards"
 
     id          = Column(Integer, primary_key=True)
-    card_name   = Column(String(200), unique=True, index=True)  # nome esatto
-    format      = Column(String(50), default="Artisan")         # formato di appartenenza
+    card_name   = Column(String(200), unique=True, index=True)  # exact name
+    format      = Column(String(50), default="Artisan")         # format it belongs to
     created_at  = Column(DateTime, default=datetime.now)
 ```
 
 ### 4. Repository — `repositories/banlist_repository.py`
 
-| Metodo | Funzione |
+| Method | Role |
 |---|---|
-| `get_all_for_format(format="Artisan")` | Restituisce un `set[str]` con tutti i nomi (lowercase) delle carte bandite per il formato |
-| `add_card(card_name, format="Artisan")` | Aggiunge una carta alla banlist |
-| `remove_card(card_name)` | Rimuove una carta per nome esatto, ritorna `True/False` |
-| `count()` | Numero totale di carte bandite |
-| `import_from_file(path)` | Importa bulk da file di testo (solo se DB vuoto) |
+| `get_all_for_format(format="Artisan")` | Returns a `set[str]` with every (lowercase) banned card name for the format |
+| `add_card(card_name, format="Artisan")` | Adds a card to the banlist |
+| `remove_card(card_name)` | Removes a card by exact name, returns `True/False` |
+| `count()` | Total number of banned cards |
+| `import_from_file(path)` | Bulk import from a text file (only if the table is empty) |
 
-### 5. Validazione Deck — `ArtisanService.validate_deck()` in `cogs/deck_validation/service.py`
+### 5. Deck Validation — `ArtisanService.validate_deck()` in `cogs/deck_validation/service.py`
 
 `ArtisanService.validate_deck()`:
-1. Alla prima chiamata, carica la banlist nella cache di modulo `_banlist_cache` via `_load_banlist()` → `BanlistRepository.get_all_for_format()`, poi espande le carte double-faced con `_expand_double_faced()` (aggiunge la sola metà fronte accanto al nome completo — vedi "Problemi Noti" punto 1)
-2. Chiama `check_banlist(entries, _banlist_cache)` (da `cogs/deck_validation/validators.py`)
-3. Se trova carte bandite, restituisce subito `DeckValidationResult(banned_cards=[...])` → deck **invalido**
-4. Se nessuna carta bandita, prosegue con la validazione rarità (API Scryfall)
+1. On the first call, loads the banlist into the module cache `_banlist_cache` via `_load_banlist()` →
+   `BanlistRepository.get_all_for_format()`, then expands double-faced cards with `_expand_double_faced()`
+   (adds the front half alone next to the full name — see "Known Issues" item 1)
+2. Calls `check_banlist(entries, _banlist_cache)` (from `cogs/deck_validation/validators.py`)
+3. If it finds banned cards, returns `DeckValidationResult(banned_cards=[...])` right away → deck **invalid**
+4. If no card is banned, goes on with the rarity validation (Scryfall API)
 
-### 6. Check Banlist — `check_banlist()` in `cogs/deck_validation/validators.py`
+### 6. Banlist Check — `check_banlist()` in `cogs/deck_validation/validators.py`
 
 ```python
 def check_banlist(entries: list[DeckEntry], banlist: set[str]) -> list[str]:
@@ -104,256 +108,102 @@ def check_banlist(entries: list[DeckEntry], banlist: set[str]) -> list[str]:
     return banned
 ```
 
-Logica:
-- Itera ogni carta del deck
-- Confronta il nome (lowercase) con la banlist
-- Se matcha, aggiunge alla lista dei risultati (senza duplicati)
-- Se la lista risultante non è vuota → deck invalido
+Logic:
+- Iterates over every card in the deck
+- Compares the (lowercase) name with the banlist
+- On a match, adds it to the result list (no duplicates)
+- If the resulting list isn't empty → deck invalid
 
-### 7. Load Banlist da File (legacy) — `load_banlist()` in `cogs/deck_validation/validators.py`
+### 7. Banlist from File (legacy) — `load_banlist()` in `cogs/deck_validation/validators.py`
 
-Funzione `load_banlist()` usata **solo come utility standalone** (non più chiamata dal flusso principale dal vivo):
-- Legge `cards.txt` riga per riga
-- Per le carte double-faced (` // `), aggiunge anche solo il nome frontale
-- Restituisce `set[str]` (lowercase)
+`load_banlist()` is no longer called by any code:
+- Reads `cards.txt` line by line
+- For double-faced cards (` // `), also adds the front name alone
+- Returns a `set[str]` (lowercase)
 
 ### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/tournament_system/cog.py`
 
-| Comando | Descrizione | Permessi |
+| Command | Description | Permissions |
 |---|---|---|
-| `/banlist` | Mostra tutte le carte bandite in embed paginato (30 per field) | Pubblico |
-| `/banlist_aggiungi <carta>` | Aggiunge una carta al DB | `@is_admin()` (ruolo `Staff`) |
-| `/banlist_rimuovi <carta>` | Rimuove una carta dal DB | `@is_admin()` |
+| `/banlist` | Shows every banned card in a paginated embed (30 per field) | Public |
+| `/banlist_aggiungi <carta>` | Adds a card to the DB | `@is_admin()` (`Staff` role) |
+| `/banlist_rimuovi <carta>` | Removes a card from the DB | `@is_admin()` |
 
-### 9. Embed di Risultato — `cogs/deck_validation/embeds.py`
+### 9. Result Embed — `cogs/deck_validation/embeds.py`
 
-Se il deck ha carte bandite, l'embed mostra:
-- **Carte Bannate**: elenco (max 10)
-- **Resoconto**: conteggio carte bannate
-- Colore rosso (`is_valid = False`)
+If the deck has banned cards, the embed shows:
+- **Carte Bannate**: the list (max 10)
+- **Resoconto** (summary): count of banned cards
+- Red color (`is_valid = False`)
 
 ### 10. Caching
 
-La banlist è cacheata in memoria nella variabile di modulo `_banlist_cache: set[str] | None` in
-`cogs/deck_validation/service.py`, condivisa da tutte le istanze di `ArtisanService`. Viene caricata dal
-DB alla prima validazione (o dopo un'invalidazione) e tenuta in memoria finché non viene invalidata.
+The banlist is cached in memory in the module variable `_banlist_cache: set[str] | None` in
+`cogs/deck_validation/service.py`, shared by every `ArtisanService` instance. It is loaded from the DB on the
+first validation (or after an invalidation) and kept in memory until invalidated.
 
-Il metodo `ArtisanService.reload_banlist()` forza il refresh: viene chiamato da `/banlist_aggiungi` e
-`/banlist_rimuovi` subito dopo la scrittura sul DB. Essendo la cache condivisa a livello di modulo
-(invece che un attributo per istanza), l'invalidazione è visibile immediatamente da **entrambe** le
-istanze di `ArtisanService` che il bot crea (`tournament_system/cog.py` e `cogs/deck_validation/__init__.py`)
-— non solo da quella su cui viene chiamato il metodo.
+`ArtisanService.reload_banlist()` forces the refresh: `/banlist_aggiungi` and `/banlist_rimuovi` call it right
+after writing to the DB. Since the cache is shared at module level (instead of a per-instance attribute), the
+invalidation is immediately visible to **both** `ArtisanService` instances the bot creates
+(`tournament_system/cog.py` and `cogs/deck_validation/__init__.py`) — not only the one the method is called
+on.
 
 ---
 
-## Flusso Completo (Deck Check con Banlist)
+## Full Flow (Deck Check with Banlist)
 
 ```
-Utente invia deck
-    → TournamentSystemCog.registra() o /deck_check
+User submits a deck
+    → /invia_deck (tournament) or /artisan_check_deck
         → ArtisanService.validate_deck()
-            → _load_banlist()  (se non già in memoria)
+            → _load_banlist()  (if not in memory yet)
                 → BanlistRepository.get_all_for_format()
                     → SELECT card_name FROM banned_cards WHERE format = 'Artisan'
             → check_banlist(entries, banlist)
-                → [nome1, nome2, ...]  oppure []
+                → [name1, name2, ...]  or []
             ↓
     ┌───────┴───────┐
     │ banned != []   │  banned == []
     │                │
     ▼                ▼
-Deck INVALIDO    Deck OK
-(bannate trovate) → prosegue con
-                    validazione rarità
-                    (API Scryfall)
+Deck INVALID     Deck OK
+(banned found)   → goes on with
+                   rarity validation
+                   (Scryfall API)
 ```
 
 ---
 
-## API Esterne
+## External APIs
 
-Il sistema di banlist **non chiama API esterne**. Usa esclusivamente:
-- **File locale** `cards.txt` per il seed iniziale
-- **Database SQLite** per lo storage persistente
-- Il confronto è puramente testuale (`nome.lower() in banlist`)
+The banlist system **calls no external API**. It only uses:
+- The local file `cards.txt` for the initial seed
+- The SQLite database for persistent storage
+- A purely textual comparison (`name.lower() in banlist`)
 
-Le API Scryfall sono usate nella fase successiva (validazione rarità Artisan), non per la banlist.
-
----
-
-## Sistema di Validazione Rarità Artisan
-
-Dopo aver superato il controllo banlist, ogni carta del deck viene verificata contro le API Scryfall per determinare se è legale nel formato Artisan (solo carte Common e Uncommon su MTG Arena). Quattro componenti lavorano insieme per questo scopo.
+The Scryfall APIs are used in the next phase (Artisan rarity validation), not for the banlist. That phase —
+SPG rarity overrides (`utils/arena_overrides.py`, `data/arena_rarity_data.json`), the Scryfall card cache
+(`utils/card_cache.py`, `cached_cards` table, TTL on `artisan_legal`) and the Arena legality check — is
+documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and overrides).
 
 ---
 
-### Componenti
+## Known Issues
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     ArtisanService.validate_deck()                │
-│   cogs/deck_validation/service.py                                      │
-│                                                                    │
-│   1. check_banlist() ──── ok? ───→ 2. _fetch_collection()         │
-│                                        ↓                          │
-│                                    3. _is_arena_artisan_legal()    │
-│                                        ↓                          │
-│                          ┌───────────┴───────────┐                │
-│                          ▼                       ▼                │
-│              utils/arena_overrides.py   utils/card_cache.py       │
-│              data/arena_rarity_data.json  data/card_cache.json    │
-└──────────────────────────────────────────────────────────────────┘
-```
+1. **Double-faced cards** — fixed. `cards.txt`/`banned_cards` store the full name
+   (`A-Blessed Hippogriff // A-Tyr's Blessing`), but `parse_decklist()` always truncates to the front face
+   when reading the user's deck (mimicking MTG Arena's export format), so the comparison **always** failed
+   for these cards. `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) now expands the
+   banlist with `_expand_double_faced()` — for every entry containing ` // `, it also adds the front half
+   alone to the set used by `check_banlist()`. Applied **only** to the validation cache, not to
+   `BanlistRepository.get_all_for_format()`: that method also feeds `/banlist` (a public command), which
+   must list only the cards actually stored in the DB, not synthetic variants.
 
----
+2. **Live updates** — fixed. `self._banlist` in `ArtisanService` wasn't invalidated after add/remove via
+   slash command. `/banlist_aggiungi` and `/banlist_rimuovi` now call `ArtisanService.reload_banlist()` right
+   after writing to the DB (see `cogs/tournament_system/cog.py`). The cache is module-level
+   (`_banlist_cache`), so the invalidation also covers the second `ArtisanService` instance used by
+   `cogs/deck_validation/__init__.py` — a first attempt with a per-instance cache would have left that second
+   instance stale.
 
-### `utils/arena_overrides.py` — Override di rarità
-
-**Problema**: Alcune carte esistono in versione Common/Uncommon su carta (paper), ma su MTG Arena sono state stampate solo con rarità Rare/Mythic (es. le Special Guest — set `SPG`). Scryfall le vedrebbe come Rare, ma nel formato Artisan dovrebbero essere considerate legali in base alla loro rarità paper più bassa.
-
-**Soluzione**: Il modulo mantiene un dizionario di override che forza una rarità più bassa per queste carte.
-
-| Funzione | Ruolo |
-|---|---|
-| `get_override_rarity(card_name)` | API pubblica: restituisce `"common"`/`"uncommon"` o `None` |
-| `update_spg_overrides(set_code="spg")` | Scansiona solo le carte non ancora valutate del set: trova quelle stampate su Arena a rarità alta ma con versioni paper a rarità bassa. Incrementale (vedi `checked_cards` sotto) — sicuro da chiamare ripetutamente |
-| `periodic_spg_refresh_loop(bot)` | Task avviato da `main.py`: chiama `update_spg_overrides()` ogni 7 giorni senza intervento admin |
-| `invalidate_override_cache()` | Forza il ricaricamento del JSON al prossimo accesso |
-
-**Caching**: Il JSON viene caricato una volta in `_override_cache` (variabile globale) e tenuto in memoria. `_save_override_data()` aggiorna sia il file su disco che la cache. `_update_lock` evita scritture concorrenti tra il task automatico e `/forced_rarity_refresh` (admin, invocazione manuale).
-
-**Utilizzo nel flusso** (`_is_arena_artisan_legal()` in `cogs/deck_validation/service.py`):
-1. Chiama `get_override_rarity(card_name)`
-2. Se l'override è `"common"` o `"uncommon"` → carta legale, salta la chiamata API
-3. Altrimenti procede con la scansione Scryfall delle stampe
-
----
-
-### `data/arena_rarity_data.json` — Storage override
-
-```json
-{
-    "overrides": {
-        "Swords to Plowshares": "uncommon",
-        "Lightning Bolt": "common",
-        "Sylvan Library": "uncommon",
-        ...
-    },
-    "checked_cards": {
-        "SPG": ["Swords to Plowshares", "Lightning Bolt", "Sylvan Library", "..."]
-    }
-}
-```
-
-| Campo | Descrizione |
-|---|---|
-| `overrides` | Dizionario `nome_carta → rarità_forzata`. Contiene attualmente ~40 carte del set SPG (Special Guest). |
-| `checked_cards` | Per ogni set code, **ogni** carta già valutata — con o senza override aggiunto. Una nuova scansione salta solo le carte già qui, non l'intero set. |
-
-**Storia (Settembre 2026)**: fino a questo cambio il campo era `processed_sets: ["SPG"]` — un flag "tutto il
-set fatto per sempre", sbagliato perché Scryfall usa un unico set code `SPG` che cresce nel tempo (nuove
-Special Guests con quasi ogni set principale). Dopo la prima scansione riuscita, ogni run successivo
-diventava un no-op permanente, senza modo di sbloccarlo se non editando il JSON a mano — bug confermato in
-produzione (`processed_sets: ["SPG"]` già presente nel file del repo). Risolto passando al tracking
-per-carta (`checked_cards`); un file nel vecchio formato non blocca più nulla, viene semplicemente
-ri-scansionato una volta per intero.
-
----
-
-### `utils/card_cache.py` — Cache Scryfall in memoria
-
-Cache chiave-valore (nome carta lowercase → dati Scryfall) che evita di richiamare le API per carte già viste.
-
-| Funzione | Ruolo |
-|---|---|
-| `load_cache()` | Carica `data/card_cache.json` in `_card_cache` (una volta sola) |
-| `save_cache()` | Scrive su disco con scrittura atomica (file `.tmp` + `os.replace`) |
-| `get_cached_card(name)` | Restituisce il dict Scryfall di una carta, o `None` |
-| `set_cached_card(name, data)` | Aggiunge/aggiorna una carta nella cache; marca `_dirty = True` |
-| `periodic_save_loop()` | Salva automaticamente ogni 60 secondi se ci sono modifiche; un errore non ferma il ciclo, le modifiche vengono ritentate al giro successivo |
-
-**Dettagli implementativi**:
-- `_dirty`: flag che evita scritture su disco se non ci sono state modifiche
-- `_save_lock`: `asyncio.Lock()` per evitare race-condition su scritture concorrenti
-- Scrittura atomica: `json.dump` su file `.tmp`, poi `os.replace()` → nessun file corrotto se il bot crasha durante il salvataggio
-
----
-
-### `data/card_cache.json` — Cache persistente su disco
-
-Contiene i dati delle carte già fetchate da Scryfall durante le validazioni dei deck.
-
-**Struttura tipica** (una voce per carta, chiave = nome lowercase):
-
-```json
-{
-  "goblin bushwhacker": {
-    "name": "Goblin Bushwhacker",
-    "type_line": "Creature — Goblin Warrior",
-    "cmc": 1.0,
-    "prints_search_uri": "https://...",
-    "artisan_legal": true,
-    "image_uris": { "small": "https://...", ... }
-  }
-}
-```
-
-**Dati memorizzati per carta**:
-- `name`, `type_line`, `cmc` — usati per costruire l'embed e le card object
-- `image_uris` — usato per generare l'immagine del deck (`DeckImageGenerator`)
-- `prints_search_uri` — usato da `_is_arena_artisan_legal()` per fetchare le stampe
-- `artisan_legal` — flag calcolato (cached) che indica se la carta è legale in Artisan
-- Per le carte double-faced: l'intero oggetto Scryfall (`card_faces`, `layout`, ecc.)
-
-**Dimensione**: Il file cresce organicamente col tempo. Ogni nuova carta vista durante una validazione deck viene aggiunta. Non c'è un meccanismo di pulizia/expiry.
-
----
-
-### Flusso completo (banlist + validazione rarità + cache)
-
-```
-Utente invia deck
-    → TournamentSystemCog (/deck_check o registrazione torneo)
-        → ArtisanService.validate_deck()
-            │
-            ├─ 1. _load_banlist() ← BanlistRepository (SQLite)
-            ├─ 2. check_banlist(entries, banlist)
-            │      ↓
-            │   Se banned → DeckValidationResult(banned_cards=[...]) → STOP
-            │
-            └─ 3. _fetch_collection(session, unique_names)
-            │      │
-            │      ├─ get_cached_card(nome) → se presente, salta API
-            │      └─ POST /cards/collection (Scryfall, chunk 75)
-            │             ↓
-            │         set_cached_card(nome, data) per ogni carta
-            │
-            └─ 4. _is_arena_artisan_legal(session, data, nome)
-                     │
-                     ├─ get_override_rarity(nome) ← arena_rarity_data.json
-                     │      ↓
-                     │   Se override → True/False (senza API)
-                     │
-                     └─ GET prints_search_uri + game:arena (Scryfall)
-                            ↓
-                        Controlla rarità di ogni stampa su Arena
-                        Se esiste comune/uncommon → legale
-                        Altrimenti → illegale
-                            ↓
-                        Cache: set_cached_card(... "artisan_legal": bool)
-```
-
----
-
-## Problemi Noti / Potenziali
-
-1. ~~**Double-faced cards**: la banlist in `cards.txt`/`banned_cards` salva il nome completo (`A-Blessed Hippogriff // A-Tyr's Blessing`), ma `parse_decklist()` tronca sempre al fronte quando legge il deck dell'utente (mimando il formato di export di MTG Arena) — non solo "se l'utente scrive il nome completo": il confronto falliva **sempre** per queste carte, indipendentemente da cosa scrivesse l'utente, perché `check_banlist()` confrontava un nome tronco contro un nome completo mai presente nel set.~~
-   **Risolto**: `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) espande la banlist con
-   `_expand_double_faced()` — per ogni entry contenente ` // `, aggiunge anche la sola metà fronte al set
-   usato da `check_banlist()`. Applicato **solo** alla cache di validazione, non a
-   `BanlistRepository.get_all_for_format()`: quel metodo alimenta anche `/banlist` (comando pubblico), che
-   deve elencare solo le carte davvero salvate nel DB, non varianti sintetiche.
-
-2. ~~**Aggiornamento live**: il `self._banlist` in `ArtisanService` non veniva invalidato dopo add/remove via slash command.~~ **Risolto**: `/banlist_aggiungi` e `/banlist_rimuovi` chiamano `ArtisanService.reload_banlist()` subito dopo la scrittura sul DB (vedi `cogs/tournament_system/cog.py`). La cache è a livello di modulo (`_banlist_cache`), quindi l'invalidazione copre anche la seconda istanza di `ArtisanService` usata da `cogs/deck_validation/__init__.py` — un primo tentativo di fix con cache per istanza avrebbe lasciato quella seconda istanza stale.
-
-3. **Case sensitivity**: Tutto è normalizzato in lowercase, quindi non ci sono problemi.
+3. **Case sensitivity**: everything is lowercased, so there is no issue.

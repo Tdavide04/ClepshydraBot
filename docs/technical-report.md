@@ -1,103 +1,104 @@
-# ClepshydraBot — Resoconto Tecnico
+# ClepshydraBot — Technical Report
 
-**Versione documento 2.0 — Settembre 2026**
-**Autore: tdavide — Confidenziale**
+**Document version 2.0 — September 2026**
+**Author: tdavide — Confidential**
 
-Scheda di riferimento sintetica su dove e come gira il bot in produzione. Per architettura, funzionalità,
-comandi, cache e roadmap operativa, vedi la [Documentazione Correlata](#documentazione-correlata) in
-fondo: questo documento non li ripete.
+Short reference sheet on where and how the bot runs in production. For architecture, features, commands,
+caching and the operational roadmap, see [Related Documentation](#related-documentation) at the bottom:
+this document doesn't repeat them.
 
 ---
 
-## 1. Istanza di Produzione
+## 1. Production Instance
 
-| Campo | Valore |
+| Field | Value |
 |---|---|
 | Provider | Oracle Cloud Infrastructure — Free Tier |
-| Regione | eu-milan-1 (AD-1, Fault Domain: FD-2) — Milano, Italia |
-| OCID Istanza | `ocid1.instance.oc1.eu-milan-1.anwgsljrtzu6yzqc...` |
-| Data di avvio | 4 Maggio 2026, 20:29:36 UTC |
-| IP Pubblico | 80.225.91.142 |
-| Username SSH | ubuntu |
-| Accesso | SSH con chiave privata |
-| Process Manager | `pm2` — riavvio automatico del bot in caso di crash |
+| Region | eu-milan-1 (AD-1, Fault Domain: FD-2) — Milan, Italy |
+| Instance OCID | `ocid1.instance.oc1.eu-milan-1.anwgsljrtzu6yzqc...` |
+| Launch date | May 4, 2026, 20:29:36 UTC |
+| Public IP | 80.225.91.142 |
+| SSH username | ubuntu |
+| Access | SSH with a private key |
+| Process manager | `pm2` — restarts the bot automatically on crash |
 
-## 2. Specifiche Hardware
+## 2. Hardware Specifications
 
-| Specifica | Valore |
+| Spec | Value |
 |---|---|
 | Shape | VM.Standard.E2.1.Micro |
-| OCPU | 1 (non ridimensionabile) |
+| OCPU | 1 (not resizable) |
 | RAM | 1 GB |
-| Rete | 0.5 Gbps |
-| Storage | Block Storage only (nessun disco locale) |
-| Crittografia | In-transit encryption abilitata |
+| Network | 0.5 Gbps |
+| Storage | Block Storage only (no local disk) |
+| Encryption | In-transit encryption enabled |
 | Firmware | UEFI_64 |
 | Launch Mode | PARAVIRTUALIZED |
 
-## 3. Sistema Operativo
+## 3. Operating System
 
-| Specifica | Valore |
+| Spec | Value |
 |---|---|
 | OS | Canonical Ubuntu 24.04 LTS |
-| Immagine | Canonical-Ubuntu-24.04-2026.03.31-0 |
-| Secure Boot | Disabilitato |
-| Measured Boot | Disabilitato |
-| TPM | Disabilitato |
+| Image | Canonical-Ubuntu-24.04-2026.03.31-0 |
+| Secure Boot | Disabled |
+| Measured Boot | Disabled |
+| TPM | Disabled |
 | IMDS | Version 2 only |
 
-## 4. Stack Tecnologico
+## 4. Technology Stack
 
-### 4.1 Dipendenze Python (`requirements.txt`, produzione)
+### 4.1 Python Dependencies (`requirements.txt`, production)
 
-| Libreria | Ruolo |
+| Library | Role |
 |---|---|
-| `discord.py` | Integrazione API Discord: slash command, modal, select menu, eventi, cog |
-| `aiohttp` | Client HTTP asincrono per Scryfall (retry + rate limiting) |
-| `Pillow (PIL)` | Generazione immagini deck showcase |
-| `python-dotenv` | Caricamento `.env` |
-| `SQLAlchemy[asyncio]` | ORM asincrono |
-| `aiosqlite` | Driver asincrono SQLite |
+| `discord.py` | Discord API integration: slash commands, modals, select menus, events, cogs |
+| `aiohttp` | Async HTTP client for Scryfall and the Wizards sitemap (retry + rate limiting) |
+| `Pillow (PIL)` | Deck showcase and event calendar images |
+| `python-dotenv` | Loading `.env` |
+| `SQLAlchemy[asyncio]` | Async ORM |
+| `aiosqlite` | Async SQLite driver |
 
-`requirements-dev.txt` aggiunge `pytest` e `ruff` per sviluppo/CI.
+`requirements-dev.txt` adds `pytest` and `ruff` for development/CI.
 
-### 4.2 Servizi Esterni
+### 4.2 External Services
 
-| Servizio | Utilizzo |
+| Service | Usage |
 |---|---|
-| Discord API | Gateway WebSocket (eventi) + REST (messaggi, embed, file) |
-| Scryfall API | `POST /cards/collection` (fetch batch), `GET prints_search_uri` (legalità Arena) |
+| Discord API | WebSocket gateway (events) + REST (messages, embeds, files) |
+| Scryfall API | `POST /cards/collection` (batch fetch), `GET prints_search_uri` (Arena legality) |
+| magic.wizards.com | `sitemap.xml` + Event Schedule and Banned and Restricted pages (monitors, see `docs/caching.md`) |
 
-### 4.3 Versioni
+### 4.3 Versions
 
-| Componente | Versione |
+| Component | Version |
 |---|---|
 | Python | 3.12+ |
-| discord.py | Latest stable |
-| Bot | vedi `CHANGELOG.md` per la versione corrente |
+| discord.py | Latest stable (not pinned yet, see roadmap step 14) |
+| Bot | see `CHANGELOG.md` for the current version |
 
-## 5. Vincolo di Risorse
+## 5. Resource Constraint
 
-Con 1 OCPU e 1 GB RAM (non ridimensionabile su Free Tier), il bot è progettato per minimizzare il
-consumo di memoria e CPU. Questo vincolo ha guidato scelte architetturali chiave: SQLite invece di
-PostgreSQL, cache su file JSON invece di Redis, un solo processo (nessun worker separato). Il dettaglio
-di queste scelte e i relativi trade-off sono tracciati in `docs/infrastructure.md` (sezione "Vincoli") e
-nella roadmap dei miglioramenti.
+With 1 OCPU and 1 GB RAM (not resizable on the Free Tier), the bot is designed to keep memory and CPU use
+low. This constraint drove key architectural choices: SQLite instead of PostgreSQL, SQLite tables and local
+JSON files for caches instead of Redis, a single process (no separate worker). The details of these choices
+and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" section) and in the roadmap.
 
 ---
 
-## Documentazione Correlata
+## Related Documentation
 
-| Argomento | Documento |
+| Topic | Document |
 |---|---|
-| Deployment, variabili d'ambiente, logging, dipendenze, CI | `docs/infrastructure.md` |
-| Architettura a layer (cogs/services/repositories/database) | `docs/architecture.md` |
-| Comandi slash e permessi | `docs/commands.md` |
-| Schema database e migrazioni | `docs/database.md` |
-| Sistema di cache (Scryfall, override rarità, banlist) | `docs/caching.md` |
-| Validazione mazzi Artisan | `docs/deck-validation.md` |
-| Sistema banlist | `docs/banlist-system.md` |
-| Sistema presentazioni | `docs/onboarding.md` |
-| Sistema tornei Swiss | `docs/tournaments.md` |
-| Debito tecnico e piano di miglioramento | `docs/roadmap.md` |
-| Guida per Claude Code | `CLAUDE.md` |
+| Deployment, environment variables, logging, dependencies, CI | `docs/infrastructure.md` |
+| Layered architecture (cogs/services/repositories/database) | `docs/architecture.md` |
+| Slash commands and permissions | `docs/commands.md` |
+| Database schema and migrations | `docs/database.md` |
+| Caching and external APIs (Scryfall, rarity overrides, Wizards monitors, banlist) | `docs/caching.md` |
+| Artisan deck validation | `docs/deck-validation.md` |
+| Banlist system | `docs/banlist-system.md` |
+| Onboarding (presentations) | `docs/onboarding.md` |
+| Swiss tournament system | `docs/tournaments.md` |
+| Technical debt and improvement plan | `docs/roadmap.md` |
+| Decisions and rationale | `docs/adr/` |
+| Guide for Claude Code | `CLAUDE.md` |

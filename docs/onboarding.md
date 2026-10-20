@@ -1,121 +1,128 @@
-# Sistema Presentazioni
+# Onboarding (Presentations)
 
-## Panoramica
+## Overview
 
-Il sistema di presentazione gestisce il censimento e la verifica degli utenti all'ingresso nel server Discord. Automatizza l'assegnazione dei ruoli e pubblica embed di presentazione sul canale dedicato.
+The presentation system registers and verifies users when they join the Discord server. It automates role
+assignment and publishes a presentation embed to the dedicated channel.
+
+Field labels and menu options below are quoted as users see them in Discord, in Italian.
 
 ---
 
-## Struttura del Modulo
+## Module Structure
 
 ```
 cogs/presentation/
-├── __init__.py          # Esporta PresentationCog
-├── cog.py               # Comando /presentati + listener on_member_join
-├── models.py            # PresentationData (dataclass)
+├── __init__.py          # Exports PresentationCog
+├── cog.py               # /presentati command + on_member_join and on_message listeners
+├── models.py            # PresentationData (dataclass) + PRESENTATION_DATA_STORE
 ├── modals.py            # BasicPresentationModal + OptionalPresentationModal
-├── views.py             # Select menu + Preview View
-├── service.py           # PresentationService (pubblica, ruoli)
-├── validators.py        # Validazione input (regex + logica di dominio)
-└── embeds.py            # Builder embed preview/pubblicazione
+├── views.py             # Select menus + PreferencesView + PreviewView
+├── service.py           # PresentationService (validation, publishing, roles)
+├── validators.py        # valida_* functions
+└── embeds.py            # Preview/publication embed builders
 ```
 
 ---
 
-## Flusso di Presentazione
+## Presentation Flow
 
-### 1. Ingresso Utente (`PresentationCog.on_member_join()` in `cog.py`)
+### 1. User Joins (`PresentationCog.on_member_join()` in `cog.py`)
 
-All'arrivo di un nuovo membro:
-- Assegna ruolo `Viandante` (configurabile via `INITIAL_ROLE` in `.env`)
-- Invia messaggio di benvenuto in DM o canale designato
-- Invita a usare `/presentati` per completare la verifica
+When a new member arrives:
+- Assigns the `Viandante` role (configurable via `INITIAL_ROLE` in `.env`)
+- Posts a welcome message in the presentation channel (deleted after 30 minutes), inviting them to use
+  `/presentati` to complete verification
 
-### 2. Avvio Wizard (`PresentationCog.presentati()` in `cog.py`)
+Any other message posted in the presentation channel is deleted (`on_message`), with a short reminder to use
+`/presentati` and an INFO `MESSAGE_DELETE` log.
 
-Il comando `/presentati` è disponibile a tutti. Se l'utente ha già il ruolo `FINAL_ROLE` (`Planeswalker`), il comando viene rifiutato con un messaggio esplicativo.
+### 2. Wizard Start (`PresentationCog.presentati()` in `cog.py`)
 
-Il wizard multi-step procede in 4 fasi:
+The `/presentati` command is available to everyone, in a server only. If the user already has the
+`FINAL_ROLE` role (`Planeswalker`), the command is refused.
 
-#### Fase 1 — Modale Base (`BasicPresentationModal` in `modals.py`)
-`BasicPresentationModal` con 5 campi obbligatori:
+The multi-step wizard goes through 4 phases.
 
-| Campo | Tipo | Validazione |
+#### Phase 1 — Basic Modal (`BasicPresentationModal` in `modals.py`)
+Modal "Presentazione Clepshydra" with 5 required text fields:
+
+| Field (UI label) | Length |
+|---|---|
+| Nome | 2-100 |
+| Nickname Arena | 2-50 |
+| Anno di nascita (birth year) | exactly 4 |
+| Professione (profession) | 2-100 |
+| Provenienza (hometown) | 2-100 |
+
+#### Phase 2 — Select Menus (`PreferencesView` and the `*Select` classes in `views.py`)
+`PreferencesView` with multiple-choice select menus, each allowing from 0 up to all of its options:
+
+| Menu | Options |
+|---|---|
+| Colors | Bianco, Nero, Rosso, Blu, Verde, Incolore, Tutti, N/A |
+| Guilds | The 10 Ravnica guilds, the 10 three-color shards/wedges, Tutte, N/A |
+| Constructed formats | Standard, Pioneer, Modern, Legacy, Vintage, Explorer, Historic, Alchemy, Timeless, Pauper, Penny, Artisan, Nessuno |
+| Limited/other formats | Draft, Sealed, Limited, Block / Blocco, Centurion, Commander, Oathbreaker, Brawl, Extended, Two-Headed Giant, Conspiracy, Planechase, Archenemy, Momir, Kitchen Table, Nessuno |
+
+#### Phase 3 — Details Modal (`OptionalPresentationModal` in `modals.py`)
+Modal "Dettagli Opzionali" with 4 fields:
+
+| Field (UI label) | Required | Notes |
 |---|---|---|
-| Nome | TextInput | Regex: lettere, spazi, apostrofi, trattini (2-100 char) |
-| Nickname Arena | TextInput | Regex: alfanumerico, underscore, trattini (2-100 char) |
-| Anno di nascita | TextInput | Regex: 4 cifre, range 1900-2010 |
-| Professione | TextInput | Regex: lettere, spazi, apostrofi (2-100 char) |
-| Provenienza | TextInput | Regex: lettere, spazi, apostrofi (2-100 char) |
+| Anno inizio Magic Cartaceo | yes | Year they started paper Magic, or "mai"/"N/A" |
+| Anno inizio MTG Arena | yes | Year they started MTG Arena, or "mai"/"N/A" |
+| Risultati in Magic (opzionale) | no | Results: tournaments, placements |
+| Altre Passioni (opzionale) | no | Interests outside Magic |
 
-#### Fase 2 — Select Menu (`PreferencesView` e i quattro `*Select` in `views.py`)
-`PreferencesView` con 4 select menu a scelta multipla:
+#### Phase 4 — Preview and Confirmation (`PreviewView` in `views.py`)
 
-| Menu | Opzioni |
-|---|---|
-| Colori preferiti | Bianco, Blu, Nero, Rosso, Verde (max 5) |
-| Gilde preferite | Tutte le 10 gilde di Ravnica (max 10) |
-| Formati Costruiti | Standard, Pioneer, Modern, Legacy, Vintage, Artisan, Brawl, Historic, Explorer, Timeless (max 10) |
-| Formati Limitati | Draft, Sealed, Cube (max 3) |
-
-#### Fase 3 — Modale Opzionale (`OptionalPresentationModal` in `modals.py`)
-`OptionalPresentationModal` con 4 campi opzionali:
-
-| Campo | Descrizione |
-|---|---|
-| Anno inizio Magic cartaceo | Minimo 1993 |
-| Anno inizio MTGA | Minimo 2017 |
-| Risultati | Tornei vinti, piazzamenti, record |
-| Altre Passioni | Interessi extra-Magic |
-
-#### Fase 4 — Anteprima e Conferma (`PreviewView` in `views.py`)
-
-`PreviewView` mostra un embed riassuntivo con:
-- Tutti i dati inseriti organizzati per sezioni
-- Bottoni **Conferma** e **Annulla**
+`PreviewView` shows the presentation embed as it will be published, with confirm and cancel buttons.
 
 ---
 
-## Validazione (`validators.py`)
+## Validation (`validators.py`)
 
-Ogni campo viene validato tramite funzioni dedicate:
+`valida_presentazione(data)` runs the checks below and returns `(missing, errors)`, where `errors` lists the
+UI labels of the invalid fields. Required text fields are enforced by the modal itself, so `missing` is
+always empty today.
 
-| Funzione | Validazione |
+| Function | Rule |
 |---|---|
-| `validate_name(value)` | Regex: solo lettere, spazi, apostrofi, trattini; 2-100 caratteri |
-| `validate_years(value)` | 4 cifre, range 1900-2010 per nascita; Magic ≥ 1993, MTGA ≥ 2017 |
-| `validate_colors(values)` | Max 5, solo valori validi (WUBRG) |
-| `validate_guilds(values)` | Max 10, solo gilde valide |
-| `validate_formats(values)` | Formati costruiti: 10 valori; limitati: 3 valori |
-| `validate_text(value, allow_empty)` | Testo libero con lunghezza controllata |
+| `valida_anno_nascita(anno)` | 4 digits, after 1900, before the current year, and age ≥ 16 |
+| `valida_anno_cartaceo(anno)` | "mai"/"n/a", or a year from 1993 to the current year |
+| `valida_anno_arena(anno)` | "mai"/"n/a", or a year from 2017 to the current year |
+| `valida_formati(formati)` | Every value in the constructed or limited sets (`VALIDI_formati_*`); anything containing "block"/"blocco" is accepted |
+| `valida_colori(colori)` | Every value, after `normalizza_colore()`, in `VALIDI_colori` |
+| `valida_gilde(gilde)` | Every value, after `normalizza_gilda()`, in `VALIDI_gilde` |
 
-In caso di errori, viene restituito un messaggio con:
-- Campi mancanti (in ordine alfabetico)
-- Campi con valori non validi (in ordine alfabetico)
-- Messaggio di errore specifico per ogni campo
+An empty selection is valid for colors, guilds and formats.
 
 ---
 
-## Pubblicazione (`service.py`)
+## Publication (`service.py`)
 
 `PresentationService.publish()`:
-1. Converte `PresentationData` in embed tramite `build_published_embed()`
-2. Invia l'embed sul canale `PRESENTATION_CHANNEL_ID`
-3. Rimuove ruolo `INITIAL_ROLE` (`Viandante`)
-4. Assegna ruolo `FINAL_ROLE` (`Planeswalker`)
-5. Elimina il messaggio di interazione originale
-6. Logga l'evento (INFO)
+1. Validates the data (`valida_presentazione()`): on invalid fields it replies to the user with the list and
+   logs WARN `PRESENTATION_VALIDATION_FAILED`, without publishing
+2. Converts `PresentationData` into an embed via `build_published_embed()`
+3. Sends the embed to the `PRESENTATION_CHANNEL_ID` channel (ERROR `PRESENTATION_CHANNEL_MISSING` if the
+   channel isn't found)
+4. Removes the `INITIAL_ROLE` role (`Viandante`) and assigns the `FINAL_ROLE` role (`Planeswalker`)
+5. Logs INFO `PRESENTATION_COMPLETED` with a link to the published message
+6. Removes the user's data from the temporary `PRESENTATION_DATA_STORE`
 
 ---
 
-## Embed (`embeds.py`)
+## Embeds (`embeds.py`)
 
-### `build_preview_embed(data)`
-Usata per l'anteprima, mostra tutti i dati in forma compatta.
+### `build_preview_embed(member, data)`
+Used both for the preview and, through `build_published_embed()`, for the final publication — the two are
+the same embed. Green, with a timestamp, the member's avatar as thumbnail, and fields "Dati Personali",
+"Inizio Magic", "Preferenze", plus "Risultati" and "Altre Passioni" only when filled in.
 
-### `build_published_embed(data)`
-Usata per la pubblicazione finale, con:
-- Header: nome utente + nickname Arena
-- Sezioni: Personale, Magic, Preferenze, Risultati, Passioni
-- Colore: personalizzato per utente
-- Footer: timestamp di pubblicazione
+### `build_published_embed(member, data)`
+Delegates to `build_preview_embed()`.
+
+`build_message_content(data)` (a plain-text version in the V1 style) is still in the module but nothing
+calls it.
