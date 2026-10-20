@@ -385,7 +385,7 @@ risk.
 
 # Phase 2 — Development Standard (ADR-0002, ADR-0003)
 
-Came out of the 2026-10-20 discovery (`docs/adr/0002-standard-di-sviluppo.md`). The same "Rule for Every Step"
+Came out of the 2026-10-20 discovery (`docs/adr/0002-development-standard.md`). The same "Rule for Every Step"
 of phase 1 applies, plus the standard described in `CLAUDE.md` → "Working standard".
 
 ## Step 10 — Deterministic line endings
@@ -403,7 +403,7 @@ if present. Then `git add --renormalize .` in a dedicated commit.
 
 ## Step 11 — Project in English (ADR-0003)
 
-**Status:** in progress (areas 1-2 done, area 3 in progress)
+**Status:** done (2026-10-20, 3.6.5)
 
 **Changes:** a single point, split into one commit per area, each approved before being made:
 1. `refactor(lang)`: comments, docstrings, console and log-channel output, comments of the supporting files
@@ -411,9 +411,9 @@ if present. Then `git add --renormalize .` in a dedicated commit.
    English headers) — done
 2. `test(lang)`: test names, comments, docstrings — done
 3. `docs(lang)`: `docs/` and `README.md`, in two commits: the file renames (`git mv` + references, kept
-   separate so `git log --follow` still works), then the translation
-4. `docs(lang)`: `CLAUDE.md`, the ADRs, `docs/agents/` and the new `CONTEXT.md` (English ↔ Italian UI term
-   glossary)
+   separate so `git log --follow` still works), then the translation — done
+4. `docs(lang)`: `CLAUDE.md`, the ADRs (renamed to English), and the new `CONTEXT.md` (glossary of domain
+   terms with the Italian UI words); `docs/agents/` was already in English — done
 
 A single CHANGELOG entry and a single PATCH bump, in the last commit. What stays in Italian: strings the user
 sees (command replies, modals, views, community embeds), slash command names and descriptions, past CHANGELOG

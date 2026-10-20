@@ -13,15 +13,17 @@ ClepshydraBot is a Discord bot (discord.py) for the "Clepshydra" MTG Arena commu
 - **Italian** for everything a user sees as a reply to an action or in a public channel: command
   replies (admin ones included), modals, views, service messages, community embeds, slash command names
   and descriptions. These strings stay inline in the code.
-- Translation of the existing Italian material is in progress (roadmap step 11).
+- A few Italian identifiers remain from before the rule (`User.nome`, `torneo_name`, `titolo`...); slash
+  command parameters such as `carta` and `giocatore` are UI and stay Italian.
 
 ## Working standard
 
-Decided in `docs/adr/0002-standard-di-sviluppo.md`. Every change follows this loop.
+Decided in `docs/adr/0002-development-standard.md`. Every change follows this loop.
 
 1. **Orient.** Read the topic doc for the area (see the map below) and any `docs/adr/` entry that touches
-   it. Check `git log` on `feature/v2`, since parallel work may already have touched the area. Done when
-   you can name the files you will change and the behaviour you will change.
+   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `feature/v2`, since parallel work may
+   already have touched the area. Done when you can name the files you will change and the behaviour you
+   will change.
 2. **Red.** Write the test first for logic in `services/`, `utils/`, `repositories/` or `database/`. A
    bug fix starts from a regression test that fails on the current code, and fails on an assertion about
    behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
@@ -100,7 +102,8 @@ these rules by hand.
   - `diagnosing-bugs` when something is broken or slow
   - `code-review` before a PR to `main`
   - `grilling` to stress-test a plan
-  - `domain-modeling` to create `CONTEXT.md` or ADRs the first time a term or decision is settled
+  - `domain-modeling` to add a term to `CONTEXT.md` or write an ADR when one is settled (this repo names
+    the glossary `CONTEXT.md`, not `GLOSSARY.md`)
 - **Recommended plugins** (installed per machine, `@claude-plugins-official`):
   - `pyright-lsp`: type diagnostics and references
   - `pr-review-toolkit`: test, error-handling and type-design review
@@ -188,7 +191,7 @@ listed in the map.
 ## Docs conventions
 
 - Refer to code by symbol name (`check_banlist()` in `validators.py`), not `file.py:line`. The one
-  exception is the "Linea" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
+  exception is the "Line" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
 - Leave volatile counts (tests, commands) out of docs: they go stale with every change.
 - Write rationale and rejected alternatives as an ADR (`docs/adr/NNNN-title.md`), not in this file.
 

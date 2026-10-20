@@ -2,14 +2,42 @@
 
 ## Versioning
 
-A partire dalla 3.0.0: `MAJOR.MINOR.PATCH`, dove una nuova feature incrementa **MINOR** e un bug fix
-incrementa **PATCH**. `MAJOR` resta fermo salvo cambi importanti decisi esplicitamente. Le versioni
-precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La versione attiva è la costante
-`VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
-che aggiorna questo file, non è derivata automaticamente da git.
+From 3.0.0: `MAJOR.MINOR.PATCH`, where a new feature bumps **MINOR** and a bug fix bumps **PATCH**. `MAJOR`
+stays put unless a major change is explicitly decided. Earlier versions (the 1.x series) didn't follow this
+convention strictly. The active version is the `VERSION` constant in `config/config.py` (not an environment
+variable) — bump it by hand in the same commit that updates this file; it isn't derived from git. The mapping
+from commit type to bump is in `CLAUDE.md` → "Conventional Commits".
 
 **Language:** from 3.6.4 onward entries are written in English (`docs/adr/0003-project-language.md`).
-Entries up to 3.6.3 stay in Italian as an archive.
+Entries up to 3.6.3 stay in Italian as an archive, including the old doc file names they mention.
+
+## 3.6.5 (2026-10-20)
+
+Project translated to English for developers (roadmap step 11, ADR-0003). Nothing changes for members: every
+command reply, modal, view and community embed is identical, verified by diffing every string literal before
+and after.
+
+### Changed
+- **Log channel and console output are in English** (e.g. `Forced manual check: ...`,
+  `[CARD CACHE] save failed, retrying in 60s: ...`). Staff reading the log channel will see English text.
+- **Two log event codes renamed**: `VERIFICA_FALLITA` → `PRESENTATION_VALIDATION_FAILED`,
+  `PRESENTAZIONE_COMPLETATA` → `PRESENTATION_COMPLETED`.
+
+### Refactored
+- Comments, docstrings and exception messages in English; 65 test names renamed (230 tests, same count).
+
+### Docs
+- `docs/` translated, file names in English (`architettura.md` → `architecture.md`, `comandi.md` →
+  `commands.md`, `infrastruttura.md` → `infrastructure.md`, `presentazioni.md` → `onboarding.md`,
+  `roadmap-miglioramenti.md` → `roadmap.md`, `tornei.md` → `tournaments.md`,
+  `ClepshydraBot_Resoconto_Tecnico.md` → `technical-report.md`); ADR-0001/0002 translated and renamed.
+- Every doc claim checked against the code while translating; statements already stale in the Italian
+  version fixed (onboarding validation and menu options, nonexistent helpers/aliases/repository methods,
+  command counts, env vars, the duplicated cache section in `banlist-system.md`, and more).
+- New `CONTEXT.md`: glossary of the domain terms, with the Italian word members see.
+- Roadmap: steps 19 (non-atomic write of `data/arena_rarity_data.json`) and 20 (`.env.example` DB name
+  typo), both found during the translation.
+- Commit scope `i18n` renamed to `lang` in `CLAUDE.md`.
 
 ## 3.6.4 (2026-10-20)
 

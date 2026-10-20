@@ -12,7 +12,7 @@ family), colored by family and with cleaned names in the bars, followed by a
 detailed text list below, grouped by family, with each event's full name and
 the original category in parentheses. It is the result of three rounds of
 iteration with mock-ups on real data (see also
-docs/adr/0001-layout-immagine-calendario-eventi.md):
+docs/adr/0001-event-calendar-image-layout.md):
 - a classic calendar grid (one text block per active category in every day
   cell) is unreadable because 4-6 categories stay active for weeks and
   repeat identically in every cell, pushing out of view (behind a "+N more")
