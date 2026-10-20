@@ -53,7 +53,7 @@ File di testo con 220 carte bandite, una per riga. Include:
 - Carte double-faced (`Nome // Nome`)
 - Carte "normali" bandite (es. `Abiding Grace`, `Mishra's Bauble`)
 
-### 2. Migrazione all'avvio — `database/engine.py:51-66`
+### 2. Migrazione all'avvio — `_migrate_banlist()` in `database/engine.py`
 
 Allo startup, `_migrate_banlist()`:
 1. Controlla se `cards.txt` esiste
@@ -61,7 +61,7 @@ Allo startup, `_migrate_banlist()`:
 3. Se il DB è vuoto, importa tutte le carte con format=`"Artisan"`
 4. Se il DB ha già dati, salta l'import (non duplica)
 
-### 3. Modello Dati — `database/models.py:99-108`
+### 3. Modello Dati — `BannedCard` in `database/models.py`
 
 ```python
 class BannedCard(Base):
@@ -83,15 +83,15 @@ class BannedCard(Base):
 | `count()` | Numero totale di carte bandite |
 | `import_from_file(path)` | Importa bulk da file di testo (solo se DB vuoto) |
 
-### 5. Validazione Deck — `cogs/deck_validation/service.py:48-65`
+### 5. Validazione Deck — `ArtisanService.validate_deck()` in `cogs/deck_validation/service.py`
 
 `ArtisanService.validate_deck()`:
 1. Alla prima chiamata, carica la banlist nella cache di modulo `_banlist_cache` via `_load_banlist()` → `BanlistRepository.get_all_for_format()`, poi espande le carte double-faced con `_expand_double_faced()` (aggiunge la sola metà fronte accanto al nome completo — vedi "Problemi Noti" punto 1)
-2. Chiama `check_banlist(entries, _banlist_cache)` (da `cogs/deck_validation/validators.py:72-79`)
+2. Chiama `check_banlist(entries, _banlist_cache)` (da `cogs/deck_validation/validators.py`)
 3. Se trova carte bandite, restituisce subito `DeckValidationResult(banned_cards=[...])` → deck **invalido**
 4. Se nessuna carta bandita, prosegue con la validazione rarità (API Scryfall)
 
-### 6. Check Banlist — `cogs/deck_validation/validators.py:72-79`
+### 6. Check Banlist — `check_banlist()` in `cogs/deck_validation/validators.py`
 
 ```python
 def check_banlist(entries: list[DeckEntry], banlist: set[str]) -> list[str]:
@@ -110,14 +110,14 @@ Logica:
 - Se matcha, aggiunge alla lista dei risultati (senza duplicati)
 - Se la lista risultante non è vuota → deck invalido
 
-### 7. Load Banlist da File (legacy) — `cogs/deck_validation/validators.py:10-22`
+### 7. Load Banlist da File (legacy) — `load_banlist()` in `cogs/deck_validation/validators.py`
 
 Funzione `load_banlist()` usata **solo come utility standalone** (non più chiamata dal flusso principale dal vivo):
 - Legge `cards.txt` riga per riga
 - Per le carte double-faced (` // `), aggiunge anche solo il nome frontale
 - Restituisce `set[str]` (lowercase)
 
-### 8. Slash Commands — `cogs/tournament_system/cog.py:1053-1154`
+### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/tournament_system/cog.py`
 
 | Comando | Descrizione | Permessi |
 |---|---|---|
@@ -222,7 +222,7 @@ Dopo aver superato il controllo banlist, ogni carta del deck viene verificata co
 
 **Caching**: Il JSON viene caricato una volta in `_override_cache` (variabile globale) e tenuto in memoria. `_save_override_data()` aggiorna sia il file su disco che la cache. `_update_lock` evita scritture concorrenti tra il task automatico e `/forced_rarity_refresh` (admin, invocazione manuale).
 
-**Utilizzo nel flusso** (`_is_arena_artisan_legal()` in `service.py:266-312`):
+**Utilizzo nel flusso** (`_is_arena_artisan_legal()` in `cogs/deck_validation/service.py`):
 1. Chiama `get_override_rarity(card_name)`
 2. Se l'override è `"common"` o `"uncommon"` → carta legale, salta la chiamata API
 3. Altrimenti procede con la scansione Scryfall delle stampe

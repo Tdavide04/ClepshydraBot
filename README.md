@@ -19,18 +19,29 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 |---|---|---|
 | `/presentati` | Open presentation wizard | All |
 | `/artisan_check_deck` | Validate Artisan deck | All |
+| `/lista_tornei` | List tournaments with status and player count | All |
+| `/iscriviti` | Register for tournament (deck sent separately) | All |
+| `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
+| `/iscrizioni_torneo` | Registered players and who has already sent a deck | All |
+| `/left_torneo` | Leave a tournament before it starts | All |
+| `/risultato` | Submit match result | All |
+| `/turni` | View current pairings | All |
+| `/classifica` | View standings | All |
+| `/leaderboard` | Glicko-2 rating leaderboard | All |
+| `/banlist` | View the Artisan banlist | All |
 | `/crea_torneo` | Create tournament | Admin |
 | `/avvia_torneo` | Start tournament | Admin |
 | `/torneo_next_turn` | Generate next round | Admin |
 | `/correggi_risultato` | Correct (or enter) a match result | Admin |
-| `/iscriviti` | Register for tournament (deck sent separately) | All |
-| `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
-| `/risultato` | Submit match result | All |
-| `/classifica` | View standings | All |
-| `/turni` | View current pairings | All |
+| `/drop_giocatore` | Remove a player (during registration or a running tournament) | Admin |
+| `/concludi_torneo` | Force-conclude a tournament | Admin |
+| `/banlist_aggiungi` / `/banlist_rimuovi` | Add/remove a card from the Artisan banlist | Admin |
+| `/invalidate_card_cache` | Force a full Scryfall re-check of one card | Admin |
 | `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
 | `/forced_event_schedule_check` | Force an immediate re-check of the latest Arena "Event Schedule" page (also runs automatically every 2 hours) | Admin |
 | `/forced_ban_announcement_check` | Force an immediate re-check of the latest Banned and Restricted Announcement (also runs automatically every 2 hours) | Admin |
+
+Full details (parameters, behaviour, source location) in `docs/comandi.md`.
 
 ## Tech Stack
 
@@ -49,7 +60,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │                     Cogs (Discord layer)                 │
-│  presentation/    tournament/    tournament_system/      │
+│  presentation/  deck_validation/  tournament_system/     │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
@@ -60,22 +71,23 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │                  Repository Layer                        │
-│  UserRepository    TournamentRepository    MatchRepository│
+│  UserRepository  TournamentRepository  BanlistRepository │
+│  TournamentPlayerRepository            MatchRepository   │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │  SQLite              │         Scryfall API              │
-│  (data/clepsydra.db) │         (card data)               │
+│ (data/clepshydra.db) │         (card data)               │
 └──────────────────────┘                                   │
 ```
 
 ## Project Structure
 
 ```
-ClepsydraBot/
+ClepshydraBot/
 ├── cogs/
 │   ├── presentation/        # User presentation wizard
-│   ├── tournament/          # Artisan deck validation
+│   ├── deck_validation/     # Artisan deck validation
 │   ├── tournament_system/   # Swiss tournament management
 │   ├── logger.py            # Centralized logging
 │   ├── error_handler.py     # Global slash command error handler
@@ -85,11 +97,14 @@ ClepsydraBot/
 ├── services/                # Business logic
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
-│   └── standings.py
+│   ├── standings.py
+│   ├── rating.py            # Glicko-2
+│   └── results.py           # ServiceResult (structured service outcome)
 ├── repositories/            # Data access layer
 │   ├── base.py
 │   ├── user_repository.py
-│   └── tournament_repository.py
+│   ├── tournament_repository.py
+│   └── banlist_repository.py
 ├── database/                # SQLAlchemy ORM
 │   ├── engine.py
 │   └── models.py
@@ -102,6 +117,9 @@ ClepsydraBot/
 │   ├── sitemap_monitor.py
 │   ├── interaction_errors.py
 │   ├── console.py           # Timestamped console log()
+│   ├── permissions.py       # @is_admin() check
+│   ├── tournament_embeds.py
+│   ├── tournament_logic.py
 │   └── deck_image_generator.py
 ├── config/
 │   └── config.py
@@ -148,11 +166,12 @@ validated and ready to use.
 TEST_MODE=True python main.py
 ```
 
-The bot auto-creates `data/clepsydra.db` on first run. View it with:
+The bot auto-creates `data/clepshydra.db` on first run (`data/clepshydra_test.db` in test mode). View it
+with [DB Browser for SQLite](https://sqlitebrowser.org) — a desktop app, not a pip package (e.g.
+`sudo apt install sqlitebrowser` on Debian/Ubuntu):
 
 ```bash
-pip install sqlitebrowser
-sqlitebrowser data/clepsydra.db
+sqlitebrowser data/clepshydra.db
 ```
 
 ## License

@@ -87,7 +87,7 @@ utils/
 
 ## Componenti
 
-### 1. Parser Decklist (`validators.py:25-55`)
+### 1. Parser Decklist (`parse_decklist()` in `validators.py`)
 
 `parse_decklist(text: str) -> tuple[str | None, list[DeckEntry], list[DeckEntry]]`
 
@@ -96,7 +96,7 @@ utils/
 - Formatta: `3 Lightning Bolt (ONE) 123` → nome, quantità
 - Strip il set code e collector number dal nome
 
-### 2. Banlist Check (`validators.py:72-79`)
+### 2. Banlist Check (`check_banlist()` in `validators.py`)
 
 `check_banlist(entries, banlist) -> list[str]`
 
@@ -105,7 +105,7 @@ utils/
 - Nessuna duplicazione nei risultati
 - Se lista non vuota → deck invalido
 
-### 3. Fetch Scryfall (`service.py:198-262`)
+### 3. Fetch Scryfall (`_fetch_collection()` in `service.py`)
 
 `async _fetch_collection(session, card_names)`
 
@@ -114,7 +114,7 @@ utils/
 - Aggiorna `card_cache.json` con i risultati
 - Rate limiting: semaforo 1 richiesta, delay 110ms
 
-### 4. Verifica Legalità Arena (`service.py:266-312`)
+### 4. Verifica Legalità Arena (`_is_arena_artisan_legal()` in `service.py`)
 
 `async _is_arena_artisan_legal(session, card_data, card_name) -> bool`
 
@@ -156,7 +156,7 @@ trovate".
 Per forzare un ricontrollo immediato di una singola carta (senza aspettare il TTL), l'admin può usare
 `/invalidate_card_cache <carta>`.
 
-### 5. Conteggio (`validators.py:82-96`)
+### 5. Conteggio (`validate_counts()` in `validators.py`)
 
 - Mainboard: minimo 60 carte
 - Sideboard: massimo 15 carte

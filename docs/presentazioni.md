@@ -24,20 +24,20 @@ cogs/presentation/
 
 ## Flusso di Presentazione
 
-### 1. Ingresso Utente (`cog.py:12-35`)
+### 1. Ingresso Utente (`PresentationCog.on_member_join()` in `cog.py`)
 
 All'arrivo di un nuovo membro:
 - Assegna ruolo `Viandante` (configurabile via `INITIAL_ROLE` in `.env`)
 - Invia messaggio di benvenuto in DM o canale designato
 - Invita a usare `/presentati` per completare la verifica
 
-### 2. Avvio Wizard (`cog.py:45-70`)
+### 2. Avvio Wizard (`PresentationCog.presentati()` in `cog.py`)
 
 Il comando `/presentati` è disponibile a tutti. Se l'utente ha già il ruolo `FINAL_ROLE` (`Planeswalker`), il comando viene rifiutato con un messaggio esplicativo.
 
 Il wizard multi-step procede in 4 fasi:
 
-#### Fase 1 — Modale Base (`modals.py:12-52`)
+#### Fase 1 — Modale Base (`BasicPresentationModal` in `modals.py`)
 `BasicPresentationModal` con 5 campi obbligatori:
 
 | Campo | Tipo | Validazione |
@@ -48,7 +48,7 @@ Il wizard multi-step procede in 4 fasi:
 | Professione | TextInput | Regex: lettere, spazi, apostrofi (2-100 char) |
 | Provenienza | TextInput | Regex: lettere, spazi, apostrofi (2-100 char) |
 
-#### Fase 2 — Select Menu (`views.py:15-90`)
+#### Fase 2 — Select Menu (`PreferencesView` e i quattro `*Select` in `views.py`)
 `PreferencesView` con 4 select menu a scelta multipla:
 
 | Menu | Opzioni |
@@ -58,7 +58,7 @@ Il wizard multi-step procede in 4 fasi:
 | Formati Costruiti | Standard, Pioneer, Modern, Legacy, Vintage, Artisan, Brawl, Historic, Explorer, Timeless (max 10) |
 | Formati Limitati | Draft, Sealed, Cube (max 3) |
 
-#### Fase 3 — Modale Opzionale (`modals.py:54-88`)
+#### Fase 3 — Modale Opzionale (`OptionalPresentationModal` in `modals.py`)
 `OptionalPresentationModal` con 4 campi opzionali:
 
 | Campo | Descrizione |
@@ -68,7 +68,7 @@ Il wizard multi-step procede in 4 fasi:
 | Risultati | Tornei vinti, piazzamenti, record |
 | Altre Passioni | Interessi extra-Magic |
 
-#### Fase 4 — Anteprima e Conferma (`views.py:92-140`)
+#### Fase 4 — Anteprima e Conferma (`PreviewView` in `views.py`)
 
 `PreviewView` mostra un embed riassuntivo con:
 - Tutti i dati inseriti organizzati per sezioni

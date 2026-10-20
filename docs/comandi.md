@@ -116,6 +116,6 @@
 
 ### Permessi
 
-`is_admin()` check (`utils/permissions.py:5`):
+`is_admin()` check (`utils/permissions.py`):
 - Verifica che l'utente abbia il ruolo `ADMIN_ROLE` (default: `Staff`)
 - Usato come decoratore su comandi admin: `@app_commands.check(is_admin)`

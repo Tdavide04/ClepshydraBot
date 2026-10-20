@@ -77,8 +77,9 @@ opening before large changes. Other useful docs: `docs/deck-validation.md`, `doc
 
 - **`cogs/`** — Discord-facing layer (slash commands, modals, views, embeds). Three feature cogs:
   `presentation/` (onboarding wizard), `deck_validation/` (Artisan deck legality checks, formerly named
-  `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with ~14
-  slash commands). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
+  `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with 18 of the
+  bot's 24 slash commands), plus single-file cogs for maintenance commands (`spg_override_updater.py`,
+  `arena_event_schedule_updater.py`, `ban_announcement_updater.py`). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
   `send_log(level, event, info)` on, to post colored embeds to a central log channel — `send_log()` also
   takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields) and
   `files` (list of `discord.File`, attached to the same message), used by the Event Schedule and Banned
@@ -358,8 +359,15 @@ announcement reached the sitemap, re-posted August's to the community.
 ### Note on `cogs/tournament/` vs `cogs/deck_validation/`
 
 The package was renamed from `tournament` to `deck_validation` (see `CHANGELOG.md` 1.3.1) to
-disambiguate it from `cogs/tournament_system/`. `README.md`'s project-structure diagram still shows the
-old `tournament/` name — treat `deck_validation/` (actual directory) as current.
+disambiguate it from `cogs/tournament_system/`. Older `CHANGELOG.md` entries still use the old name; every
+current doc uses `deck_validation/`.
+
+### Docs conventions
+
+Refer to code by symbol name (`check_banlist()` in `validators.py`), not by `file.py:line` — line
+references drifted out of date within a few commits (cleaned up in 3.6.3). The one exception is the
+"Location File" table in `docs/comandi.md`, whose "Linea" column points at each command's `async def`:
+recompute it whenever `cogs/` files shift.
 
 ## Agent skills
 

@@ -8,6 +8,30 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+## 3.6.3 (2026-10-14)
+
+Solo documentazione: nessun cambiamento al codice.
+
+### Docs
+- `README.md`:
+  - tabella comandi completa (24 su 24, prima ne elencava 14 — mancavano `/lista_tornei`,
+    `/iscrizioni_torneo`, `/left_torneo`, `/leaderboard`, `/banlist`, `/drop_giocatore`,
+    `/concludi_torneo`, `/banlist_aggiungi`/`/banlist_rimuovi`, `/invalidate_card_cache`)
+  - schema architetturale e struttura progetto: `tournament/` → `deck_validation/` (rinominato nella
+    1.3.1); aggiunti i moduli mancanti (`services/rating.py`, `services/results.py`,
+    `repositories/banlist_repository.py`, `utils/permissions.py`, `utils/tournament_embeds.py`,
+    `utils/tournament_logic.py`) e `BanlistRepository`/`TournamentPlayerRepository` nello schema
+  - nome del DB: `data/clepshydra.db`, non `data/clepsydra.db` (stesso errore in
+    `docs/infrastruttura.md`, corretto); radice del progetto `ClepshydraBot/`
+  - `pip install sqlitebrowser` rimosso: DB Browser for SQLite e' un'applicazione desktop, non un
+    pacchetto pip
+- `docs/banlist-system.md`, `docs/deck-validation.md`, `docs/presentazioni.md`, `docs/comandi.md`: i
+  riferimenti `file.py:righe` (19, quasi tutti sfasati — es. `validators.py:82-96` puntava oltre la fine
+  di un file di 88 righe) sostituiti dal nome della funzione/classe, che non invecchia
+- `CLAUDE.md`: conteggio comandi del cog tornei (18 su 24, era "~14"), cog di manutenzione elencati; tolta
+  la nota "il README mostra ancora `tournament/`"; nuova sezione "Docs conventions" (riferirsi al codice
+  per nome di simbolo, non per riga)
+
 ## 3.6.2 (2026-10-12)
 
 ### Fixed

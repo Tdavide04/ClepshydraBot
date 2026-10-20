@@ -46,7 +46,7 @@ Caricate da `.env` tramite `python-dotenv`:
 | `INITIAL_ROLE` | Ruolo iniziale (default: Viandante) | stessi |
 | `FINAL_ROLE` | Ruolo verificato (default: Planeswalker) | stessi |
 | `ADMIN_ROLE` | Ruolo admin (default: Staff) | stessi |
-| `DB_PATH` | Percorso DB (default: `data/clepsydra.db`) | suffisso `_test.db` |
+| `DB_PATH` | Percorso DB (default: `data/clepshydra.db`) | suffisso `_test.db` |
 | `TEST_MODE` | Flag test | — |
 
 `VERSION` **non** è una variabile d'ambiente: è una costante hardcoded in `config/config.py` (append
@@ -59,7 +59,7 @@ Caricate da `.env` tramite `python-dotenv`:
 - Token Discord (produzione vs test)
 - Server Discord (guild ID)
 - Canali di destinazione
-- Database (`clepsydra.db` → `clepsydra_test.db`)
+- Database (`clepshydra.db` → `clepshydra_test.db`)
 
 ---
 
