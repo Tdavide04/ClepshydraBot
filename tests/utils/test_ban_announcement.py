@@ -81,7 +81,6 @@ SAMPLE_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 class TestParseSitemapXml:
-
     def test_extracts_only_ban_announcement_urls_with_lastmod(self):
         found = ban_announcement._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
 
@@ -102,7 +101,6 @@ class TestParseSitemapXml:
 
 
 class TestParseBanAnnouncement:
-
     def test_extracts_only_formats_with_real_changes(self):
         changes = ban_announcement.parse_ban_announcement(VALID_ANNOUNCEMENT_HTML)
 
@@ -134,7 +132,6 @@ class TestParseBanAnnouncement:
 
 
 class TestFormatLastmod:
-
     def test_formats_an_iso8601_utc_timestamp_in_italian(self):
         formatted = ban_announcement.format_lastmod("2026-08-21T18:02:33.573Z")
         assert formatted == "21 Agosto 2026, 18:02 UTC"
@@ -146,7 +143,6 @@ class TestFormatLastmod:
 
 
 class TestPickLatest:
-
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
         entries = {
             ANNOUNCEMENT_A_URL: "2026-08-21T18:02:33.573Z",
@@ -159,7 +155,6 @@ class TestPickLatest:
 
 
 class TestCheckBanAnnouncementUpdates:
-
     def test_first_check_reports_only_the_latest_announcement(self, monkeypatch):
         calls = []
         _install_fake_network(
@@ -240,6 +235,7 @@ class TestCheckBanAnnouncementUpdates:
 
         assert results == []
         import os
+
         assert not os.path.exists(ban_announcement.STATE_PATH)
 
     def test_first_announcement_with_changes_is_not_already_notified(self, monkeypatch):
@@ -279,13 +275,17 @@ class TestCheckBanAnnouncementUpdates:
         August 21): a new lastmod on the same URL is not a new announcement."""
         calls = []
         sitemap = {ANNOUNCEMENT_A_URL: "2026-08-10T16:00:00.000Z"}
-        _install_fake_network(monkeypatch, sitemap=sitemap, pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML}, calls=calls)
+        _install_fake_network(
+            monkeypatch, sitemap=sitemap, pages={ANNOUNCEMENT_A_URL: VALID_ANNOUNCEMENT_HTML}, calls=calls
+        )
         run(ban_announcement.check_ban_announcement_updates())
 
         sitemap[ANNOUNCEMENT_A_URL] = "2026-08-21T18:02:33.573Z"
         results = run(ban_announcement.check_ban_announcement_updates())
 
-        assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL], "the edit must still be re-read and logged"
+        assert [r["url"] for r in results] == [ANNOUNCEMENT_A_URL], (
+            "the edit must still be re-read and logged"
+        )
         assert results[0]["already_notified"] is True
 
     def test_new_url_after_a_notified_one_is_not_already_notified(self, monkeypatch):
@@ -340,18 +340,34 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
-                        extra_channel_id=None, community_title=None, community_info=None):
-        self.calls.append({
-            "level": level, "event": event, "info": info,
-            "fields": fields or [], "files": files or [],
-            "extra_channel_id": extra_channel_id,
-            "community_title": community_title, "community_info": community_info,
-        })
+    async def send_log(
+        self,
+        level,
+        event,
+        user=None,
+        channel=None,
+        info=None,
+        fields=None,
+        files=None,
+        extra_channel_id=None,
+        community_title=None,
+        community_info=None,
+    ):
+        self.calls.append(
+            {
+                "level": level,
+                "event": event,
+                "info": info,
+                "fields": fields or [],
+                "files": files or [],
+                "extra_channel_id": extra_channel_id,
+                "community_title": community_title,
+                "community_info": community_info,
+            }
+        )
 
 
 class TestSendBanAnnouncementLog:
-
     def test_unparseable_announcement_sends_a_single_warn(self):
         logger = FakeLogger()
         result = {"url": ANNOUNCEMENT_A_URL, "lastmod": "x", "changes": None}
@@ -378,6 +394,7 @@ class TestSendBanAnnouncementLog:
 
     def test_changes_are_posted_as_one_field_per_format_and_to_the_community_channel(self, monkeypatch):
         import config.config as config_module
+
         monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
 
         logger = FakeLogger()
@@ -417,12 +434,15 @@ class TestSendBanAnnouncementLog:
 
     def test_already_notified_changes_go_to_the_log_channel_only(self, monkeypatch):
         import config.config as config_module
+
         monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
 
         logger = FakeLogger()
         result = {
-            "url": ANNOUNCEMENT_A_URL, "lastmod": "2026-08-21T18:02:33.573Z",
-            "changes": {"Standard": ["Badgermole Cub is banned."]}, "already_notified": True,
+            "url": ANNOUNCEMENT_A_URL,
+            "lastmod": "2026-08-21T18:02:33.573Z",
+            "changes": {"Standard": ["Badgermole Cub is banned."]},
+            "already_notified": True,
         }
 
         run(ban_announcement.send_ban_announcement_log(logger, result, user=None, forced=True))

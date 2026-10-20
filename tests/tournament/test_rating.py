@@ -1,14 +1,14 @@
 import pytest
+
 from services.rating import (
+    RATING_FLOOR,
     Rating,
     rate_1vs1,
     rate_draw,
-    RATING_FLOOR,
 )
 
 
 class TestRate1vs1:
-
     def test_winner_rises_loser_falls(self):
         winner = Rating(1500.0, 350.0, 0.06)
         loser = Rating(1500.0, 350.0, 0.06)
@@ -54,7 +54,6 @@ class TestRate1vs1:
 
 
 class TestRateDraw:
-
     def test_both_rise_with_high_rd(self):
         a = Rating(1500.0, 350.0, 0.06)
         b = Rating(1500.0, 350.0, 0.06)
@@ -78,7 +77,6 @@ class TestRateDraw:
 
 
 class TestRatingVectors:
-
     def test_glicko2_scaling_correct(self):
         a = Rating(1500.0, 200.0, 0.06)
         b = Rating(1400.0, 30.0, 0.06)

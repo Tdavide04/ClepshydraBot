@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from services.pairing_engine import PairingEngine
 
 
@@ -20,7 +21,6 @@ class MockMatch:
 
 
 class TestCalculateRounds:
-
     def test_one_player(self):
         assert PairingEngine.calculate_rounds(1) == 1
 
@@ -38,7 +38,6 @@ class TestCalculateRounds:
 
 
 class TestScoreboard:
-
     def test_win_and_loss(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
@@ -77,7 +76,6 @@ class TestScoreboard:
 
 
 class TestExistingPairs:
-
     def test_pair_is_ordered(self):
         matches = [
             MockMatch(player1_id=5, player2_id=3),
@@ -95,7 +93,6 @@ class TestExistingPairs:
 
 
 class TestByeHistory:
-
     def test_bye_tracking(self):
         matches = [
             MockMatch(player1_id=1, player2_id=None),
@@ -115,7 +112,6 @@ class TestByeHistory:
 
 
 class TestGenerateRound:
-
     def test_round1_four_players(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         matches = []
@@ -133,7 +129,9 @@ class TestGenerateRound:
         pairings = PairingEngine.generate_round(players, matches, round_number=2)
         assert len(pairings) == 2
         for p in pairings:
-            a, b = (p.player1_id, p.player2_id) if p.player1_id < p.player2_id else (p.player2_id, p.player1_id)
+            a, b = (
+                (p.player1_id, p.player2_id) if p.player1_id < p.player2_id else (p.player2_id, p.player1_id)
+            )
             assert (a, b) not in {(1, 2), (3, 4)}
 
     def test_odd_player_count_gives_a_bye(self):

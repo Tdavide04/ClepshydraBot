@@ -1,13 +1,14 @@
 import os
+
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
     AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
 )
-from database.models import Base
-from config.config import DB_PATH
 
+from config.config import DB_PATH
+from database.models import Base
 
 _engine = None
 _async_session_maker = None
@@ -47,6 +48,7 @@ async def init_db():
     await _migrate_schema()
 
     from utils.card_cache import load_cache
+
     await load_cache()
 
 
@@ -97,9 +99,7 @@ async def _migrate_schema():
                 await conn.execute(sa_text(ddl))
                 print(f"Migration: added column {column} to {table}")
             except Exception as exc:
-                print(
-                    f"MIGRATION ERROR: could not add {column} to {table}: {exc}"
-                )
+                print(f"MIGRATION ERROR: could not add {column} to {table}: {exc}")
 
 
 async def close_db():

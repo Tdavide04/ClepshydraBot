@@ -2,17 +2,18 @@ import pytest
 
 try:
     import discord
+
     HAS_DISCORD = True
 except ImportError:
     HAS_DISCORD = False
 
 from utils.tournament_embeds import (
-    build_standings_embed,
-    build_pairings_embed,
-    build_start_embed,
-    EMBED_COLOR_STANDINGS,
     EMBED_COLOR_PAIRINGS,
+    EMBED_COLOR_STANDINGS,
     EMBED_COLOR_START,
+    build_pairings_embed,
+    build_standings_embed,
+    build_start_embed,
 )
 
 
@@ -31,11 +32,11 @@ def mock_entry():
             self.opponent_win_percent = omw
             self.game_win_percent = 0.5
             self.opponent_game_win_percent = 0.5
+
     return MockEntry
 
 
 class TestBuildStandingsEmbed:
-
     def test_returns_embed(self):
         if not HAS_DISCORD:
             pytest.skip("discord.py not available")
@@ -69,14 +70,14 @@ class TestBuildStandingsEmbed:
             pytest.skip("discord.py not available")
 
         embed = build_standings_embed("Test", 1, 0, [], 0)
-        assert "\U0001F3C6" in embed.title
+        assert "\U0001f3c6" in embed.title
 
     def test_title_with_round(self):
         if not HAS_DISCORD:
             pytest.skip("discord.py not available")
 
         embed = build_standings_embed("Test", 1, 3, [], 0)
-        assert "\u26A1" in embed.title
+        assert "\u26a1" in embed.title
 
     def test_footer_with_id(self):
         if not HAS_DISCORD:
@@ -89,10 +90,7 @@ class TestBuildStandingsEmbed:
         if not HAS_DISCORD:
             pytest.skip("discord.py not available")
 
-        entries = [
-            mock_entry(i, i, f"Player{i}", f"Deck{i}", 3, 1, 0, 0, 0.5)
-            for i in range(1, 51)
-        ]
+        entries = [mock_entry(i, i, f"Player{i}", f"Deck{i}", 3, 1, 0, 0, 0.5) for i in range(1, 51)]
         embed = build_standings_embed("Test", 1, 1, entries, 50)
         assert len(embed.fields) <= 25
 
@@ -102,18 +100,21 @@ class TestBuildStandingsEmbed:
 
         entries = [
             mock_entry(
-                i, i,
+                i,
+                i,
                 f"PlayerWithVeryLongName{i}" * 3,
                 f"MazzoMoltoLungoConNomiStrani{i}" * 2,
-                3, 1, 0, 0, 0.5
+                3,
+                1,
+                0,
+                0,
+                0.5,
             )
             for i in range(1, 31)
         ]
         embed = build_standings_embed("Test", 1, 1, entries, 30)
         for field in embed.fields:
-            assert len(field.value) <= 1024, (
-                f"Field '{field.name}' supera 1024 caratteri: {len(field.value)}"
-            )
+            assert len(field.value) <= 1024, f"Field '{field.name}' supera 1024 caratteri: {len(field.value)}"
 
     def test_player_without_deck_shows_dash(self, mock_entry):
         if not HAS_DISCORD:
@@ -140,7 +141,6 @@ class TestBuildStandingsEmbed:
 
 
 class TestBuildPairingsEmbed:
-
     def test_returns_embed(self):
         if not HAS_DISCORD:
             pytest.skip("discord.py not available")
@@ -179,7 +179,6 @@ class TestBuildPairingsEmbed:
 
 
 class TestBuildStartEmbed:
-
     def test_returns_embed(self):
         if not HAS_DISCORD:
             pytest.skip("discord.py not available")

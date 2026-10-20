@@ -51,7 +51,6 @@ from utils.arena_event_schedule import MONTHS_IT
 
 
 class EventCalendarImageGenerator:
-
     PADDING_X = 40
     PADDING_TOP = 74
     PADDING_BOTTOM = 24
@@ -123,8 +122,12 @@ class EventCalendarImageGenerator:
     # (non-deterministic for our purposes) in which categories appear on the
     # Wizards page.
     FAMILY_ORDER = [
-        "Premier Draft", "Quick Draft", "Flashback",
-        "Sealed & Cube", "Metagame", "Community",
+        "Premier Draft",
+        "Quick Draft",
+        "Flashback",
+        "Sealed & Cube",
+        "Metagame",
+        "Community",
     ]
 
     # Prefixes to strip from the event name shown in bars/pills: the
@@ -139,17 +142,29 @@ class EventCalendarImageGenerator:
     # September "11-19" would be indistinguishable once merged into the same
     # family section.
     MONTH_ABBR_IT = {
-        1: "gen", 2: "feb", 3: "mar", 4: "apr", 5: "mag", 6: "giu",
-        7: "lug", 8: "ago", 9: "set", 10: "ott", 11: "nov", 12: "dic",
+        1: "gen",
+        2: "feb",
+        3: "mar",
+        4: "apr",
+        5: "mag",
+        6: "giu",
+        7: "lug",
+        8: "ago",
+        9: "set",
+        10: "ott",
+        11: "nov",
+        12: "dic",
     }
 
     @classmethod
     def _try_font(cls, size, bold=False):
         names = [
             "arialbd.ttf" if bold else "arial.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+            if bold
             else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+            if bold
             else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         ]
         for name in names:
@@ -399,9 +414,9 @@ class EventCalendarImageGenerator:
 
         text = name.strip()
         if text.lower().startswith(cls._ARENA_DIRECT_PREFIX):
-            text = text[len(cls._ARENA_DIRECT_PREFIX):]
+            text = text[len(cls._ARENA_DIRECT_PREFIX) :]
         if text.lower().startswith(cls._MTG_PREFIX):
-            text = text[len(cls._MTG_PREFIX):]
+            text = text[len(cls._MTG_PREFIX) :]
         return text.strip()
 
     @classmethod
@@ -540,7 +555,7 @@ class EventCalendarImageGenerator:
             # by character (not by pixel: it is secondary text in parentheses
             # in the detailed list, no precision needed).
             if len(clean_category) > cls.DETAIL_CATEGORY_MAX_CHARS:
-                clean_category = clean_category[:cls.DETAIL_CATEGORY_MAX_CHARS - 1].rstrip() + "…"
+                clean_category = clean_category[: cls.DETAIL_CATEGORY_MAX_CHARS - 1].rstrip() + "…"
 
             bucket = family_detail.setdefault(family, [])
             for day_start, day_end, name in entries:
@@ -586,7 +601,9 @@ class EventCalendarImageGenerator:
         for kind, text in detail_rows:
             if kind == "heading":
                 color = cls.FAMILY_COLORS[text]
-                draw.rounded_rectangle([cls.PADDING_X, y + 4, cls.PADDING_X + 12, y + 16], radius=3, fill=color)
+                draw.rounded_rectangle(
+                    [cls.PADDING_X, y + 4, cls.PADDING_X + 12, y + 16], radius=3, fill=color
+                )
                 draw.text((cls.PADDING_X + 20, y), text, fill=cls.TEXT_PRIMARY, font=font_heading)
                 y += cls.DETAIL_HEADING_HEIGHT
             else:

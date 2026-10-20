@@ -1,10 +1,10 @@
 import discord
-from cogs.presentation.models import PresentationData
+
 from cogs.presentation.embeds import build_preview_embed
 from cogs.presentation.modals import OptionalPresentationModal
+from cogs.presentation.models import PresentationData
 from cogs.presentation.service import PresentationService
 from utils.interaction_errors import ReportingView
-
 
 COLORI_OPTIONS = [
     discord.SelectOption(label="Bianco", value="bianco", emoji="⬜"),
@@ -87,7 +87,7 @@ class ColoriSelect(discord.ui.Select):
             min_values=0,
             max_values=len(options),
             options=options,
-            custom_id="colori_select"
+            custom_id="colori_select",
         )
         self.data = data
 
@@ -95,10 +95,7 @@ class ColoriSelect(discord.ui.Select):
         options = []
         for opt in COLORI_OPTIONS:
             opt_copy = discord.SelectOption(
-                label=opt.label,
-                value=opt.value,
-                emoji=opt.emoji,
-                default=opt.value in selected
+                label=opt.label, value=opt.value, emoji=opt.emoji, default=opt.value in selected
             )
             options.append(opt_copy)
         return options
@@ -122,18 +119,14 @@ class GildeSelect(discord.ui.Select):
             min_values=0,
             max_values=len(options),
             options=options,
-            custom_id="gilde_select"
+            custom_id="gilde_select",
         )
         self.data = data
 
     def _build_options(self, selected: list[str]) -> list[discord.SelectOption]:
         options = []
         for opt in GILDE_OPTIONS:
-            opt_copy = discord.SelectOption(
-                label=opt.label,
-                value=opt.value,
-                default=opt.value in selected
-            )
+            opt_copy = discord.SelectOption(label=opt.label, value=opt.value, default=opt.value in selected)
             options.append(opt_copy)
         return options
 
@@ -158,18 +151,14 @@ class FormatiConstructedSelect(discord.ui.Select):
             min_values=0,
             max_values=len(options),
             options=options,
-            custom_id="formati_construed_select"
+            custom_id="formati_construed_select",
         )
         self.data = data
 
     def _build_options(self, selected: list[str]) -> list[discord.SelectOption]:
         options = []
         for opt in FORMATI_CONSTRUCTED_OPTIONS:
-            opt_copy = discord.SelectOption(
-                label=opt.label,
-                value=opt.value,
-                default=opt.value in selected
-            )
+            opt_copy = discord.SelectOption(label=opt.label, value=opt.value, default=opt.value in selected)
             options.append(opt_copy)
         return options
 
@@ -195,18 +184,14 @@ class FormatiLimitedSelect(discord.ui.Select):
             min_values=0,
             max_values=len(options),
             options=options,
-            custom_id="formati_limited_select"
+            custom_id="formati_limited_select",
         )
         self.data = data
 
     def _build_options(self, selected: list[str]) -> list[discord.SelectOption]:
         options = []
         for opt in FORMATI_LIMITED_OPTIONS:
-            opt_copy = discord.SelectOption(
-                label=opt.label,
-                value=opt.value,
-                default=opt.value in selected
-            )
+            opt_copy = discord.SelectOption(label=opt.label, value=opt.value, default=opt.value in selected)
             options.append(opt_copy)
         return options
 
@@ -241,7 +226,9 @@ class PreferencesView(ReportingView):
         self.add_item(self.formati_construed_select)
         self.add_item(self.formati_limited_select)
 
-        continue_btn = discord.ui.Button(label="Continua", style=discord.ButtonStyle.primary, custom_id="prefs_continue")
+        continue_btn = discord.ui.Button(
+            label="Continua", style=discord.ButtonStyle.primary, custom_id="prefs_continue"
+        )
         continue_btn.callback = self._on_continue
         self.add_item(continue_btn)
 
@@ -251,10 +238,7 @@ class PreferencesView(ReportingView):
             preview_embed = build_preview_embed(member, data)
             view = PreviewView(data, member)
             await interaction.followup.send(
-                "Ecco l'anteprima della tua presentazione:",
-                embed=preview_embed,
-                view=view,
-                ephemeral=True
+                "Ecco l'anteprima della tua presentazione:", embed=preview_embed, view=view, ephemeral=True
             )
 
         modal = OptionalPresentationModal(self.data, on_complete=after_optional_modal)
@@ -269,11 +253,15 @@ class PreviewView(ReportingView):
         self.completed = False
         self.processing = False
 
-        confirm_btn = discord.ui.Button(label="Conferma", style=discord.ButtonStyle.success, custom_id="preview_confirm", emoji="✅")
+        confirm_btn = discord.ui.Button(
+            label="Conferma", style=discord.ButtonStyle.success, custom_id="preview_confirm", emoji="✅"
+        )
         confirm_btn.callback = self._on_confirm
         self.add_item(confirm_btn)
 
-        cancel_btn = discord.ui.Button(label="Annulla", style=discord.ButtonStyle.danger, custom_id="preview_cancel", emoji="❌")
+        cancel_btn = discord.ui.Button(
+            label="Annulla", style=discord.ButtonStyle.danger, custom_id="preview_cancel", emoji="❌"
+        )
         cancel_btn.callback = self._on_cancel
         self.add_item(cancel_btn)
 
@@ -288,7 +276,9 @@ class PreviewView(ReportingView):
         await interaction.response.defer(ephemeral=True)
 
         try:
-            service = getattr(interaction.client, 'presentation_service', None) or PresentationService(interaction.client)
+            service = getattr(interaction.client, "presentation_service", None) or PresentationService(
+                interaction.client
+            )
             await service.publish(interaction, self.data)
             self.completed = True
             await interaction.followup.send("✅ Benvenuto tra i Planeswalker!", ephemeral=True)

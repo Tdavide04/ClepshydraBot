@@ -95,7 +95,6 @@ SAMPLE_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 class TestParseSitemapXml:
-
     def test_extracts_only_event_schedule_urls_with_lastmod(self):
         found = arena_event_schedule._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
 
@@ -116,7 +115,6 @@ class TestParseSitemapXml:
 
 
 class TestParseFullEventCalendar:
-
     def test_extracts_categories_and_entries(self):
         categories = arena_event_schedule.parse_full_event_calendar(VALID_CALENDAR_HTML)
 
@@ -146,21 +144,20 @@ class TestParseFullEventCalendar:
 
 
 class TestParseEventEntry:
-
     def test_parses_range_spanning_two_months(self):
         parsed = arena_event_schedule.parse_event_entry(
             "August 11–September 29: Magic: The Gathering | The Hobbit"
         )
         assert parsed == {
-            "start_month": 8, "start_day": 11,
-            "end_month": 9, "end_day": 29,
+            "start_month": 8,
+            "start_day": 11,
+            "end_month": 9,
+            "end_day": 29,
             "name": "Magic: The Gathering | The Hobbit",
         }
 
     def test_parses_range_within_a_single_month_without_repeating_month_name(self):
-        parsed = arena_event_schedule.parse_event_entry(
-            "August 11–19: Duskmourn: House of Horror"
-        )
+        parsed = arena_event_schedule.parse_event_entry("August 11–19: Duskmourn: House of Horror")
         assert parsed["start_month"] == 8
         assert parsed["end_month"] == 8
         assert parsed["start_day"] == 11
@@ -177,40 +174,31 @@ class TestParseEventEntry:
 
 
 class TestBuildMonthCalendar:
-
     def test_splits_a_multi_month_range_at_month_boundaries(self):
         categories = {
             "Premier Draft": ["August 11–September 29: The Hobbit"],
         }
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert result[(2026, 8)]["Premier Draft"] == [(11, 31, "The Hobbit")]
         assert result[(2026, 9)]["Premier Draft"] == [(1, 29, "The Hobbit")]
 
     def test_single_month_range_is_not_split(self):
         categories = {"Quick Draft": ["August 11–19: Duskmourn"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert list(result.keys()) == [(2026, 8)]
         assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
 
     def test_unparseable_entry_is_silently_excluded(self):
         categories = {"Quick Draft": ["Event without a date", "August 11–19: Duskmourn"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
 
     def test_range_crossing_december_into_january_bumps_the_year(self):
         categories = {"Quick Draft": ["December 28–January 4: New Year Set"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 12, 1)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 1))
 
         assert result[(2026, 12)]["Quick Draft"] == [(28, 31, "New Year Set")]
         assert result[(2027, 1)]["Quick Draft"] == [(1, 4, "New Year Set")]
@@ -220,9 +208,7 @@ class TestBuildMonthCalendar:
         in December belongs to next year, not to one 11 months in the past -
         covers the _infer_start_year heuristic."""
         categories = {"Quick Draft": ["January 5–11: Some Set"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 12, 20)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 20))
 
         assert list(result.keys()) == [(2027, 1)]
 
@@ -231,23 +217,18 @@ class TestBuildMonthCalendar:
         back) must stay in the current year, not be wrongly pushed to next
         year."""
         categories = {"Flashback Premier Draft": ["August 25–September 7: LOTR"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert (2026, 8) in result
         assert (2027, 8) not in result
 
     def test_no_parseable_entries_returns_empty_dict(self):
         categories = {"Quick Draft": ["Event without a date"]}
-        result = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
+        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
         assert result == {}
 
 
 class TestExtractSetNameFromUrl:
-
     def test_strips_the_event_schedule_suffix_and_title_cases_words(self):
         url = "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule"
         assert arena_event_schedule.extract_set_name_from_url(url) == "The Hobbit"
@@ -258,7 +239,6 @@ class TestExtractSetNameFromUrl:
 
 
 class TestFormatPeriodCovered:
-
     def test_returns_none_for_an_empty_calendar(self):
         assert arena_event_schedule.format_period_covered({}) is None
 
@@ -281,7 +261,9 @@ class TestFormatPeriodCovered:
         month_calendar = arena_event_schedule.build_month_calendar(
             categories, reference_date=date(2026, 12, 1)
         )
-        assert arena_event_schedule.format_period_covered(month_calendar) == "28 Dicembre 2026 - 4 Gennaio 2027"
+        assert (
+            arena_event_schedule.format_period_covered(month_calendar) == "28 Dicembre 2026 - 4 Gennaio 2027"
+        )
 
     def test_covers_the_full_span_across_multiple_categories(self):
         """The period must reflect the widest range across ALL categories,
@@ -297,7 +279,6 @@ class TestFormatPeriodCovered:
 
 
 class TestPickLatest:
-
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
         entries = {SET_A_URL: "2026-08-03T00:00:00Z", SET_B_URL: "2026-06-15T00:00:00Z"}
         assert arena_event_schedule._pick_latest(entries) == (SET_A_URL, "2026-08-03T00:00:00Z")
@@ -307,7 +288,6 @@ class TestPickLatest:
 
 
 class TestCheckEventScheduleUpdates:
-
     def test_first_check_reports_only_the_latest_page_not_older_ones(self, monkeypatch):
         """Direct regression for the flood reported in production: on the
         first run on a new machine (empty state), the sitemap held 4 Event
@@ -456,6 +436,7 @@ class TestCheckEventScheduleUpdates:
 
         assert results == []
         import os
+
         assert not os.path.exists(arena_event_schedule.STATE_PATH)
 
 
@@ -463,18 +444,34 @@ class FakeLogger:
     def __init__(self):
         self.calls = []
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
-                        extra_channel_id=None, community_title=None, community_info=None):
-        self.calls.append({
-            "level": level, "event": event, "info": info,
-            "fields": fields or [], "files": files or [],
-            "extra_channel_id": extra_channel_id,
-            "community_title": community_title, "community_info": community_info,
-        })
+    async def send_log(
+        self,
+        level,
+        event,
+        user=None,
+        channel=None,
+        info=None,
+        fields=None,
+        files=None,
+        extra_channel_id=None,
+        community_title=None,
+        community_info=None,
+    ):
+        self.calls.append(
+            {
+                "level": level,
+                "event": event,
+                "info": info,
+                "fields": fields or [],
+                "files": files or [],
+                "extra_channel_id": extra_channel_id,
+                "community_title": community_title,
+                "community_info": community_info,
+            }
+        )
 
 
 class TestSendEventScheduleLog:
-
     def test_unparseable_page_sends_a_single_warn_with_no_files(self):
         logger = FakeLogger()
         result = {"url": SET_A_URL, "lastmod": "2026-08-03T00:00:00Z", "categories": None}
@@ -485,7 +482,9 @@ class TestSendEventScheduleLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_UNPARSEABLE"
         assert logger.calls[0]["files"] == []
-        assert logger.calls[0]["extra_channel_id"] is None, "a failed parse is staff noise, not community content"
+        assert logger.calls[0]["extra_channel_id"] is None, (
+            "a failed parse is staff noise, not community content"
+        )
 
     def test_categories_without_parseable_dates_send_a_warn_with_no_files(self):
         """The categories were parsed (categories isn't None) but no entry
@@ -502,7 +501,9 @@ class TestSendEventScheduleLog:
         assert logger.calls[0]["level"] == "WARN"
         assert logger.calls[0]["event"] == "ARENA_EVENT_SCHEDULE_NO_DATES"
         assert logger.calls[0]["files"] == []
-        assert logger.calls[0]["extra_channel_id"] is None, "no recognized date is staff noise, not community content"
+        assert logger.calls[0]["extra_channel_id"] is None, (
+            "no recognized date is staff noise, not community content"
+        )
 
     def test_valid_categories_attach_one_image_per_month_and_post_to_the_community_channel(self, monkeypatch):
         """Replaces the old text-embed-field design: one calendar image per
@@ -510,6 +511,7 @@ class TestSendEventScheduleLog:
         describing events in words. A real update also goes to the community
         channel (extra_channel_id), unlike the two WARNs above."""
         import config.config as config_module
+
         monkeypatch.setattr(config_module, "COMUNICATION_CHANNEL_ID", 999)
 
         logger = FakeLogger()

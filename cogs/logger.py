@@ -1,32 +1,45 @@
-import discord
-from discord.ext import commands
 from datetime import datetime
 
+import discord
+from discord.ext import commands
+
 from config.config import LOG_CHANNEL_ID
+
 
 class Logger(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log_channel_id = LOG_CHANNEL_ID
-        
+
         self.levels = {
             "INFO": ("🟢", discord.Color.green()),
             "WARN": ("🟡", discord.Color.gold()),
             "ERROR": ("🔴", discord.Color.red()),
-            "DEBUG": ("🔵", discord.Color.blue())
+            "DEBUG": ("🔵", discord.Color.blue()),
         }
 
     @staticmethod
     def _add_fields(embed, fields):
-        for field in (fields or []):
+        for field in fields or []:
             embed.add_field(
                 name=field["name"],
                 value=field["value"],
                 inline=field.get("inline", False),
             )
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
-                        extra_channel_id=None, community_title=None, community_info=None):
+    async def send_log(
+        self,
+        level,
+        event,
+        user=None,
+        channel=None,
+        info=None,
+        fields=None,
+        files=None,
+        extra_channel_id=None,
+        community_title=None,
+        community_info=None,
+    ):
         """Single entry point for posting a log embed to the log channel.
 
         fields: optional list of {"name", "value", "inline"} dicts, added as
@@ -79,7 +92,7 @@ class Logger(commands.Cog):
                 title=f"{emoji} [{level.upper()}] | {event.upper()}",
                 description=description.strip(),
                 color=color,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             self._add_fields(embed, fields)
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -88,7 +101,7 @@ class Logger(commands.Cog):
 
             if extra_channel_id:
                 try:
-                    for f in (files or []):
+                    for f in files or []:
                         f.reset()
 
                     community_embed = discord.Embed(
@@ -111,7 +124,7 @@ class Logger(commands.Cog):
         """Assigns the initial role to a new member and logs the join."""
         role = discord.utils.get(member.guild.roles, name="Viandante")
         status = "❌ Role not found"
-        
+
         if role:
             try:
                 await member.add_roles(role)
@@ -127,8 +140,9 @@ class Logger(commands.Cog):
             level=level,
             event="MEMBER_JOIN",
             user=member,
-            info=f"New member joined the server.\n**Status:** {status}"
+            info=f"New member joined the server.\n**Status:** {status}",
         )
+
 
 async def setup(bot):
     await bot.add_cog(Logger(bot))

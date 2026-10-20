@@ -1,18 +1,15 @@
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
+
 from database.models import BannedCard
 from repositories.base import BaseRepository
 
 
 class BanlistRepository(BaseRepository[BannedCard]):
-
     def __init__(self, session):
         super().__init__(session, BannedCard)
 
     async def get_all_for_format(self, format: str = "Artisan") -> set[str]:
-        result = await self.session.execute(
-            select(BannedCard.card_name)
-            .where(BannedCard.format == format)
-        )
+        result = await self.session.execute(select(BannedCard.card_name).where(BannedCard.format == format))
         return {row[0].lower() for row in result.all()}
 
     async def add_card(self, card_name: str, format: str = "Artisan") -> BannedCard:

@@ -64,6 +64,7 @@ _update_lock = asyncio.Lock()
 # LOAD / SAVE
 # ==========================================
 
+
 def _load_override_data() -> dict:
     """Loads the JSON. Uses an in-memory cache, rereads only when needed."""
 
@@ -109,6 +110,7 @@ def invalidate_override_cache() -> None:
 # GET OVERRIDE (public API)
 # ==========================================
 
+
 def get_override_rarity(card_name: str) -> str | None:
     """
     Returns the override rarity for a card, or None if there is none.
@@ -123,11 +125,9 @@ def get_override_rarity(card_name: str) -> str | None:
 # SCRYFALL HELPER
 # ==========================================
 
+
 async def _scryfall_get(
-    session: aiohttp.ClientSession,
-    url: str,
-    label: str,
-    retries: int = 5
+    session: aiohttp.ClientSession, url: str, label: str, retries: int = 5
 ) -> dict | None:
     """
     GET to Scryfall with exponential backoff on 429.
@@ -135,29 +135,19 @@ async def _scryfall_get(
     """
 
     for attempt in range(retries):
-
         try:
-
             async with session.get(url) as response:
-
                 if response.status == 429:
-
                     retry_after = response.headers.get("Retry-After")
-                    wait_time = float(retry_after) if retry_after else 2 ** attempt
+                    wait_time = float(retry_after) if retry_after else 2**attempt
 
-                    print(
-                        f"[429] {label} -> "
-                        f"retry in {wait_time:.1f}s "
-                        f"(attempt {attempt + 1}/{retries})"
-                    )
+                    print(f"[429] {label} -> retry in {wait_time:.1f}s (attempt {attempt + 1}/{retries})")
 
                     await asyncio.sleep(wait_time)
                     continue
 
                 if response.status != 200:
-                    print(
-                        f"[SCRYFALL FAIL] {label} -> {response.status}"
-                    )
+                    print(f"[SCRYFALL FAIL] {label} -> {response.status}")
                     return None
 
                 data = await response.json()
@@ -168,15 +158,10 @@ async def _scryfall_get(
                 return data
 
         except asyncio.TimeoutError:
-
-            print(
-                f"[TIMEOUT] {label} "
-                f"(attempt {attempt + 1}/{retries})"
-            )
-            await asyncio.sleep(2 ** attempt)
+            print(f"[TIMEOUT] {label} (attempt {attempt + 1}/{retries})")
+            await asyncio.sleep(2**attempt)
 
         except Exception as e:
-
             print(f"[SCRYFALL ERROR] {label}: {e}")
             return None
 
@@ -187,6 +172,7 @@ async def _scryfall_get(
 # ==========================================
 # BATCH PRINTS FETCH
 # ==========================================
+
 
 async def _fetch_prints_by_oracle_ids(
     session: aiohttp.ClientSession,
@@ -211,16 +197,12 @@ async def _fetch_prints_by_oracle_ids(
     unique_oracle_ids = list(dict.fromkeys(oracle_ids))
 
     query = " or ".join(f"oracleid:{oid}" for oid in unique_oracle_ids)
-    search_url: str | None = (
-        f"https://api.scryfall.com/cards/search?q={quote(query)}&unique=prints"
-    )
+    search_url: str | None = f"https://api.scryfall.com/cards/search?q={quote(query)}&unique=prints"
 
     grouped: dict[str, list[dict]] = {}
 
     while search_url:
-        result = await _scryfall_get(
-            session, search_url, f"prints batch ({len(oracle_ids)} cards)"
-        )
+        result = await _scryfall_get(session, search_url, f"prints batch ({len(oracle_ids)} cards)")
 
         if not result:
             # Batch failed: no card in the group is marked as checked, they
@@ -240,6 +222,7 @@ async def _fetch_prints_by_oracle_ids(
 # ==========================================
 # UPDATE SPG OVERRIDES
 # ==========================================
+
 
 async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
     """
@@ -272,38 +255,28 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
 
         def _persist() -> None:
             checked_by_set[set_upper] = sorted(checked | set(newly_checked))
-            _save_override_data({
-                "overrides": overrides,
-                "checked_cards": checked_by_set,
-            })
+            _save_override_data(
+                {
+                    "overrides": overrides,
+                    "checked_cards": checked_by_set,
+                }
+            )
 
         encoded_set = set_code.lower()
-        search_url: str | None = (
-            f"https://api.scryfall.com/cards/search"
-            f"?q=set%3A{encoded_set}&unique=prints"
-        )
+        search_url: str | None = f"https://api.scryfall.com/cards/search?q=set%3A{encoded_set}&unique=prints"
 
-        headers = {
-            "User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"
-        }
+        headers = {"User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"}
 
         timeout = aiohttp.ClientTimeout(total=120)
 
         rarity_rank = {"common": 0, "uncommon": 1, "rare": 2, "mythic": 3}
 
-        async with aiohttp.ClientSession(
-            headers=headers,
-            timeout=timeout
-        ) as session:
-
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
             # 1. List every card in the set (name + oracle_id), paginating.
             unchecked: list[tuple[str, str | None]] = []
 
             while search_url:
-
-                result = await _scryfall_get(
-                    session, search_url, f"search {set_upper}"
-                )
+                result = await _scryfall_get(session, search_url, f"search {set_upper}")
 
                 if not result:
                     print(f"[ABORT] Could not fetch data for {set_upper}")
@@ -324,15 +297,12 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
             prints_by_oracle: dict[str, list[dict]] = {}
 
             for batch_start in range(0, len(oracle_ids), _PRINTS_BATCH_SIZE):
-                batch = oracle_ids[batch_start:batch_start + _PRINTS_BATCH_SIZE]
+                batch = oracle_ids[batch_start : batch_start + _PRINTS_BATCH_SIZE]
                 print(f"[BATCH] {batch_start + 1}-{batch_start + len(batch)} of {len(oracle_ids)}")
-                prints_by_oracle.update(
-                    await _fetch_prints_by_oracle_ids(session, batch)
-                )
+                prints_by_oracle.update(await _fetch_prints_by_oracle_ids(session, batch))
 
             # 3. Evaluate each card with the printings fetched in step 2.
             for card_name, oracle_id in unchecked:
-
                 printings = prints_by_oracle.get(oracle_id) if oracle_id else None
 
                 if not printings:
@@ -345,7 +315,6 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
                 paper_lowest: str | None = None
 
                 for printing in printings:
-
                     games: list = printing.get("games", [])
                     rarity: str = printing.get("rarity", "").lower()
                     printing_set: str = printing.get("set", "").lower()
@@ -354,10 +323,7 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
                         arena_target_rarity = rarity
 
                     if "paper" in games and rarity in rarity_rank:
-                        if (
-                            paper_lowest is None
-                            or rarity_rank[rarity] < rarity_rank[paper_lowest]
-                        ):
+                        if paper_lowest is None or rarity_rank[rarity] < rarity_rank[paper_lowest]:
                             paper_lowest = rarity
 
                             if paper_lowest == "common":
@@ -368,12 +334,7 @@ async def update_spg_overrides(set_code: str = "spg") -> list[tuple[str, str]]:
                     and paper_lowest in ("common", "uncommon")
                     and card_name not in overrides
                 ):
-
-                    print(
-                        f"[OVERRIDE ADDED] "
-                        f"{card_name} -> {paper_lowest} "
-                        f"(Arena: {arena_target_rarity})"
-                    )
+                    print(f"[OVERRIDE ADDED] {card_name} -> {paper_lowest} (Arena: {arena_target_rarity})")
 
                     overrides[card_name] = paper_lowest
                     added_cards.append((card_name, paper_lowest))

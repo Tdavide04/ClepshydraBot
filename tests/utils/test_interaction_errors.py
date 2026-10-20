@@ -81,7 +81,6 @@ def _raise_and_capture(exc: Exception) -> Exception:
 
 
 class TestReportInteractionError:
-
     def test_replies_with_send_message_when_not_yet_responded(self):
         interaction = FakeInteraction(done=False, logger=FakeLogger())
 
@@ -125,7 +124,9 @@ class TestReportInteractionError:
 
     def test_expired_interaction_still_logs_to_staff(self):
         logger = FakeLogger()
-        expired = discord.HTTPException(type("R", (), {"status": 404, "reason": "Not Found"})(), "Unknown interaction")
+        expired = discord.HTTPException(
+            type("R", (), {"status": 404, "reason": "Not Found"})(), "Unknown interaction"
+        )
         interaction = FakeInteraction(done=True, logger=logger, followup_raises=expired)
 
         run(report_interaction_error(interaction, _raise_and_capture(KeyError(1)), "/classifica"))
@@ -134,7 +135,6 @@ class TestReportInteractionError:
 
 
 class TestReportingBaseClasses:
-
     def test_modal_on_error_reports_with_class_name(self):
         class DemoModal(ReportingModal, title="Demo"):
             pass
@@ -163,7 +163,6 @@ class TestReportingBaseClasses:
 
 
 class TestErrorHandlerCog:
-
     def test_check_failure_is_not_logged_as_an_error(self):
         """@is_admin() already replies on its own: no ERROR log for a missing
         permission, and no second reply."""

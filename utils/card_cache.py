@@ -1,6 +1,6 @@
+import asyncio
 import json
 import os
-import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -42,9 +42,10 @@ async def load_cache() -> None:
     if _loaded:
         return
 
+    from sqlalchemy import select
+
     from database import get_session
     from database.models import CachedCard
-    from sqlalchemy import select
 
     session = get_session()
     if session is None:

@@ -28,10 +28,10 @@ import database.engine as db_engine  # noqa: E402
 import utils.card_cache as card_cache  # noqa: E402
 from cogs.deck_validation.service import invalidate_banlist_cache  # noqa: E402
 
-
 # Fixtures shared by test_artisan_service.py and test_card_cache.py: they live
 # here in conftest.py, not duplicated in each file, because pytest makes them
 # available automatically to every module in this folder.
+
 
 @pytest.fixture
 def isolated_db(tmp_path, monkeypatch):

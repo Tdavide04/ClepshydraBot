@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 import database.engine as db_engine
-from database import init_db, close_db
+from database import close_db, init_db
 from database.models import MatchResult, TournamentStatus
 from services.tournament_service import TournamentService
 
@@ -26,17 +26,18 @@ def run_with_db(scenario):
     """Runs the whole scenario (init_db + logic + close_db) in a single event
     loop: aiosqlite binds connections to the loop that created them, so
     init/use/close can't be spread over several asyncio.run() calls."""
+
     async def _wrapper():
         await init_db()
         try:
             return await scenario()
         finally:
             await close_db()
+
     return asyncio.run(_wrapper())
 
 
 class TestRegistration:
-
     def test_register_and_duplicate(self, isolated_db):
         async def scenario():
             service = TournamentService()
@@ -45,6 +46,7 @@ class TestRegistration:
             assert "Iscrizione confermata" in msg1
             msg2 = await service.register_player(t.id, discord_id=1)
             assert "gia iscritto" in msg2
+
         run_with_db(scenario)
 
     def test_max_players_enforced(self, isolated_db):
@@ -54,6 +56,7 @@ class TestRegistration:
             await service.register_player(t.id, discord_id=1)
             msg = await service.register_player(t.id, discord_id=2)
             assert "massimo" in msg
+
         run_with_db(scenario)
 
     def test_rejoin_after_drop(self, isolated_db):
@@ -64,12 +67,14 @@ class TestRegistration:
             await service.unregister_player(t.id, discord_id=1)
             msg = await service.register_player(t.id, discord_id=1, deck_name="Azorius Fliers")
             assert "confermata" in msg
+
         run_with_db(scenario)
 
     def test_max_players_enforced_under_concurrent_registrations(self, isolated_db):
         """Two simultaneous /iscriviti for the last seat: the limit check and
         the insert were not atomic, both got through (reproduced: 3
         registrations with max 2)."""
+
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Full Cup", max_players=2)
@@ -83,11 +88,13 @@ class TestRegistration:
             assert sum("confermata" in r for r in results) == 1
             assert sum("massimo" in r for r in results) == 1
             assert len(await service.get_registered_players(t.id)) == 2
+
         run_with_db(scenario)
 
     def test_seed_is_unique_after_a_player_leaves(self, isolated_db):
         """The seed was count(active registrations) + 1: after a drop, the new
         registration got the same seed as an existing one."""
+
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Seed Cup")
@@ -99,6 +106,7 @@ class TestRegistration:
 
             seeds = [p.seed for p in await service.get_registered_players(t.id)]
             assert seeds == [2, 3]
+
         run_with_db(scenario)
 
     def test_unregister_twice_reports_not_registered(self, isolated_db):
@@ -111,11 +119,11 @@ class TestRegistration:
             msg = await service.unregister_player(t.id, discord_id=1)
 
             assert "Non sei iscritto" in msg
+
         run_with_db(scenario)
 
 
 class TestDeckSubmission:
-
     def test_submit_deck_updates_existing_registration(self, isolated_db):
         async def scenario():
             service = TournamentService()
@@ -126,11 +134,13 @@ class TestDeckSubmission:
 
             players = await service.get_registered_players(t.id)
             assert players[0].deck_name == "Mono Red"
+
         run_with_db(scenario)
 
     def test_submit_deck_can_be_resent_before_start(self, isolated_db):
         """A player can fix the submitted deck several times while the
         tournament is in registration: the latest valid submission wins."""
+
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Deck Cup")
@@ -140,6 +150,7 @@ class TestDeckSubmission:
 
             players = await service.get_registered_players(t.id)
             assert players[0].deck_name == "Final Version"
+
         run_with_db(scenario)
 
     def test_submit_deck_requires_existing_registration(self, isolated_db):
@@ -148,6 +159,7 @@ class TestDeckSubmission:
             t = await service.create_tournament("Deck Cup")
             msg = await service.submit_deck(t.id, discord_id=999, deck_name="Mono Red")
             assert "Non sei iscritto" in msg
+
         run_with_db(scenario)
 
     def test_submit_deck_blocked_after_tournament_started(self, isolated_db):
@@ -160,11 +172,11 @@ class TestDeckSubmission:
 
             msg = await service.submit_deck(t.id, discord_id=1, deck_name="New Deck")
             assert "non accetta piu" in msg
+
         run_with_db(scenario)
 
 
 class TestTournamentFlow:
-
     async def _start_with_players(self, service, count):
         t = await service.create_tournament("Swiss Cup")
         for i in range(count):
@@ -179,6 +191,7 @@ class TestTournamentFlow:
             await service.register_player(t.id, discord_id=1)
             msg = await service.start_tournament(t.id)
             assert "almeno 2" in msg
+
         run_with_db(scenario)
 
     def test_start_blocked_if_deck_missing(self, isolated_db):
@@ -192,6 +205,7 @@ class TestTournamentFlow:
 
             tournament = await service.get_tournament(t.id)
             assert tournament.status == TournamentStatus.REGISTRATION
+
         run_with_db(scenario)
 
     def test_start_generates_round_one(self, isolated_db):
@@ -203,6 +217,7 @@ class TestTournamentFlow:
             assert tournament.status == TournamentStatus.ACTIVE
             matches = await service.get_matches(t.id)
             assert len(matches) == 2
+
         run_with_db(scenario)
 
     def test_bye_awarded_with_odd_players(self, isolated_db):
@@ -210,6 +225,7 @@ class TestTournamentFlow:
             service = TournamentService()
             _, msg = await self._start_with_players(service, 3)
             assert "bye" in msg.lower()
+
         run_with_db(scenario)
 
     def test_submit_result_flow(self, isolated_db):
@@ -224,6 +240,7 @@ class TestTournamentFlow:
             repeat = await service.submit_result(match.id, match.player1_id, "win")
             assert repeat.ok is False
             assert "/correggi_risultato" in repeat.message
+
         run_with_db(scenario)
 
     def test_generate_next_round_blocked_by_pending_results(self, isolated_db):
@@ -232,6 +249,7 @@ class TestTournamentFlow:
             t, _ = await self._start_with_players(service, 4)
             msg = await service.generate_next_round(t.id)
             assert "senza risultato" in msg
+
         run_with_db(scenario)
 
     def test_generate_next_round_avoids_rematch(self, isolated_db):
@@ -249,6 +267,7 @@ class TestTournamentFlow:
             round1_pairs = {frozenset((m.player1_id, m.player2_id)) for m in round1}
             round2_pairs = {frozenset((m.player1_id, m.player2_id)) for m in round2}
             assert round1_pairs.isdisjoint(round2_pairs)
+
         run_with_db(scenario)
 
     def test_tournament_completes_and_updates_rating(self, isolated_db):
@@ -272,6 +291,7 @@ class TestTournamentFlow:
             assert len(leaderboard) == 2
             ratings = {entry["discord_id"]: entry["rating"] for entry in leaderboard}
             assert ratings[1] != ratings[2]
+
         run_with_db(scenario)
 
     def test_force_drop_awards_win_to_opponent(self, isolated_db):
@@ -286,12 +306,14 @@ class TestTournamentFlow:
             updated = next(m for m in await service.get_matches(t.id) if m.id == match.id)
             assert updated.result == MatchResult.WIN
             assert updated.winner_id == 2
+
         run_with_db(scenario)
 
     def test_standings_after_active_drop_keep_the_dropped_player(self, isolated_db):
         """Regression: after a /drop_giocatore on an active tournament,
         /classifica raised KeyError (the dropped player's matches stay, the
         player doesn't)."""
+
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 4)
@@ -307,6 +329,7 @@ class TestTournamentFlow:
             dropped = [e for e in entries if e.dropped]
             assert [e.player_id for e in dropped] == [winner.id]
             assert dropped[0].points == 3
+
         run_with_db(scenario)
 
     def test_player_who_left_during_registration_is_not_in_standings(self, isolated_db):
@@ -320,11 +343,13 @@ class TestTournamentFlow:
             entries = await service.get_standings(t.id)
 
             assert len(entries) == 1
+
         run_with_db(scenario)
 
     def test_ratings_count_matches_against_a_dropped_player(self, isolated_db):
         """_update_ratings() skipped matches against a player who was later
         dropped: the winner's rating didn't change."""
+
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 2)
@@ -339,12 +364,14 @@ class TestTournamentFlow:
             board = {e["discord_id"]: e for e in await service.get_leaderboard()}
             assert board[winner_id]["rating"] > 1500
             assert board[loser_id]["rating"] < 1500
+
         run_with_db(scenario)
 
     def test_force_drop_during_registration_unblocks_start(self, isolated_db):
         """A registered player who never submits a deck blocked
         /avvia_torneo, and staff couldn't remove them: force_drop_player()
         only accepted ACTIVE tournaments."""
+
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("AFK Cup")
@@ -359,6 +386,7 @@ class TestTournamentFlow:
             assert "rimosso" in msg
             assert [p.user.discord_id for p in await service.get_registered_players(t.id)] == [1, 2]
             assert "iniziato" in await service.start_tournament(t.id)
+
         run_with_db(scenario)
 
     def test_force_drop_rejected_on_completed_tournament(self, isolated_db):
@@ -370,11 +398,11 @@ class TestTournamentFlow:
             msg = await service.force_drop_player(t.id, discord_id=1000)
 
             assert "non e attivo" in msg
+
         run_with_db(scenario)
 
 
 class TestStandings:
-
     def test_standings_reflect_results(self, isolated_db):
         async def scenario():
             service = TournamentService()
@@ -390,6 +418,7 @@ class TestStandings:
             leader = next(e for e in standings if e.player_id == match.player1_id)
             assert leader.points == 3.0
             assert leader.rank == 1
+
         run_with_db(scenario)
 
 
@@ -421,6 +450,7 @@ class TestCorrectResult:
             standings = {e.player_id: e.points for e in await service.get_standings(t.id)}
             assert standings[match.player2_id] == 3
             assert standings[match.player1_id] == 0
+
         run_with_db(scenario)
 
     def test_can_enter_a_missing_result_and_a_draw(self, isolated_db):
@@ -435,6 +465,7 @@ class TestCorrectResult:
             updated = (await service.get_matches(t.id))[0]
             assert updated.result == MatchResult.DRAW
             assert updated.winner_id is None
+
         run_with_db(scenario)
 
     def test_rejects_a_player_not_at_that_table(self, isolated_db):
@@ -446,6 +477,7 @@ class TestCorrectResult:
             outcome = await service.correct_result(t.id, None, match.table_number, 999999, 2, 0)
 
             assert outcome.ok is False
+
         run_with_db(scenario)
 
     def test_rejects_unknown_table_and_bye(self, isolated_db):
@@ -459,11 +491,13 @@ class TestCorrectResult:
 
             assert missing.ok is False
             assert on_bye.ok is False
+
         run_with_db(scenario)
 
     def test_rejected_on_a_completed_tournament(self, isolated_db):
         """Once the tournament is concluded the rating has already been
         applied: a correction would make it inconsistent."""
+
         async def scenario():
             service = TournamentService()
             t = await self._start(service, 2)
@@ -476,6 +510,7 @@ class TestCorrectResult:
             )
 
             assert outcome.ok is False
+
         run_with_db(scenario)
 
     def test_correcting_a_past_round_warns_pairings_are_unchanged(self, isolated_db):
@@ -488,10 +523,9 @@ class TestCorrectResult:
             await service.generate_next_round(t.id)
             m = round1[0]
 
-            outcome = await service.correct_result(
-                t.id, 1, m.table_number, m.player2.user.discord_id, 2, 0
-            )
+            outcome = await service.correct_result(t.id, 1, m.table_number, m.player2.user.discord_id, 2, 0)
 
             assert outcome.ok is True
             assert "abbinamenti" in outcome.message
+
         run_with_db(scenario)

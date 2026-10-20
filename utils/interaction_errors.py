@@ -41,9 +41,7 @@ async def _notify_user(interaction: discord.Interaction) -> None:
         pass
 
 
-async def report_interaction_error(
-    interaction: discord.Interaction, error: Exception, source: str
-) -> None:
+async def report_interaction_error(interaction: discord.Interaction, error: Exception, source: str) -> None:
     """Notifies the user, logs the error to the log channel (ERROR
     INTERACTION_ERROR) and prints the full traceback to the console.
     `source` identifies the entry point (e.g. '/classifica', 'form

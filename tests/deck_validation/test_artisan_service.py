@@ -7,7 +7,7 @@ import cogs.deck_validation.service as service_module
 import utils.card_cache as card_cache
 from cogs.deck_validation.models import DeckEntry
 from cogs.deck_validation.service import ArtisanService, ScryfallUnavailable
-from database import init_db, close_db, get_session
+from database import close_db, get_session, init_db
 from repositories.banlist_repository import BanlistRepository
 
 # isolated_db, isolated_card_cache, isolated_banlist_cache are defined in
@@ -18,12 +18,14 @@ def run_with_db(scenario):
     """Runs init_db + logic + close_db in a single event loop (same reason as
     tests/tournament/test_tournament_service.py: aiosqlite binds connections
     to the loop that created them)."""
+
     async def _wrapper():
         await init_db()
         try:
             return await scenario()
         finally:
             await close_db()
+
     return asyncio.run(_wrapper())
 
 
@@ -58,6 +60,7 @@ def _make_fake_post(card_data_by_name: dict):
     async def fake_post(session, url, payload, label, retries=5):
         names = [ident["name"] for ident in payload["identifiers"]]
         return {"data": [card_data_by_name[n] for n in names if n in card_data_by_name]}
+
     return fake_post
 
 
@@ -72,6 +75,7 @@ def _make_fake_get(prints_by_name: dict):
         # No known printing = Scryfall 404, which _get_with_retry turns into an
         # empty result (card without Arena printings).
         return {"data": prints or []}
+
     return fake_get
 
 
@@ -82,7 +86,6 @@ def isolated_arena_legal_cache(monkeypatch):
 
 
 class TestValidateDeck:
-
     def test_banned_card_short_circuits_before_scryfall(self, isolated_db):
         async def scenario():
             await _seed_banlist("Banned Card")
@@ -102,6 +105,7 @@ class TestValidateDeck:
         front face when reading the user's deck. Without expanding the banlist
         with the front half alone, check_banlist() never matched these cards,
         which stayed banned on paper only and were never caught."""
+
         async def scenario():
             await _seed_banlist("Test Front // Test Back")
             service = ArtisanService()
@@ -119,6 +123,7 @@ class TestValidateDeck:
         the ArtisanService cache: BanlistRepository.get_all_for_format() (also
         used by /banlist, the public command) must list only the cards
         actually stored in the DB, not derived variants."""
+
         async def scenario():
             await _seed_banlist("Test Front // Test Back")
             session = get_session()
@@ -140,14 +145,18 @@ class TestValidateDeck:
             main_card = _card_data("Test Common")
             side_card = _card_data("Test Uncommon")
             service = ArtisanService()
-            service._post_with_retry = _make_fake_post({
-                "Test Common": main_card,
-                "Test Uncommon": side_card,
-            })
-            service._get_with_retry = _make_fake_get({
-                "Test Common": [_arena_print("common")],
-                "Test Uncommon": [_arena_print("uncommon")],
-            })
+            service._post_with_retry = _make_fake_post(
+                {
+                    "Test Common": main_card,
+                    "Test Uncommon": side_card,
+                }
+            )
+            service._get_with_retry = _make_fake_get(
+                {
+                    "Test Common": [_arena_print("common")],
+                    "Test Uncommon": [_arena_print("uncommon")],
+                }
+            )
             entries = [
                 DeckEntry(quantity=60, name="Test Common", is_sideboard=False),
                 DeckEntry(quantity=15, name="Test Uncommon", is_sideboard=True),
@@ -167,9 +176,11 @@ class TestValidateDeck:
             rare_card = _card_data("Test Rare")
             service = ArtisanService()
             service._post_with_retry = _make_fake_post({"Test Rare": rare_card})
-            service._get_with_retry = _make_fake_get({
-                "Test Rare": [_arena_print("rare")],
-            })
+            service._get_with_retry = _make_fake_get(
+                {
+                    "Test Rare": [_arena_print("rare")],
+                }
+            )
             entries = [DeckEntry(quantity=60, name="Test Rare", is_sideboard=False)]
             return await service.validate_deck(entries, "Test Deck", 60)
 
@@ -181,17 +192,20 @@ class TestValidateDeck:
         """Regression for the Step 1 fix: the bot creates two separate
         ArtisanService instances (tournament_system and deck_validation). An
         invalidation called on one must be visible from the other."""
+
         async def scenario():
-            registering_service = ArtisanService()   # e.g. tournament_system
-            checking_service = ArtisanService()       # e.g. deck_validation
+            registering_service = ArtisanService()  # e.g. tournament_system
+            checking_service = ArtisanService()  # e.g. deck_validation
 
             # no banned card yet: the deck passes the banlist check
             entries = [DeckEntry(quantity=60, name="Later Banned", is_sideboard=False)]
             card = _card_data("Later Banned")
             checking_service._post_with_retry = _make_fake_post({"Later Banned": card})
-            checking_service._get_with_retry = _make_fake_get({
-                "Later Banned": [_arena_print("common")],
-            })
+            checking_service._get_with_retry = _make_fake_get(
+                {
+                    "Later Banned": [_arena_print("common")],
+                }
+            )
             first = await checking_service.validate_deck(entries, "Test Deck", 60)
             assert first.banned_cards == []
 
@@ -213,11 +227,11 @@ class TestValidateDeck:
 
 
 class TestArtisanLegalTTL:
-
     def test_stale_cache_entry_is_rechecked(self, isolated_db):
         """Regression for Step 3: an entry cached as legal but stale (or with
         no timestamp, 'legacy' data) must be re-checked against Scryfall
         instead of being considered valid forever."""
+
         async def scenario():
             card = _card_data("Reprinted Card")
             # "legacy" entry: artisan_legal=True but no artisan_legal_checked_at
@@ -226,9 +240,11 @@ class TestArtisanLegalTTL:
             service = ArtisanService()
             service._post_with_retry = _make_fake_post({"Reprinted Card": card})
             # the API now reports the reprint as rare: no longer legal
-            service._get_with_retry = _make_fake_get({
-                "Reprinted Card": [_arena_print("rare")],
-            })
+            service._get_with_retry = _make_fake_get(
+                {
+                    "Reprinted Card": [_arena_print("rare")],
+                }
+            )
 
             entries = [DeckEntry(quantity=60, name="Reprinted Card", is_sideboard=False)]
             return await service.validate_deck(entries, "Test Deck", 60)
@@ -241,12 +257,12 @@ class TestArtisanLegalTTL:
 
 
 class TestScryfallUnavailable:
-
     def test_prints_lookup_failure_is_a_service_error_not_an_illegal_card(
         self, isolated_db, isolated_arena_legal_cache
     ):
         """Regression: a network error on the printings search stored the card
         as illegal in _ARENA_LEGAL_CACHE until the bot restarted."""
+
         async def scenario():
             card = _card_data("Flaky Card")
             service = ArtisanService()
@@ -273,6 +289,7 @@ class TestScryfallUnavailable:
     ):
         """A failed /cards/collection block made the cards show up as
         'Carte non trovate' instead of reporting Scryfall as unreachable."""
+
         async def scenario():
             service = ArtisanService()
 
@@ -293,6 +310,7 @@ class TestScryfallUnavailable:
     ):
         """Scryfall's 404 (no Arena printings) stays a legitimate outcome: the
         card is illegal, and that must be remembered."""
+
         async def scenario():
             card = _card_data("Paper Only")
             service = ArtisanService()
@@ -342,11 +360,11 @@ class FakeSession:
 def no_sleep(monkeypatch):
     async def instant(_seconds):
         return None
+
     monkeypatch.setattr(service_module.asyncio, "sleep", instant)
 
 
 class TestRequestWithRetry:
-
     def test_404_is_an_empty_result(self, no_sleep):
         session = FakeSession(FakeResponse(404))
         data = asyncio.run(ArtisanService()._get_with_retry(session, "u", "x"))

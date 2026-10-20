@@ -1,15 +1,12 @@
 import discord
 from discord.ext import commands
 
-from cogs.deck_validation.validators import parse_decklist
 from cogs.deck_validation.service import ArtisanService
+from cogs.deck_validation.validators import parse_decklist
 from utils.interaction_errors import ReportingModal
 
 
-class ArtisanDeckCheckModal(
-    ReportingModal,
-    title="Controllo Mazzo Artisan"
-):
+class ArtisanDeckCheckModal(ReportingModal, title="Controllo Mazzo Artisan"):
     titolo = discord.ui.TextInput(
         label="Nome del tuo mazzo",
         placeholder="es. Mono Red Aggro",
@@ -31,29 +28,23 @@ class ArtisanDeckCheckModal(
         self.service = service
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            "Analisi del mazzo Artisan in corso...", ephemeral=True
-        )
+        await interaction.response.send_message("Analisi del mazzo Artisan in corso...", ephemeral=True)
 
         # No try/except here: an unexpected error reaches
         # ReportingModal.on_error, which notifies the user AND staff (it used
         # to be printed to the console only).
         entries, total_cards, _ = parse_decklist(self.deck_list.value)
         deck_name = self.titolo.value.strip() or "ARTISAN DECK"
-        await self.service.validate_and_publish(
-            interaction, entries, deck_name, total_cards
-        )
+        await self.service.validate_and_publish(interaction, entries, deck_name, total_cards)
 
 
 class Tournament(commands.Cog):
-
     def __init__(self, bot):
         self.bot = bot
         self.service = ArtisanService(bot)
 
     @discord.app_commands.command(
-        name="artisan_check_deck",
-        description="Analizza se il tuo deck e legale per Artisan Arena"
+        name="artisan_check_deck", description="Analizza se il tuo deck e legale per Artisan Arena"
     )
     async def artisan_check_deck(self, interaction: discord.Interaction):
         await interaction.response.send_modal(ArtisanDeckCheckModal(self.service))

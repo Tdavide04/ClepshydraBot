@@ -1,11 +1,11 @@
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance
-from io import BytesIO
-import aiohttp
 import math
+from io import BytesIO
+
+import aiohttp
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
 
 class DeckImageGenerator:
-
     CARD_WIDTH = 146
     CARD_HEIGHT = 204
 
@@ -91,25 +91,30 @@ class DeckImageGenerator:
                 return img
         except Exception:
             return None
-    
+
     @classmethod
     def _get_background_path(cls, mainboard: list):
         """Picks the background image path from the deck's colors."""
         color_counts = {
-            "red": 0,    # Mountain / Great Furnace
-            "blue": 0,   # Island / Seat of the Synod
+            "red": 0,  # Mountain / Great Furnace
+            "blue": 0,  # Island / Seat of the Synod
             "black": 0,  # Swamp / Vault of Whispers
             "white": 0,  # Plains / Ancient Den
             "green": 0,  # Forest / Tree of Tales
         }
 
         land_mapping = {
-            "Mountain": "red", "Great Furnace": "red",
-            "Island": "blue", "Seat of the Synod": "blue",
-            "Swamp": "black", "Vault of Whispers": "black",
-            "Plains": "white", "Ancient Den": "white",
-            "Forest": "green", "Tree of Tales": "green",
-            "Darksteel Citadel": None
+            "Mountain": "red",
+            "Great Furnace": "red",
+            "Island": "blue",
+            "Seat of the Synod": "blue",
+            "Swamp": "black",
+            "Vault of Whispers": "black",
+            "Plains": "white",
+            "Ancient Den": "white",
+            "Forest": "green",
+            "Tree of Tales": "green",
+            "Darksteel Citadel": None,
         }
 
         for card in mainboard:
@@ -122,7 +127,7 @@ class DeckImageGenerator:
                     color_key = land_mapping[name]
                     if color_key:
                         color_counts[color_key] += qty
-                
+
                 else:
                     colors = card.get("colors", [])
                     if "R" in colors:
@@ -137,7 +142,7 @@ class DeckImageGenerator:
                         color_counts["green"] += qty
 
         dominant_color = max(color_counts, key=color_counts.get)
-        
+
         if color_counts[dominant_color] == 0:
             return "assets/backgrounds/default.png"
 
@@ -213,10 +218,11 @@ class DeckImageGenerator:
             "blue": "assets/backgrounds/blue.png",
             "black": "assets/backgrounds/black.png",
             "white": "assets/backgrounds/white.png",
-            "green": "assets/backgrounds/green.png"
+            "green": "assets/backgrounds/green.png",
         }
 
         return paths.get(dominant_color, "assets/backgrounds/default.png")
+
     # ──────────────────────────────────────────────────────────────────
     # LOGO WATERMARK
     # ──────────────────────────────────────────────────────────────────
@@ -284,7 +290,7 @@ class DeckImageGenerator:
         new_lw = int(lw * ratio)
         new_lh = int(lh * ratio)
         logo_src = logo_src.resize((new_lw, new_lh), Image.LANCZOS)
-        
+
         dom_r, dom_g, dom_b = cls._extract_dominant_color(bg_image)
         r_ch, g_ch, b_ch, a_ch = logo_src.split()
         a_scaled = a_ch.point(lambda v: int(v * cls.LOGO_ALPHA / 255))
@@ -318,8 +324,11 @@ class DeckImageGenerator:
         for card in mainboard:
             type_line = card.get("type_line", "")
             if "Land" in type_line:
-                is_basic = card["name"] in ["Mountain", "Island", "Swamp", "Plains", "Forest"] or "Basic Land" in type_line
-                
+                is_basic = (
+                    card["name"] in ["Mountain", "Island", "Swamp", "Plains", "Forest"]
+                    or "Basic Land" in type_line
+                )
+
                 if is_basic:
                     qty = card.get("quantity", 1)
                     while qty > 0:
@@ -373,9 +382,7 @@ class DeckImageGenerator:
             shadow_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
             shadow_draw = ImageDraw.Draw(shadow_layer)
             shadow_draw.rounded_rectangle(
-                [sx, sy, sx + cls.CARD_WIDTH, sy + cls.CARD_HEIGHT],
-                radius=4,
-                fill=(0, 0, 0, 130)
+                [sx, sy, sx + cls.CARD_WIDTH, sy + cls.CARD_HEIGHT], radius=4, fill=(0, 0, 0, 130)
             )
             canvas.alpha_composite(shadow_layer)
 
@@ -386,7 +393,7 @@ class DeckImageGenerator:
                 radius=5,
                 fill=(0, 0, 0, 0),
                 outline=(*cls.CARD_GLOW, 80),
-                width=2
+                width=2,
             )
             canvas.alpha_composite(glow_layer)
 
@@ -409,7 +416,7 @@ class DeckImageGenerator:
                 radius=4,
                 fill=(0, 0, 0, 0),
                 outline=(*cls.CARD_BORDER, 200),
-                width=1
+                width=1,
             )
             canvas.alpha_composite(border_layer)
 
@@ -458,19 +465,16 @@ class DeckImageGenerator:
             max_qty = max((c["quantity"] for c in cards), default=1)
             max_stack_h = cls.calc_stack_height(max_qty)
             rows = math.ceil(len(cards) / cls.MAIN_COLUMNS)
-            section_height = (
-                cls.SECTION_LABEL_HEIGHT
-                + 6
-                + rows * max_stack_h
-                + (rows - 1) * cls.ROW_SPACING
+            section_height = cls.SECTION_LABEL_HEIGHT + 6 + rows * max_stack_h + (rows - 1) * cls.ROW_SPACING
+            section_layouts.append(
+                {
+                    "label": label,
+                    "cards": cards,
+                    "max_stack_h": max_stack_h,
+                    "rows": rows,
+                    "section_height": section_height,
+                }
             )
-            section_layouts.append({
-                "label": label,
-                "cards": cards,
-                "max_stack_h": max_stack_h,
-                "rows": rows,
-                "section_height": section_height,
-            })
 
         main_content_height = sum(s["section_height"] for s in section_layouts)
         main_content_height += cls.SECTION_GAP * (len(section_layouts) - 1)
@@ -485,10 +489,7 @@ class DeckImageGenerator:
 
         side_max_qty = max((c["quantity"] for c in sideboard), default=1)
         side_stack_h = cls.calc_stack_height(side_max_qty)
-        side_content_height = (
-            side_rows * side_stack_h
-            + (side_rows - 1) * cls.ROW_SPACING
-        )
+        side_content_height = side_rows * side_stack_h + (side_rows - 1) * cls.ROW_SPACING
 
         side_width = cls.SIDEBOARD_COLUMNS * side_col_width - cls.COLUMN_SPACING
 
@@ -496,11 +497,11 @@ class DeckImageGenerator:
         # CANVAS SIZE
         # ──────────────────────────────────────────────────
         content_height = max(main_content_height, side_content_height)
-        canvas_width = (cls.PADDING_X + main_width + cls.SIDEBOARD_GAP + side_width + cls.PADDING_X)
-        canvas_height = (cls.PADDING_TOP + content_height + cls.PADDING_BOTTOM)
+        canvas_width = cls.PADDING_X + main_width + cls.SIDEBOARD_GAP + side_width + cls.PADDING_X
+        canvas_height = cls.PADDING_TOP + content_height + cls.PADDING_BOTTOM
 
         bg_path = cls._get_background_path(mainboard)
-        
+
         # bg_for_logo: the cropped background BEFORE darkening, used by
         # _apply_logo_watermark to sample the real dominant color.
         bg_for_logo = None
@@ -516,12 +517,7 @@ class DeckImageGenerator:
 
             offset_x = (new_size[0] - canvas_width) // 2
             offset_y = (new_size[1] - canvas_height) // 2
-            canvas = bg_resized.crop((
-                offset_x,
-                offset_y,
-                offset_x + canvas_width,
-                offset_y + canvas_height
-            ))
+            canvas = bg_resized.crop((offset_x, offset_y, offset_x + canvas_width, offset_y + canvas_height))
 
             bg_for_logo = canvas.copy()
 
@@ -561,10 +557,7 @@ class DeckImageGenerator:
         # ──────────────────────────────────────────────────
         header_layer = Image.new("RGBA", (canvas_width, cls.PADDING_TOP), (0, 0, 0, 0))
         header_draw = ImageDraw.Draw(header_layer)
-        header_draw.rectangle(
-            [0, 0, canvas_width, cls.PADDING_TOP],
-            fill=(12, 14, 22, 200)
-        )
+        header_draw.rectangle([0, 0, canvas_width, cls.PADDING_TOP], fill=(12, 14, 22, 200))
         canvas.alpha_composite(header_layer)
 
         title_y = 18
@@ -583,20 +576,14 @@ class DeckImageGenerator:
 
         line_y = cls.PADDING_TOP - 2
         draw.line(
-            [(cls.PADDING_X, line_y), (cls.PADDING_X + main_width, line_y)],
-            fill=cls.DIVIDER_COLOR,
-            width=1
+            [(cls.PADDING_X, line_y), (cls.PADDING_X + main_width, line_y)], fill=cls.DIVIDER_COLOR, width=1
         )
 
         # ──────────────────────────────────────────────────
         # VERTICAL MAIN / SIDE DIVIDER
         # ──────────────────────────────────────────────────
         div_x = cls.PADDING_X + main_width + cls.SIDEBOARD_GAP // 2
-        draw.line(
-            [(div_x, 10), (div_x, canvas_height - 10)],
-            fill=cls.SIDEBOARD_DIVIDER,
-            width=1
-        )
+        draw.line([(div_x, 10), (div_x, canvas_height - 10)], fill=cls.SIDEBOARD_DIVIDER, width=1)
 
         # ──────────────────────────────────────────────────
         # MAINBOARD: RENDER PER SECTION
@@ -617,7 +604,7 @@ class DeckImageGenerator:
             draw.line(
                 [(main_x, current_y - 2), (main_x + main_width, current_y - 2)],
                 fill=cls.SECTION_LINE_COLOR,
-                width=1
+                width=1,
             )
 
             for card_idx, card in enumerate(cards):
@@ -646,13 +633,13 @@ class DeckImageGenerator:
             (side_x + 1, side_y - cls.SECTION_LABEL_HEIGHT - 4 + 1),
             f"({side_total} carte)",
             fill=(0, 0, 0, 180),
-            font=font_label
+            font=font_label,
         )
         draw.text(
             (side_x, side_y - cls.SECTION_LABEL_HEIGHT - 4),
             f"({side_total} carte)",
             fill=cls.TEXT_SECONDARY,
-            font=font_label
+            font=font_label,
         )
 
         for card_idx, card in enumerate(sideboard):

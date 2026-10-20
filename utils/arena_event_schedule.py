@@ -35,8 +35,8 @@ Approach:
 
 import asyncio
 import calendar
-import re
 import html as html_module
+import re
 import xml.etree.ElementTree as ET
 from datetime import date
 
@@ -60,9 +60,7 @@ STATE_PATH = "data/arena_event_schedule_state.json"
 # "*-event-schedule" pages this module watches.
 _NEWS_URL_PREFIX = "https://magic.wizards.com/en/news/mtg-arena/"
 
-_EVENT_SCHEDULE_URL_RE = re.compile(
-    re.escape(_NEWS_URL_PREFIX) + r"[a-z0-9-]+-event-schedule$"
-)
+_EVENT_SCHEDULE_URL_RE = re.compile(re.escape(_NEWS_URL_PREFIX) + r"[a-z0-9-]+-event-schedule$")
 
 _HEADING_LIST_RE = re.compile(
     r"<h[234]>\s*([^<]+?)\s*</h[234]>\s*<ul>(.*?)</ul>",
@@ -90,15 +88,33 @@ _ENTRY_DATE_RE = re.compile(
 )
 
 _MONTH_NUMBERS = {
-    "january": 1, "february": 2, "march": 3, "april": 4,
-    "may": 5, "june": 6, "july": 7, "august": 8,
-    "september": 9, "october": 10, "november": 11, "december": 12,
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
 }
 
 MONTHS_IT = {
-    1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
-    5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
-    9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre",
+    1: "Gennaio",
+    2: "Febbraio",
+    3: "Marzo",
+    4: "Aprile",
+    5: "Maggio",
+    6: "Giugno",
+    7: "Luglio",
+    8: "Agosto",
+    9: "Settembre",
+    10: "Ottobre",
+    11: "Novembre",
+    12: "Dicembre",
 }
 
 _state_cache: dict | None = None
@@ -107,6 +123,7 @@ _state_cache: dict | None = None
 # ==========================================
 # LOAD / SAVE STATE
 # ==========================================
+
 
 def _load_state() -> dict:
     global _state_cache
@@ -144,6 +161,7 @@ def get_latest_known_event_schedule() -> dict:
 # ==========================================
 # SITEMAP
 # ==========================================
+
 
 def _parse_sitemap_xml(body: str) -> dict[str, str]:
     """Extracts {url: lastmod} for the '*-event-schedule' pages under
@@ -190,6 +208,7 @@ async def _fetch_sitemap_event_schedule_urls(
 # PARSING THE "FULL EVENT CALENDAR" PAGE
 # ==========================================
 
+
 def _strip_tags(text: str) -> str:
     return html_module.unescape(_TAG_RE.sub("", text)).strip()
 
@@ -204,10 +223,10 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
     if not calendar_match:
         return None
 
-    section = page_html[calendar_match.end():]
+    section = page_html[calendar_match.end() :]
     end_match = _ARTICLE_END_RE.search(section)
     if end_match:
-        section = section[:end_match.start()]
+        section = section[: end_match.start()]
 
     categories: dict[str, list[str]] = {}
     for heading, list_block in _HEADING_LIST_RE.findall(section):
@@ -223,6 +242,7 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
 # ==========================================
 # ENTRY DATE PARSING + GROUPING BY MONTH
 # ==========================================
+
 
 def parse_event_entry(text: str) -> dict | None:
     """Extracts start and end month/day from a 'Full Event Calendar' text
@@ -389,6 +409,7 @@ async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | No
 # CHECK (public API)
 # ==========================================
 
+
 async def check_event_schedule_updates(force: bool = False) -> list[dict]:
     """Finds the NEWEST Event Schedule page (by lastmod) in the sitemap and,
     if it is new or changed versus the last known one (or anyway, if
@@ -418,10 +439,7 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
 
         url, lastmod = latest
 
-        already_seen = (
-            state.get("latest_url") == url
-            and state.get("latest_lastmod") == lastmod
-        )
+        already_seen = state.get("latest_url") == url and state.get("latest_lastmod") == lastmod
         if already_seen and not force:
             log(f"[EVENT SCHEDULE] no change (latest: {url})")
             return []

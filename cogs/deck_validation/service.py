@@ -1,22 +1,22 @@
 import asyncio
-from io import BytesIO
-import discord
-import aiohttp
 import urllib.parse
+from io import BytesIO
 
-from utils.arena_overrides import get_override_rarity
-from utils.card_cache import (
-    get_cached_card,
-    set_cached_card,
-    is_artisan_legal_stale,
-    mark_artisan_legal,
-)
-from utils.deck_image_generator import DeckImageGenerator
-from cogs.deck_validation.models import DeckEntry, DeckValidationResult, ArtisanCard
+import aiohttp
+import discord
+
+from cogs.deck_validation.models import ArtisanCard, DeckEntry, DeckValidationResult
 from cogs.deck_validation.validators import check_banlist
 from database import get_session
 from repositories.banlist_repository import BanlistRepository
-
+from utils.arena_overrides import get_override_rarity
+from utils.card_cache import (
+    get_cached_card,
+    is_artisan_legal_stale,
+    mark_artisan_legal,
+    set_cached_card,
+)
+from utils.deck_image_generator import DeckImageGenerator
 
 _COLLECTION_URL = "https://api.scryfall.com/cards/collection"
 
@@ -38,6 +38,7 @@ class ScryfallUnavailable(Exception):
     found") and makes the card illegal: until 3.5.6 both became None, and a
     plain timeout stored the card as illegal in _ARENA_LEGAL_CACHE until the
     bot restarted."""
+
 
 # Module-level banlist cache: the bot creates two separate ArtisanService
 # instances (tournament_system and deck_validation), which must see the same
@@ -76,7 +77,6 @@ def _expand_double_faced(names: set[str]) -> set[str]:
 
 
 class ArtisanService:
-
     def __init__(self, bot=None):
         self.bot = bot
         self._logger = None
@@ -154,9 +154,7 @@ class ArtisanService:
 
         unique_names = list({e.name for e in entries})
 
-        async with aiohttp.ClientSession(
-            headers=headers, timeout=timeout, connector=connector
-        ) as session:
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout, connector=connector) as session:
             card_map = await self._fetch_collection(session, unique_names)
 
             invalid_cards: list[str] = []
@@ -213,11 +211,7 @@ class ArtisanService:
             )
 
     async def validate_and_publish(
-        self,
-        interaction,
-        entries: list[DeckEntry],
-        deck_name: str,
-        total_cards: int
+        self, interaction, entries: list[DeckEntry], deck_name: str, total_cards: int
     ):
         member = interaction.user
         logger = self._get_logger()
@@ -241,9 +235,11 @@ class ArtisanService:
             sideboard_dicts = [c.to_dict() for c in result.sideboard]
             async with aiohttp.ClientSession() as session:
                 deck_image = await DeckImageGenerator.create_deck_showcase(
-                    session, mainboard_dicts, sideboard_dicts,
+                    session,
+                    mainboard_dicts,
+                    sideboard_dicts,
                     player_name=member.display_name,
-                    deck_name=deck_name
+                    deck_name=deck_name,
                 )
 
         await self._publish_result(interaction, result, deck_image, logger, member)
@@ -265,14 +261,7 @@ class ArtisanService:
                 deck_name=result.deck_name,
             )
 
-    async def _publish_result(
-        self,
-        interaction,
-        result: DeckValidationResult,
-        deck_image,
-        logger,
-        member
-    ):
+    async def _publish_result(self, interaction, result: DeckValidationResult, deck_image, logger, member):
         from cogs.deck_validation.embeds import build_result_embed
         from config.config import LOG_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
@@ -293,36 +282,29 @@ class ArtisanService:
             except discord.Forbidden:
                 if logger:
                     await logger.send_log(
-                        level="ERROR",
-                        event="PUBLISH_FORBIDDEN",
-                        info=f"No access to channel {channel_id}"
+                        level="ERROR", event="PUBLISH_FORBIDDEN", info=f"No access to channel {channel_id}"
                     )
             except Exception:
                 import traceback
+
                 traceback.print_exc()
 
         await interaction.edit_original_response(
-            content="Analisi completata e pubblicata!" if published
+            content="Analisi completata e pubblicata!"
+            if published
             else "Analisi completata ma non e stato possibile pubblicare il risultato."
         )
 
         if logger:
-            logger_info = (
-                f"Outcome: {'OK' if result.is_valid else 'INVALID'}\n"
-                f"Cards: {result.total_cards}"
-            )
+            logger_info = f"Outcome: {'OK' if result.is_valid else 'INVALID'}\nCards: {result.total_cards}"
             await logger.send_log(
                 level="INFO" if result.is_valid else "WARN",
                 event="TOURNAMENT_DECK_CHECK",
                 user=member,
-                info=logger_info
+                info=logger_info,
             )
 
-    async def _fetch_collection(
-        self,
-        session: aiohttp.ClientSession,
-        names: list[str]
-    ) -> dict[str, dict]:
+    async def _fetch_collection(self, session: aiohttp.ClientSession, names: list[str]) -> dict[str, dict]:
         result: dict[str, dict] = {}
         to_fetch: list[str] = []
 
@@ -330,15 +312,16 @@ class ArtisanService:
             cached = get_cached_card(name)
             if cached is not None and "image_uris" in cached:
                 result[name] = cached
-            elif cached is not None and "card_faces" in cached and any("image_uris" in f for f in cached.get("card_faces", [])):
+            elif (
+                cached is not None
+                and "card_faces" in cached
+                and any("image_uris" in f for f in cached.get("card_faces", []))
+            ):
                 result[name] = cached
             else:
                 to_fetch.append(name)
 
-        chunks = [
-            to_fetch[i: i + _COLLECTION_CHUNK]
-            for i in range(0, len(to_fetch), _COLLECTION_CHUNK)
-        ]
+        chunks = [to_fetch[i : i + _COLLECTION_CHUNK] for i in range(0, len(to_fetch), _COLLECTION_CHUNK)]
 
         for idx, chunk in enumerate(chunks):
             payload = {"identifiers": [{"name": n} for n in chunk]}
@@ -357,10 +340,7 @@ class ArtisanService:
         return result
 
     async def _is_arena_artisan_legal(
-        self,
-        session: aiohttp.ClientSession,
-        card_data: dict,
-        card_name: str
+        self, session: aiohttp.ClientSession, card_data: dict, card_name: str
     ) -> bool:
         override = get_override_rarity(card_name)
         if override in ("common", "uncommon"):
@@ -405,21 +385,12 @@ class ArtisanService:
         return legal
 
     async def _post_with_retry(
-        self,
-        session: aiohttp.ClientSession,
-        url: str,
-        payload: dict,
-        label: str,
-        retries: int = 5
+        self, session: aiohttp.ClientSession, url: str, payload: dict, label: str, retries: int = 5
     ) -> dict:
         return await self._request_with_retry(session, "POST", url, label, retries, payload)
 
     async def _get_with_retry(
-        self,
-        session: aiohttp.ClientSession,
-        url: str,
-        label: str,
-        retries: int = 5
+        self, session: aiohttp.ClientSession, url: str, label: str, retries: int = 5
     ) -> dict:
         return await self._request_with_retry(session, "GET", url, label, retries)
 
@@ -446,11 +417,11 @@ class ArtisanService:
                     async with session.request(method, url, json=payload) as resp:
                         if resp.status == 429:
                             last_problem = "HTTP 429"
-                            await asyncio.sleep(float(resp.headers.get("Retry-After", 2 ** attempt)))
+                            await asyncio.sleep(float(resp.headers.get("Retry-After", 2**attempt)))
                             continue
                         if resp.status >= 500:
                             last_problem = f"HTTP {resp.status}"
-                            await asyncio.sleep(2 ** attempt)
+                            await asyncio.sleep(2**attempt)
                             continue
                         if resp.status == 404:
                             await asyncio.sleep(_MIN_REQUEST_INTERVAL)
@@ -462,7 +433,7 @@ class ArtisanService:
                         return data
                 except (asyncio.TimeoutError, aiohttp.ClientError) as e:
                     last_problem = type(e).__name__
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
 
         raise ScryfallUnavailable(f"{label}: {last_problem} after {retries} attempts")
 

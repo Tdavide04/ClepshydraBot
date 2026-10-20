@@ -2,19 +2,21 @@ import asyncio
 import json
 
 import utils.card_cache as card_cache
-from database import init_db, close_db, get_session
+from database import close_db, get_session, init_db
 from database.models import CachedCard
 
 
 def run_with_db(scenario):
     """Same pattern as test_artisan_service.py / test_tournament_service.py:
     init_db + logic + close_db in a single event loop."""
+
     async def _wrapper():
         await init_db()
         try:
             return await scenario()
         finally:
             await close_db()
+
     return asyncio.run(_wrapper())
 
 
@@ -24,6 +26,7 @@ async def _raw_rows() -> dict:
     session = get_session()
     try:
         from sqlalchemy import select
+
         result = await session.execute(select(CachedCard))
         return {row.card_name: json.loads(row.data) for row in result.scalars()}
     finally:
@@ -31,7 +34,6 @@ async def _raw_rows() -> dict:
 
 
 class TestLoadCache:
-
     def test_load_cache_starts_empty_with_no_legacy_file(self, isolated_db):
         async def scenario():
             return dict(card_cache._card_cache)
@@ -57,7 +59,6 @@ class TestLoadCache:
 
 
 class TestSaveCache:
-
     def test_save_cache_persists_only_dirty_entries(self, isolated_db):
         async def scenario():
             card_cache.set_cached_card("Card A", {"name": "Card A"})
@@ -106,6 +107,7 @@ class TestSaveCache:
     def test_invalidate_card_never_persisted_is_noop(self, isolated_db):
         """Invalidates a card added and never saved: it must produce neither a
         DELETE for a row that never existed nor an error."""
+
         async def scenario():
             card_cache.set_cached_card("Card A", {"name": "Card A"})
             removed = card_cache.invalidate_card("card a")
@@ -119,6 +121,7 @@ class TestSaveCache:
     def test_reload_after_restart_reads_persisted_data(self, isolated_db):
         """Simulates a bot restart: after save_cache(), clearing the in-memory
         state and calling load_cache() again must restore the same data."""
+
         async def scenario():
             card_cache.set_cached_card("Card A", {"name": "Card A"})
             await card_cache.save_cache()
@@ -133,7 +136,6 @@ class TestSaveCache:
 
 
 class TestPeriodicSaveLoop:
-
     def test_a_failed_save_does_not_stop_the_loop(self, monkeypatch, capsys):
         """Regression: the loop didn't handle exceptions - a single
         save_cache() error (e.g. a locked DB) silently killed the task, and the
@@ -162,6 +164,7 @@ class TestPeriodicSaveLoop:
     def test_dirty_entries_survive_a_failed_save(self, isolated_db, monkeypatch):
         """Retrying only makes sense if the changes stay pending: save_cache()
         clears _dirty_upserts only after a successful commit."""
+
         async def scenario():
             card_cache.set_cached_card("Lightning Bolt", {"name": "Lightning Bolt"})
 
@@ -173,6 +176,7 @@ class TestPeriodicSaveLoop:
                     pass
 
             import database
+
             real_get_session = database.get_session
             monkeypatch.setattr(database, "get_session", lambda: BrokenSession())
             try:

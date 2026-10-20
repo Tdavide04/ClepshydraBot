@@ -1,13 +1,12 @@
 from utils.tournament_logic import (
     omw_bar,
     rank_label,
-    split_into_columns,
     split_field_value,
+    split_into_columns,
 )
 
 
 class TestOmwBar:
-
     def test_bar_always_10_characters(self):
         for pct in range(0, 101):
             bar = omw_bar(pct)
@@ -40,15 +39,14 @@ class TestOmwBar:
 
 
 class TestRankLabel:
-
     def test_first_is_gold(self):
-        assert rank_label(1) == "\U0001F947"
+        assert rank_label(1) == "\U0001f947"
 
     def test_second_is_silver(self):
-        assert rank_label(2) == "\U0001F948"
+        assert rank_label(2) == "\U0001f948"
 
     def test_third_is_bronze(self):
-        assert rank_label(3) == "\U0001F949"
+        assert rank_label(3) == "\U0001f949"
 
     def test_fourth_is_a_number(self):
         assert rank_label(4) == "4."
@@ -61,7 +59,6 @@ class TestRankLabel:
 
 
 class TestSplitIntoColumns:
-
     def test_split_even(self):
         items = list(range(18))
         left, right = split_into_columns(items)
@@ -98,7 +95,9 @@ class TestSplitIntoColumns:
             left, right = split_into_columns(items)
             expected_left = (n + 1) // 2
             assert len(left) == expected_left, f"n={n}: left should be {expected_left}, got {len(left)}"
-            assert len(right) == n - expected_left, f"n={n}: right should be {n - expected_left}, got {len(right)}"
+            assert len(right) == n - expected_left, (
+                f"n={n}: right should be {n - expected_left}, got {len(right)}"
+            )
 
     def test_split_keeps_order(self):
         items = ["a", "b", "c", "d", "e"]
@@ -108,7 +107,6 @@ class TestSplitIntoColumns:
 
 
 class TestSplitFieldValue:
-
     def test_below_limit(self):
         lines = ["riga corta", "altra riga"]
         chunks = split_field_value(lines, max_chars=100)

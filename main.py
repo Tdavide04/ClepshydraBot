@@ -1,13 +1,15 @@
-import discord
 import os
 import sys
+
+import discord
 from discord.ext import commands
+
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
-from database import init_db, close_db
-from utils.card_cache import periodic_save_loop, save_cache
-from utils.arena_overrides import periodic_spg_refresh_loop
+from database import close_db, init_db
 from utils.arena_event_schedule import get_latest_known_event_schedule, periodic_event_schedule_check_loop
+from utils.arena_overrides import periodic_spg_refresh_loop
 from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
+from utils.card_cache import periodic_save_loop, save_cache
 
 
 class ClepshydraBotte(commands.Bot):
@@ -20,18 +22,18 @@ class ClepshydraBotte(commands.Bot):
     async def setup_hook(self):
         await init_db()
 
-        for entry in os.listdir('./cogs'):
-            path = os.path.join('./cogs', entry)
-            if entry.endswith('.py') and entry != '__init__.py':
-                await self.load_extension(f'cogs.{entry[:-3]}')
-            elif os.path.isdir(path) and os.path.exists(os.path.join(path, '__init__.py')):
-                await self.load_extension(f'cogs.{entry}')
+        for entry in os.listdir("./cogs"):
+            path = os.path.join("./cogs", entry)
+            if entry.endswith(".py") and entry != "__init__.py":
+                await self.load_extension(f"cogs.{entry[:-3]}")
+            elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__init__.py")):
+                await self.load_extension(f"cogs.{entry}")
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
 
-        logger = self.get_cog('Logger')
+        logger = self.get_cog("Logger")
         if logger:
             await logger.send_log(
                 level="DEBUG",
@@ -43,7 +45,7 @@ class ClepshydraBotte(commands.Bot):
                     f"**Database:** Initialized\n"
                     f"**Commands synced:** {len(synced)}\n"
                     f"**Library version:** {discord.__version__}"
-                )
+                ),
             )
 
             # Status summary for the log channel ONLY (not community): the
@@ -63,7 +65,7 @@ class ClepshydraBotte(commands.Bot):
                     f"{event_schedule_state['url'] or 'none (empty state)'}\n"
                     f"**Latest known Banned and Restricted Announcement:** "
                     f"{ban_announcement_state['url'] or 'none (empty state)'}"
-                )
+                ),
             )
 
         # Started AFTER the startup logs: create_task only schedules, it doesn't

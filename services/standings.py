@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-
 POINTS_WIN = 3
 POINTS_DRAW = 1
 POINTS_LOSS = 0
@@ -38,7 +37,6 @@ class _PlayerStats:
 
 
 class StandingsCalculator:
-
     @staticmethod
     def _get_game_wins(m, pid: int) -> tuple[int, int]:
         if m.player1_id == pid:
@@ -145,20 +143,22 @@ class StandingsCalculator:
             if opps:
                 ogw = sum(gwp(oid) for oid in opps) / len(opps)
 
-            entries.append(StandingsEntry(
-                rank=0,
-                player_id=pid,
-                player_name=get_player_name(pid),
-                deck_name=get_deck_name(pid),
-                points=s.match_points,
-                wins=s.match_wins,
-                losses=s.match_losses,
-                draws=s.match_draws,
-                opponent_win_percent=round(omw, 4),
-                game_win_percent=round(gwp(pid), 4),
-                opponent_game_win_percent=round(ogw, 4),
-                dropped=bool(getattr(p, "dropped", False)),
-            ))
+            entries.append(
+                StandingsEntry(
+                    rank=0,
+                    player_id=pid,
+                    player_name=get_player_name(pid),
+                    deck_name=get_deck_name(pid),
+                    points=s.match_points,
+                    wins=s.match_wins,
+                    losses=s.match_losses,
+                    draws=s.match_draws,
+                    opponent_win_percent=round(omw, 4),
+                    game_win_percent=round(gwp(pid), 4),
+                    opponent_game_win_percent=round(ogw, 4),
+                    dropped=bool(getattr(p, "dropped", False)),
+                )
+            )
 
         entries.sort(
             key=lambda e: (

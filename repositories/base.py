@@ -1,6 +1,7 @@
-from typing import Generic, TypeVar, Type
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Generic, Type, TypeVar
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Base
 
@@ -8,7 +9,6 @@ T = TypeVar("T", bound=Base)
 
 
 class BaseRepository(Generic[T]):
-
     def __init__(self, session: AsyncSession, model: Type[T]):
         self.session = session
         self.model = model
@@ -31,7 +31,5 @@ class BaseRepository(Generic[T]):
         await self.session.commit()
 
     async def count(self) -> int:
-        result = await self.session.execute(
-            select(self.model).with_only_columns(self.model.id)
-        )
+        result = await self.session.execute(select(self.model).with_only_columns(self.model.id))
         return len(result.all())

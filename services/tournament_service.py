@@ -4,26 +4,29 @@ from datetime import datetime
 
 from sqlalchemy import select
 
+from config.config import GUILD_ID
 from database import get_session
 from database.models import (
-    Tournament, TournamentPlayer, Match, User,
-    TournamentStatus, MatchResult,
+    Match,
+    MatchResult,
+    Tournament,
+    TournamentPlayer,
+    TournamentStatus,
+    User,
 )
 from repositories.tournament_repository import (
-    TournamentRepository,
-    TournamentPlayerRepository,
     MatchRepository,
+    TournamentPlayerRepository,
+    TournamentRepository,
 )
 from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
+from services.rating import Rating, rate_1vs1, rate_draw
 from services.results import ServiceResult
 from services.standings import StandingsCalculator, StandingsEntry
-from services.rating import Rating, rate_1vs1, rate_draw
-from config.config import GUILD_ID
 
 
 class TournamentService:
-
     def __init__(self, bot=None):
         self.bot = bot
         # Serializes register_player(): the max_players check and the insert
@@ -88,15 +91,11 @@ class TournamentService:
                 result.append((t, count))
             return result
 
-    async def register_player(
-        self, tournament_id: int, discord_id: int, deck_name: str | None = None
-    ) -> str:
+    async def register_player(self, tournament_id: int, discord_id: int, deck_name: str | None = None) -> str:
         async with self._registration_lock:
             return await self._register_player(tournament_id, discord_id, deck_name)
 
-    async def _register_player(
-        self, tournament_id: int, discord_id: int, deck_name: str | None
-    ) -> str:
+    async def _register_player(self, tournament_id: int, discord_id: int, deck_name: str | None) -> str:
         async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -110,9 +109,7 @@ class TournamentService:
                     return "Il torneo ha raggiunto il massimo dei partecipanti."
 
             user = await urepo.get_or_create(discord_id)
-            existing = await tprepo.get_by_tournament_and_user(
-                tournament_id, user.id
-            )
+            existing = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
             if existing is not None:
                 if not existing.dropped:
                     return "Sei gia iscritto a questo torneo."
@@ -136,9 +133,7 @@ class TournamentService:
             deck_info = f" con **{deck_name}**" if deck_name else ""
             return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{seed}){deck_info}."
 
-    async def submit_deck(
-        self, tournament_id: int, discord_id: int, deck_name: str
-    ) -> str:
+    async def submit_deck(self, tournament_id: int, discord_id: int, deck_name: str) -> str:
         """Records/updates the deck of an already registered player. Unlike
         register_player(), it doesn't create a registration: the
         TournamentPlayer must already exist (and not be dropped). Can be called
@@ -152,10 +147,7 @@ class TournamentService:
                 return "Il torneo non accetta piu' invii di mazzo."
 
             user = await urepo.get_by_discord_id(discord_id)
-            tp = (
-                await tprepo.get_by_tournament_and_user(tournament_id, user.id)
-                if user else None
-            )
+            tp = await tprepo.get_by_tournament_and_user(tournament_id, user.id) if user else None
             if tp is None or tp.dropped:
                 return "Non sei iscritto a questo torneo: usa /iscriviti prima."
 
@@ -203,9 +195,7 @@ class TournamentService:
                 session.add(match)
             await session.commit()
 
-            bye_count = sum(
-                1 for p in pairings if p.player2_id is None
-            )
+            bye_count = sum(1 for p in pairings if p.player2_id is None)
             msg = (
                 f"Torneo **{tournament.name}** iniziato! "
                 f"{len(players)} giocatori, {round_count} round previsti."
@@ -231,27 +221,19 @@ class TournamentService:
         async with self._repos() as (session, trepo, _, _, _):
             return await trepo.get_by_id(tournament_id)
 
-    async def is_player_registered(
-        self, tournament_id: int, discord_id: int
-    ) -> bool:
+    async def is_player_registered(self, tournament_id: int, discord_id: int) -> bool:
         async with self._repos() as (session, _, tprepo, _, urepo):
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
                 return False
-            existing = await tprepo.get_by_tournament_and_user(
-                tournament_id, user.id
-            )
+            existing = await tprepo.get_by_tournament_and_user(tournament_id, user.id)
             return existing is not None and not existing.dropped
 
-    async def get_registered_players(
-        self, tournament_id: int
-    ) -> list[TournamentPlayer]:
+    async def get_registered_players(self, tournament_id: int) -> list[TournamentPlayer]:
         async with self._repos() as (session, _, tprepo, _, _):
             return await tprepo.get_by_tournament(tournament_id)
 
-    async def unregister_player(
-        self, tournament_id: int, discord_id: int
-    ) -> str:
+    async def unregister_player(self, tournament_id: int, discord_id: int) -> str:
         async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -272,9 +254,7 @@ class TournamentService:
             await session.commit()
             return f"Sei uscito dal torneo **{tournament.name}**."
 
-    async def force_drop_player(
-        self, tournament_id: int, discord_id: int
-    ) -> str:
+    async def force_drop_player(self, tournament_id: int, discord_id: int) -> str:
         """Removal decided by staff. Also valid in REGISTRATION: a registered
         player who never submits a deck blocks start_tournament(), and only
         the player themselves can call unregister_player() - without this case
@@ -307,7 +287,8 @@ class TournamentService:
             matches = await mrepo.get_by_tournament(tournament_id)
 
             pending = [
-                m for m in matches
+                m
+                for m in matches
                 if m.round_number == current_round
                 and m.result is None
                 and (m.player1_id == tp.id or m.player2_id == tp.id)
@@ -316,11 +297,7 @@ class TournamentService:
             for match in pending:
                 if match.player2_id is None:
                     continue
-                opponent_id = (
-                    match.player1_id
-                    if match.player2_id == tp.id
-                    else match.player2_id
-                )
+                opponent_id = match.player1_id if match.player2_id == tp.id else match.player2_id
                 match.winner_id = opponent_id
                 match.result = MatchResult.WIN
                 session.add(match)
@@ -330,10 +307,7 @@ class TournamentService:
             await session.commit()
 
             player_name = self._resolve_name(tp)
-            return (
-                f"Giocatore **{player_name}** rimosso dal torneo "
-                f"**{tournament.name}**."
-            )
+            return f"Giocatore **{player_name}** rimosso dal torneo **{tournament.name}**."
 
     async def force_conclude_tournament(self, tournament_id: int) -> str:
         async with self._repos() as (session, trepo, _, _, _):
@@ -352,9 +326,7 @@ class TournamentService:
 
             return f"Torneo **{tournament.name}** concluso forzatamente."
 
-    async def find_pending_match_for_user(
-        self, tournament_id: int, discord_id: int
-    ) -> Match | None:
+    async def find_pending_match_for_user(self, tournament_id: int, discord_id: int) -> Match | None:
         async with self._repos() as (session, _, tprepo, mrepo, urepo):
             user = await urepo.get_by_discord_id(discord_id)
             if user is None:
@@ -468,7 +440,9 @@ class TournamentService:
             matches = await mrepo.get_by_tournament_and_round(tournament_id, target_round)
             match = next((m for m in matches if m.table_number == table_number), None)
             if match is None:
-                return ServiceResult(False, f"Nessuna partita al tavolo {table_number} del round {target_round}.")
+                return ServiceResult(
+                    False, f"Nessuna partita al tavolo {table_number} del round {target_round}."
+                )
             if match.player2_id is None:
                 return ServiceResult(False, "Quella è una partita di bye: non ha un risultato da correggere.")
 
@@ -481,8 +455,11 @@ class TournamentService:
                 match.p2_game_wins = None
             else:
                 winner = next(
-                    (tp for tp in (match.player1, match.player2)
-                     if tp is not None and tp.user is not None and tp.user.discord_id == winner_discord_id),
+                    (
+                        tp
+                        for tp in (match.player1, match.player2)
+                        if tp is not None and tp.user is not None and tp.user.discord_id == winner_discord_id
+                    ),
                     None,
                 )
                 if winner is None:
@@ -579,16 +556,12 @@ class TournamentService:
             matches = await mrepo.get_by_tournament(tournament_id)
 
             pending = [
-                m for m in matches
-                if m.round_number == current_round
-                and m.player2_id is not None
-                and m.result is None
+                m
+                for m in matches
+                if m.round_number == current_round and m.player2_id is not None and m.result is None
             ]
             if pending:
-                return (
-                    f"Ci sono ancora {len(pending)} partite del round "
-                    f"{current_round} senza risultato."
-                )
+                return f"Ci sono ancora {len(pending)} partite del round {current_round} senza risultato."
 
             if tournament.round_count and current_round >= tournament.round_count:
                 tournament.status = TournamentStatus.COMPLETED
@@ -596,15 +569,11 @@ class TournamentService:
                 session.add(tournament)
                 await session.commit()
                 await self._update_ratings(tournament_id)
-                return (
-                    f"Torneo **{tournament.name}** completato!"
-                )
+                return f"Torneo **{tournament.name}** completato!"
 
             next_round = current_round + 1
             players = await tprepo.get_by_tournament(tournament_id)
-            pairings = PairingEngine.generate_round(
-                players, matches, next_round
-            )
+            pairings = PairingEngine.generate_round(players, matches, next_round)
 
             for pairing in pairings:
                 match = Match(
@@ -617,14 +586,9 @@ class TournamentService:
                 session.add(match)
             await session.commit()
 
-            return (
-                f"Round {next_round} generato! "
-                f"{len(pairings)} incontri."
-            )
+            return f"Round {next_round} generato! {len(pairings)} incontri."
 
-    async def get_standings(
-        self, tournament_id: int
-    ) -> list[StandingsEntry] | str:
+    async def get_standings(self, tournament_id: int) -> list[StandingsEntry] | str:
         async with self._repos() as (session, trepo, tprepo, mrepo, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -636,7 +600,8 @@ class TournamentService:
             # tournaments. Someone who left during registration doesn't.
             played = {m.player1_id for m in matches} | {m.player2_id for m in matches}
             players = [
-                tp for tp in await tprepo.get_by_tournament(tournament_id, include_dropped=True)
+                tp
+                for tp in await tprepo.get_by_tournament(tournament_id, include_dropped=True)
                 if not tp.dropped or tp.id in played
             ]
 
@@ -653,9 +618,7 @@ class TournamentService:
             def get_deck(tp_id: int) -> str:
                 return deck_cache.get(tp_id, "")
 
-            entries = StandingsCalculator.compute(
-                tournament_id, players, matches, get_name, get_deck
-            )
+            entries = StandingsCalculator.compute(tournament_id, players, matches, get_name, get_deck)
             return entries
 
     async def get_current_round(self, tournament_id: int) -> int:
@@ -675,12 +638,14 @@ class TournamentService:
                 if u.nome:
                     name = f"{u.nome} ({name})"
                 lb_rating = u.rating - 2 * u.rating_deviation
-                result.append({
-                    "discord_id": u.discord_id,
-                    "name": name,
-                    "rating": round(u.rating, 1),
-                    "rd": round(u.rating_deviation, 1),
-                    "matches": u.rating_matches,
-                    "lb_rating": round(lb_rating, 1),
-                })
+                result.append(
+                    {
+                        "discord_id": u.discord_id,
+                        "name": name,
+                        "rating": round(u.rating, 1),
+                        "rd": round(u.rating_deviation, 1),
+                        "matches": u.rating_matches,
+                        "lb_rating": round(lb_rating, 1),
+                    }
+                )
             return result

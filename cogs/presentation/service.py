@@ -1,8 +1,10 @@
 import discord
-from cogs.presentation.models import PresentationData, PRESENTATION_DATA_STORE
+
 from cogs.presentation.embeds import build_published_embed
+from cogs.presentation.models import PRESENTATION_DATA_STORE, PresentationData
 from cogs.presentation.validators import valida_presentazione
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
+
 
 class PresentationService:
     def __init__(self, bot):
@@ -11,7 +13,7 @@ class PresentationService:
 
     def _get_logger(self):
         if not self.logger:
-            self.logger = self.bot.get_cog('Logger')
+            self.logger = self.bot.get_cog("Logger")
         return self.logger
 
     async def publish(self, interaction: discord.Interaction, data: PresentationData):
@@ -37,10 +39,7 @@ class PresentationService:
                     level="WARN",
                     event="PRESENTATION_VALIDATION_FAILED",
                     user=member,
-                    info=(
-                        f"Missing fields: {', '.join(missing)} "
-                        f"Invalid fields: {', '.join(errors)}"
-                    )
+                    info=(f"Missing fields: {', '.join(missing)} Invalid fields: {', '.join(errors)}"),
                 )
 
             msg = "❌ **Ci sono problemi nella tua presentazione.**\n\n"
@@ -62,15 +61,13 @@ class PresentationService:
                     level="ERROR",
                     event="PRESENTATION_CHANNEL_MISSING",
                     user=member,
-                    info=f"Presentation channel with ID {PRESENTATION_CHANNEL_ID} not found."
+                    info=f"Presentation channel with ID {PRESENTATION_CHANNEL_ID} not found.",
                 )
             return
 
         embed = build_published_embed(member, data)
 
-        presentation_msg = await channel.send(
-            embed=embed
-        )
+        presentation_msg = await channel.send(embed=embed)
 
         await self._assign_final_role(member, data)
 
@@ -78,12 +75,7 @@ class PresentationService:
             info = f"User promoted to {FINAL_ROLE}"
             if presentation_msg:
                 info += f"\n**Link:** [Presentation]({presentation_msg.jump_url})"
-            await logger.send_log(
-                level="INFO",
-                event="PRESENTATION_COMPLETED",
-                user=member,
-                info=info
-            )
+            await logger.send_log(level="INFO", event="PRESENTATION_COMPLETED", user=member, info=info)
 
     async def _assign_initial_role(self, member):
         initial_role = discord.utils.get(member.guild.roles, name=INITIAL_ROLE)
@@ -97,7 +89,7 @@ class PresentationService:
                         level="ERROR",
                         event="INITIAL_ROLE_FAIL",
                         user=member,
-                        info="The bot lacks permission to assign the Viandante role."
+                        info="The bot lacks permission to assign the Viandante role.",
                     )
 
     async def _assign_final_role(self, member, data: PresentationData):
@@ -116,7 +108,7 @@ class PresentationService:
                     level="ERROR",
                     event="ROLE_TRANSITION_FAIL",
                     user=member,
-                    info="The bot lacks permission to manage roles."
+                    info="The bot lacks permission to manage roles.",
                 )
 
         # Clean up temporary storage

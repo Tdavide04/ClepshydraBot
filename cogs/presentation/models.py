@@ -2,18 +2,18 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 # Temporary storage for presentation data across interactions
-PRESENTATION_DATA_STORE: dict[int, 'PresentationData'] = {}
+PRESENTATION_DATA_STORE: dict[int, "PresentationData"] = {}
 
 
-def get_presentation_data(user_id: int) -> Optional['PresentationData']:
+def get_presentation_data(user_id: int) -> Optional["PresentationData"]:
     return PRESENTATION_DATA_STORE.get(user_id)
 
 
-def store_presentation_data(user_id: int, data: 'PresentationData') -> None:
+def store_presentation_data(user_id: int, data: "PresentationData") -> None:
     PRESENTATION_DATA_STORE[user_id] = data
 
 
-async def get_or_create_presentation_data(user_id: int) -> 'PresentationData':
+async def get_or_create_presentation_data(user_id: int) -> "PresentationData":
     if user_id not in PRESENTATION_DATA_STORE:
         PRESENTATION_DATA_STORE[user_id] = PresentationData(
             user_id=user_id,
@@ -23,7 +23,7 @@ async def get_or_create_presentation_data(user_id: int) -> 'PresentationData':
             professione="",
             provenienza="",
             anno_cartaceo="",
-            anno_arena=""
+            anno_arena="",
         )
     return PRESENTATION_DATA_STORE[user_id]
 

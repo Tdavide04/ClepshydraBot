@@ -82,7 +82,6 @@ BASE_PRINTINGS = {
 
 
 class TestUpdateSpgOverridesIncremental:
-
     def test_first_scan_adds_overrides_and_tracks_all_checked_cards(self, monkeypatch):
         search_calls, batch_calls = [], []
         _install_fake_search(monkeypatch, BASE_SEARCH, search_calls)
@@ -162,7 +161,6 @@ class TestUpdateSpgOverridesIncremental:
 
 
 class TestPrintsBatching:
-
     def test_unchecked_cards_are_split_into_batches_of_configured_size(self, monkeypatch):
         """With more unevaluated cards than _PRINTS_BATCH_SIZE, the scan must
         split them into several batch calls instead of one per card (the
@@ -175,8 +173,7 @@ class TestPrintsBatching:
         cards = [_card_row(f"Card {i}", f"oracle-{i}") for i in range(n_cards)]
         search_response = _search_response(*cards)
         printings = {
-            f"oracle-{i}": [_printing("rare", ["arena"], "spg", f"oracle-{i}")]
-            for i in range(n_cards)
+            f"oracle-{i}": [_printing("rare", ["arena"], "spg", f"oracle-{i}")] for i in range(n_cards)
         }
 
         search_calls, batch_calls = [], []
@@ -211,7 +208,6 @@ class TestPrintsBatching:
 
 
 class TestFetchPrintsByOracleIds:
-
     def test_groups_printings_by_oracle_id_across_pages(self, monkeypatch):
         page_1 = {
             "data": [_printing("rare", ["arena"], "spg", ORACLE_A)],
@@ -282,4 +278,6 @@ class TestFetchPrintsByOracleIds:
         run(arena_overrides._fetch_prints_by_oracle_ids(None, [ORACLE_A, ORACLE_A, ORACLE_A]))
 
         assert len(urls_requested) == 1
-        assert urls_requested[0].count("oracleid") == 1, "the ORACLE_A term must appear only once in the query"
+        assert urls_requested[0].count("oracleid") == 1, (
+            "the ORACLE_A term must appear only once in the query"
+        )

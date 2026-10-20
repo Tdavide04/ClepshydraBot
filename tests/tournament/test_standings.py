@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from services.standings import StandingsCalculator
 
 
@@ -31,7 +32,6 @@ def get_deck(pid: int) -> str:
 
 
 class TestCalculateOmw:
-
     def test_omw_minimum_33(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         matches = [
@@ -39,9 +39,7 @@ class TestCalculateOmw:
             MockMatch(player1_id=1, player2_id=3, winner_id=1, result="win"),
             MockMatch(player1_id=1, player2_id=4, winner_id=1, result="win"),
         ]
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         alice = next(e for e in entries if e.player_id == 1)
         assert alice.opponent_win_percent == 0.33
 
@@ -49,9 +47,7 @@ class TestCalculateOmw:
         players = [MockPlayer(1)]
         matches = []
 
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         alice = next(e for e in entries if e.player_id == 1)
         assert alice.opponent_win_percent == 0.0
 
@@ -61,9 +57,7 @@ class TestCalculateOmw:
             MockMatch(player1_id=1, player2_id=3, winner_id=1, result="win"),
             MockMatch(player1_id=2, player2_id=None, winner_id=2, result="win"),
         ]
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         p1 = next(e for e in entries if e.player_id == 1)
         p2 = next(e for e in entries if e.player_id == 2)
         assert p1.opponent_win_percent > 0.0
@@ -76,9 +70,7 @@ class TestCalculateOmw:
             MockMatch(player1_id=1, player2_id=3, winner_id=1, result="win"),
             MockMatch(player1_id=2, player2_id=3, winner_id=2, result="win"),
         ]
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         p1 = next(e for e in entries if e.player_id == 1)
         p2_wins_2 = 1  # player 2 has 1 win (against 3)
         p2_matches_2 = 2  # played 2 matches (against 1 and 3)
@@ -91,16 +83,13 @@ class TestCalculateOmw:
 
 
 class TestSortStandings:
-
     def test_sorted_by_points(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1, result="win"),
         ]
 
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         assert entries[0].player_id == 1
         assert entries[0].points == 3.0
         assert entries[1].player_id == 2
@@ -116,9 +105,7 @@ class TestSortStandings:
             MockMatch(player1_id=5, player2_id=None, winner_id=5, result="win"),
         ]
 
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
 
         for e in entries:
             if e.player_id == 1:
@@ -130,15 +117,12 @@ class TestSortStandings:
         players = [MockPlayer(2), MockPlayer(1)]
         matches = []
 
-        entries = StandingsCalculator.compute(
-            1, players, matches, get_name, get_deck
-        )
+        entries = StandingsCalculator.compute(1, players, matches, get_name, get_deck)
         assert entries[0].player_id == 1
         assert entries[1].player_id == 2
 
 
 class TestDroppedPlayers:
-
     def test_match_against_player_missing_from_list_does_not_crash(self):
         """Regression: get_standings() passed only active registrations, but
         the matches a dropped player played remain - KeyError on /classifica."""
@@ -161,7 +145,6 @@ class TestDroppedPlayers:
 
 
 class TestPendingMatches:
-
     def test_unplayed_match_does_not_change_standings(self):
         """Regression: a current-round match with no result yet counted as a
         1-1 in games and its opponent entered the OMW, so /classifica

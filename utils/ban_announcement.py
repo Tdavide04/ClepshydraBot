@@ -60,9 +60,7 @@ STATE_PATH = "data/ban_announcement_state.json"
 
 _ANNOUNCEMENTS_URL_PREFIX = "https://magic.wizards.com/en/news/announcements/banned-and-restricted-"
 
-_BAN_ANNOUNCEMENT_URL_RE = re.compile(
-    re.escape(_ANNOUNCEMENTS_URL_PREFIX) + r"[a-z0-9-]+$"
-)
+_BAN_ANNOUNCEMENT_URL_RE = re.compile(re.escape(_ANNOUNCEMENTS_URL_PREFIX) + r"[a-z0-9-]+$")
 
 _H2_RE = re.compile(r"<h2[^>]*>\s*([^<]+?)\s*</h2>")
 
@@ -82,6 +80,7 @@ _state_cache: dict | None = None
 # ==========================================
 # LOAD / SAVE STATE
 # ==========================================
+
 
 def _load_state() -> dict:
     global _state_cache
@@ -132,6 +131,7 @@ def _notified_url(state: dict) -> str | None:
 # SITEMAP
 # ==========================================
 
+
 def _parse_sitemap_xml(body: str) -> dict[str, str]:
     """Extracts {url: lastmod} for the 'banned-and-restricted-*' pages
     under /en/news/announcements/ only. Kept separate from the HTTP fetch so
@@ -174,6 +174,7 @@ async def _fetch_sitemap_ban_urls(session: aiohttp.ClientSession) -> dict[str, s
 # ==========================================
 # PARSING THE ANNOUNCEMENT PAGE
 # ==========================================
+
 
 def _strip_tags(text: str) -> str:
     return html_module.unescape(_TAG_RE.sub("", text)).strip()
@@ -251,6 +252,7 @@ async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | No
 # CHECK (public API)
 # ==========================================
 
+
 async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
     """Finds the NEWEST Banned and Restricted announcement (by lastmod) in
     the sitemap and, if it is new versus the last known one (or anyway if
@@ -287,10 +289,7 @@ async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
 
         url, lastmod = latest
 
-        already_seen = (
-            state.get("latest_url") == url
-            and state.get("latest_lastmod") == lastmod
-        )
+        already_seen = state.get("latest_url") == url and state.get("latest_lastmod") == lastmod
         if already_seen and not force:
             log(f"[BAN ANNOUNCEMENT] no change (latest: {url})")
             return []
@@ -396,10 +395,7 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
             level="INFO",
             event="BAN_ANNOUNCEMENT_NO_CHANGES",
             user=user,
-            info=(
-                f"{prefix}: new Banned and Restricted Announcement on {url}, no format "
-                f"changed this time."
-            ),
+            info=(f"{prefix}: new Banned and Restricted Announcement on {url}, no format changed this time."),
         )
         return
 

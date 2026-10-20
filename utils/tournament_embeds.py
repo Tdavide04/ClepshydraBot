@@ -3,8 +3,8 @@ import discord
 from utils.tournament_logic import (
     omw_bar,
     rank_label,
-    split_into_columns,
     split_field_value,
+    split_into_columns,
 )
 
 EMBED_COLOR_STANDINGS = 0xC9A227
@@ -21,10 +21,10 @@ def build_standings_embed(
     player_count: int,
 ) -> discord.Embed:
     if round_number == 0:
-        title = f"\U0001F3C6 Classifica \u2014 {tournament_name}"
-        description = f"Iscrizioni aperte \u00B7 {player_count} giocatori"
+        title = f"\U0001f3c6 Classifica \u2014 {tournament_name}"
+        description = f"Iscrizioni aperte \u00b7 {player_count} giocatori"
     else:
-        title = f"\u26A1 Classifica \u2014 {tournament_name}"
+        title = f"\u26a1 Classifica \u2014 {tournament_name}"
         description = f"Dopo il Round {round_number}"
 
     embed = discord.Embed(
@@ -80,7 +80,7 @@ def build_standings_embed(
                 inline=True,
             )
 
-    embed.set_footer(text=f"\U0001FAAA Torneo ID: {tournament_id}")
+    embed.set_footer(text=f"\U0001faaa Torneo ID: {tournament_id}")
     return embed
 
 
@@ -91,7 +91,7 @@ def build_pairings_embed(
     pairings: list[dict],
 ) -> discord.Embed:
     embed = discord.Embed(
-        title=f"\U0001F3AF Round {round_number} \u2014 Accoppiamenti",
+        title=f"\U0001f3af Round {round_number} \u2014 Accoppiamenti",
         color=EMBED_COLOR_PAIRINGS,
     )
 
@@ -103,7 +103,7 @@ def build_pairings_embed(
         if p1_deck:
             p1 = f"{p['player1']} ({p1_deck})"
         if p["player2"] is None:
-            lines.append(f"Tavolo {table}  {p1} \u2014 BYE \U0001F50A")
+            lines.append(f"Tavolo {table}  {p1} \u2014 BYE \U0001f50a")
         else:
             p2 = p["player2"]
             p2_deck = p.get("player2_deck")
@@ -120,7 +120,7 @@ def build_pairings_embed(
         inline=False,
     )
 
-    embed.set_footer(text=f"\U0001FAAA Torneo ID: {tournament_id}")
+    embed.set_footer(text=f"\U0001faaa Torneo ID: {tournament_id}")
     return embed
 
 
@@ -131,7 +131,7 @@ def build_start_embed(
     round_count: int,
 ) -> discord.Embed:
     embed = discord.Embed(
-        title="\U0001F680 Torneo Iniziato!",
+        title="\U0001f680 Torneo Iniziato!",
         description=f"**{tournament_name}** \u2014 {len(players)} giocatori",
         color=EMBED_COLOR_START,
     )
@@ -174,7 +174,7 @@ def build_start_embed(
                 inline=False,
             )
 
-    embed.set_footer(text=f"\U0001FAAA Torneo ID: {tournament_id}")
+    embed.set_footer(text=f"\U0001faaa Torneo ID: {tournament_id}")
     return embed
 
 
@@ -184,15 +184,13 @@ def build_top8_embed(
     bracket: dict,
 ) -> discord.Embed:
     embed = discord.Embed(
-        title="\U0001F396\uFE0F Top 8 \u2014 Eliminazione Diretta",
+        title="\U0001f396\ufe0f Top 8 \u2014 Eliminazione Diretta",
         color=EMBED_COLOR_TOP8,
     )
 
     qf_lines = []
     for qf in bracket.get("quarterfinals", []):
-        qf_lines.append(
-            f"QF{qf['number']}  {qf['player1']} vs {qf['player2']}"
-        )
+        qf_lines.append(f"QF{qf['number']}  {qf['player1']} vs {qf['player2']}")
     if qf_lines:
         embed.add_field(
             name="Quarti di Finale",
@@ -202,9 +200,7 @@ def build_top8_embed(
 
     sf_lines = []
     for sf in bracket.get("semifinals", []):
-        sf_lines.append(
-            f"SF{sf['number']}  {sf['player1']} vs {sf['player2']}"
-        )
+        sf_lines.append(f"SF{sf['number']}  {sf['player1']} vs {sf['player2']}")
     if sf_lines:
         embed.add_field(
             name="Semifinali",
@@ -216,7 +212,7 @@ def build_top8_embed(
     if final:
         embed.add_field(
             name="Finale",
-            value=f"\U0001F3C6  {final['player1']} vs {final['player2']}",
+            value=f"\U0001f3c6  {final['player1']} vs {final['player2']}",
             inline=True,
         )
 
@@ -224,9 +220,9 @@ def build_top8_embed(
     if champion:
         embed.add_field(
             name="Campione",
-            value=f"\U0001F451 **{champion['name']}**\n   {champion.get('deck', '\u2014')}",
+            value=f"\U0001f451 **{champion['name']}**\n   {champion.get('deck', '\u2014')}",
             inline=True,
         )
 
-    embed.set_footer(text=f"\U0001FAAA Torneo ID: {tournament_id}")
+    embed.set_footer(text=f"\U0001faaa Torneo ID: {tournament_id}")
     return embed

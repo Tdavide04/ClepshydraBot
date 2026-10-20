@@ -1,21 +1,22 @@
-import discord
-from discord.ext import commands
 from datetime import datetime
 
+import discord
+from discord.ext import commands
+
+from cogs.deck_validation.service import SCRYFALL_UNAVAILABLE_MESSAGE, ArtisanService
+from cogs.deck_validation.validators import parse_decklist, validate_counts
+from config.config import GUILD_ID, PUBLIC_DECK_CHANNEL_ID, TOURNAMENT_CHANNEL_ID
+from database import get_session
+from database.models import Tournament, TournamentPlayer, TournamentStatus
+from repositories.banlist_repository import BanlistRepository
 from services.tournament_service import TournamentService
 from utils.interaction_errors import ReportingModal, ReportingView
 from utils.permissions import is_admin
 from utils.tournament_embeds import (
-    build_standings_embed,
     build_pairings_embed,
+    build_standings_embed,
     build_start_embed,
 )
-from database.models import Tournament, TournamentStatus, TournamentPlayer
-from database import get_session
-from repositories.banlist_repository import BanlistRepository
-from cogs.deck_validation.service import ArtisanService, SCRYFALL_UNAVAILABLE_MESSAGE
-from cogs.deck_validation.validators import parse_decklist, validate_counts
-from config.config import GUILD_ID, TOURNAMENT_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
 
 
 class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):
@@ -67,7 +68,7 @@ class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):
         )
 
         embed = discord.Embed(
-            title="\U0001F195 Nuovo Torneo",
+            title="\U0001f195 Nuovo Torneo",
             color=discord.Color.green(),
             timestamp=datetime.now(),
         )
@@ -90,7 +91,7 @@ class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):
                 level="INFO",
                 event="TOURNAMENT_CREATED",
                 user=interaction.user,
-                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) created."
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) created.",
             )
 
 
@@ -140,16 +141,13 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
             except (discord.NotFound, discord.HTTPException):
                 pass
 
-        result = await self.artisan_service.validate_deck(
-            entries, deck_name, total_cards
-        )
+        result = await self.artisan_service.validate_deck(entries, deck_name, total_cards)
 
         logger = self.bot.get_cog("Logger")
 
         if result.service_error:
             await interaction.followup.send(
-                f"{SCRYFALL_UNAVAILABLE_MESSAGE} La tua iscrizione resta invariata: "
-                f"reinvia con /invia_deck.",
+                f"{SCRYFALL_UNAVAILABLE_MESSAGE} La tua iscrizione resta invariata: reinvia con /invia_deck.",
                 ephemeral=True,
             )
             if logger:
@@ -164,9 +162,7 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                 )
             return
 
-        deck_image = await self.artisan_service.generate_deck_image(
-            result, interaction.user.display_name
-        )
+        deck_image = await self.artisan_service.generate_deck_image(result, interaction.user.display_name)
 
         if not result.is_valid:
             embed = discord.Embed(
@@ -234,9 +230,7 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                 )
             return
 
-        msg = await self.service.submit_deck(
-            self.torneo_id, interaction.user.id, deck_name
-        )
+        msg = await self.service.submit_deck(self.torneo_id, interaction.user.id, deck_name)
 
         if "Non sei iscritto" in msg or "non accetta piu" in msg:
             await interaction.followup.send(msg, ephemeral=True)
@@ -261,7 +255,9 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
         )
         embed.add_field(name="Giocatore", value=interaction.user.mention, inline=True)
         embed.add_field(name="Mazzo", value=f"**{deck_name}**", inline=True)
-        embed.add_field(name="Carte", value=f"{total_cards} ({result.main_count}M + {result.side_count}S)", inline=True)
+        embed.add_field(
+            name="Carte", value=f"{total_cards} ({result.main_count}M + {result.side_count}S)", inline=True
+        )
         embed.set_footer(text=f"Torneo ID: {self.torneo_id}")
 
         kwargs = {"embed": embed}
@@ -309,8 +305,13 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
 
 class RisultatoView(ReportingView):
     def __init__(
-        self, match, tournament, service,
-        my_tp, opponent_tp, bot,
+        self,
+        match,
+        tournament,
+        service,
+        my_tp,
+        opponent_tp,
+        bot,
     ):
         super().__init__()
         self.match = match
@@ -325,38 +326,51 @@ class RisultatoView(ReportingView):
         placeholder="Seleziona risultato...",
         options=[
             discord.SelectOption(
-                label="Vittoria 2-0", value="win_20",
-                emoji="\u2705", description="Hai vinto 2-0 (3 punti)",
+                label="Vittoria 2-0",
+                value="win_20",
+                emoji="\u2705",
+                description="Hai vinto 2-0 (3 punti)",
             ),
             discord.SelectOption(
-                label="Vittoria 2-1", value="win_21",
-                emoji="\u2705", description="Hai vinto 2-1 (3 punti)",
+                label="Vittoria 2-1",
+                value="win_21",
+                emoji="\u2705",
+                description="Hai vinto 2-1 (3 punti)",
             ),
             discord.SelectOption(
-                label="Pareggio", value="draw",
-                emoji="\U0001f91d", description="Avete pareggiato (1 punto)",
+                label="Pareggio",
+                value="draw",
+                emoji="\U0001f91d",
+                description="Avete pareggiato (1 punto)",
             ),
             discord.SelectOption(
-                label="Sconfitta 1-2", value="loss_12",
-                emoji="\u274c", description="Hai perso 1-2 (0 punti)",
+                label="Sconfitta 1-2",
+                value="loss_12",
+                emoji="\u274c",
+                description="Hai perso 1-2 (0 punti)",
             ),
             discord.SelectOption(
-                label="Sconfitta 0-2", value="loss_02",
-                emoji="\u274c", description="Hai perso 0-2 (0 punti)",
+                label="Sconfitta 0-2",
+                value="loss_02",
+                emoji="\u274c",
+                description="Hai perso 0-2 (0 punti)",
             ),
         ],
     )
     async def result_select(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         select: discord.ui.Select,
     ):
         self.selected = select.values[0]
         select.disabled = True
 
         labels = {
-            "win_20": "\u2705 Vittoria 2-0", "win_21": "\u2705 Vittoria 2-1",
+            "win_20": "\u2705 Vittoria 2-0",
+            "win_21": "\u2705 Vittoria 2-1",
             "draw": "\U0001f91d Pareggio",
-            "loss_12": "\u274c Sconfitta 1-2", "loss_02": "\u274c Sconfitta 0-2",
+            "loss_12": "\u274c Sconfitta 1-2",
+            "loss_02": "\u274c Sconfitta 0-2",
         }
         await interaction.response.edit_message(
             content=f"Risultato selezionato: **{labels.get(self.selected, self.selected)}**",
@@ -365,13 +379,12 @@ class RisultatoView(ReportingView):
 
     @discord.ui.button(label="Conferma", style=discord.ButtonStyle.green)
     async def confirm(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         button: discord.ui.Button,
     ):
         if self.selected is None:
-            return await interaction.response.send_message(
-                "Seleziona prima un risultato.", ephemeral=True
-            )
+            return await interaction.response.send_message("Seleziona prima un risultato.", ephemeral=True)
 
         score_map = {
             "win_20": (2, 0),
@@ -399,8 +412,11 @@ class RisultatoView(ReportingView):
             p1_game_wins, p2_game_wins = p2_gw, p1_gw
 
         outcome = await self.service.submit_result(
-            self.match.id, winner_id, result,
-            p1_game_wins=p1_game_wins, p2_game_wins=p2_game_wins,
+            self.match.id,
+            winner_id,
+            result,
+            p1_game_wins=p1_game_wins,
+            p2_game_wins=p2_game_wins,
         )
 
         logger = self.bot.get_cog("Logger")
@@ -410,7 +426,9 @@ class RisultatoView(ReportingView):
             # player sees it, no public announcement of a result that was not
             # recorded.
             await interaction.response.edit_message(
-                content=f"\u26a0\ufe0f {outcome.message}", embed=None, view=None,
+                content=f"\u26a0\ufe0f {outcome.message}",
+                embed=None,
+                view=None,
             )
             if logger:
                 await logger.send_log(
@@ -423,9 +441,11 @@ class RisultatoView(ReportingView):
             return
 
         labels = {
-            "win_20": "\u2705 Vittoria 2-0", "win_21": "\u2705 Vittoria 2-1",
+            "win_20": "\u2705 Vittoria 2-0",
+            "win_21": "\u2705 Vittoria 2-1",
             "draw": "\U0001f91d Pareggio",
-            "loss_12": "\u274c Sconfitta 1-2", "loss_02": "\u274c Sconfitta 0-2",
+            "loss_12": "\u274c Sconfitta 1-2",
+            "loss_02": "\u274c Sconfitta 0-2",
         }
         embed = discord.Embed(
             title="\U0001f4dd Risultato Partita",
@@ -442,7 +462,9 @@ class RisultatoView(ReportingView):
         embed.set_footer(text=f"Match ID: {self.match.id}")
 
         await interaction.response.edit_message(
-            content=None, embed=embed, view=None,
+            content=None,
+            embed=embed,
+            view=None,
         )
 
         channel = interaction.channel
@@ -464,19 +486,20 @@ class RisultatoView(ReportingView):
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.grey)
     async def cancel(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         button: discord.ui.Button,
     ):
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
-            content="Inserimento annullato.", view=self,
+            content="Inserimento annullato.",
+            view=self,
         )
         self.stop()
 
 
 class TournamentSystemCog(commands.Cog):
-
     def __init__(self, bot):
         self.bot = bot
         self.service = TournamentService(bot)
@@ -496,9 +519,7 @@ class TournamentSystemCog(commands.Cog):
             return await self.service.get_tournament(torneo_id)
         return await self.service.get_latest_tournament()
 
-    async def _check_tournament_channel(
-        self, interaction: discord.Interaction
-    ) -> bool:
+    async def _check_tournament_channel(self, interaction: discord.Interaction) -> bool:
         if TOURNAMENT_CHANNEL_ID and interaction.channel_id != TOURNAMENT_CHANNEL_ID:
             await interaction.response.send_message(
                 "Questo comando pu\u00f2 essere utilizzato solo nel canale dedicato ai tornei.",
@@ -536,10 +557,7 @@ class TournamentSystemCog(commands.Cog):
     # Admin commands
     # ------------------------------------------------------------------
 
-    @discord.app_commands.command(
-        name="crea_torneo",
-        description="Crea un nuovo torneo"
-    )
+    @discord.app_commands.command(name="crea_torneo", description="Crea un nuovo torneo")
     @is_admin()
     async def crea_torneo(self, interaction: discord.Interaction):
         if not await self._check_tournament_channel(interaction):
@@ -547,14 +565,9 @@ class TournamentSystemCog(commands.Cog):
         modal = CreaTorneoModal(self.service, self.bot)
         await interaction.response.send_modal(modal)
 
-    @discord.app_commands.command(
-        name="avvia_torneo",
-        description="Avvia un torneo in attesa di iscrizioni"
-    )
+    @discord.app_commands.command(name="avvia_torneo", description="Avvia un torneo in attesa di iscrizioni")
     @is_admin()
-    @discord.app_commands.describe(
-        torneo="ID o nome del torneo da avviare (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.describe(torneo="ID o nome del torneo da avviare (opzionale, usa l'ultimo)")
     async def avvia_torneo(
         self,
         interaction: discord.Interaction,
@@ -567,7 +580,8 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo=torneo)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo in fase di iscrizioni." if torneo is None
+                "Nessun torneo in fase di iscrizioni."
+                if torneo is None
                 else f"Torneo `{torneo}` non trovato.",
                 ephemeral=True,
             )
@@ -579,20 +593,21 @@ class TournamentSystemCog(commands.Cog):
         msg = await self.service.start_tournament(tournament.id)
 
         if (
-            "non trovato" in msg or "non e attivo" in msg
-            or "Servono almeno" in msg or "non hanno ancora inviato" in msg
+            "non trovato" in msg
+            or "non e attivo" in msg
+            or "Servono almeno" in msg
+            or "non hanno ancora inviato" in msg
         ):
             await self._log(
-                "WARN", "TOURNAMENT_START_BLOCKED", user=interaction.user,
-                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {msg}"
+                "WARN",
+                "TOURNAMENT_START_BLOCKED",
+                user=interaction.user,
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {msg}",
             )
             return await interaction.followup.send(msg, ephemeral=True)
 
         players = await self.service.get_registered_players(tournament.id)
-        player_data = [
-            (self._resolve_name(p), p.deck_name or "")
-            for p in players
-        ]
+        player_data = [(self._resolve_name(p), p.deck_name or "") for p in players]
 
         embed_players = build_start_embed(
             tournament_name=tournament.name,
@@ -610,22 +625,20 @@ class TournamentSystemCog(commands.Cog):
                 p1_name = self._resolve_name(m.player1) if m.player1 else f"Giocatore #{m.player1_id}"
                 p1_deck = m.player1.deck_name if m.player1 else None
                 if m.player2_id is not None:
-                    p2_name = (
-                        self._resolve_name(m.player2)
-                        if m.player2
-                        else f"Giocatore #{m.player2_id}"
-                    )
+                    p2_name = self._resolve_name(m.player2) if m.player2 else f"Giocatore #{m.player2_id}"
                     p2_deck = m.player2.deck_name if m.player2 else None
                 else:
                     p2_name = None
                     p2_deck = None
-                pairings.append({
-                    "table": m.table_number,
-                    "player1": p1_name,
-                    "player1_deck": p1_deck,
-                    "player2": p2_name,
-                    "player2_deck": p2_deck,
-                })
+                pairings.append(
+                    {
+                        "table": m.table_number,
+                        "player1": p1_name,
+                        "player1_deck": p1_deck,
+                        "player2": p2_name,
+                        "player2_deck": p2_deck,
+                    }
+                )
 
             embed_pairings = build_pairings_embed(
                 tournament_name=tournament.name,
@@ -635,21 +648,20 @@ class TournamentSystemCog(commands.Cog):
             )
             await interaction.followup.send(embed=embed_pairings)
 
-        partecipanti_lines = [
-            f"• {name} — **{deck or 'N/A'}**" for name, deck in player_data
-        ]
+        partecipanti_lines = [f"• {name} — **{deck or 'N/A'}**" for name, deck in player_data]
         partecipanti_text = "\n".join(partecipanti_lines[:25])
         if len(partecipanti_lines) > 25:
             partecipanti_text += f"\n_...and {len(partecipanti_lines) - 25} more_"
 
         await self._log(
-            "INFO", "TOURNAMENT_STARTED", user=interaction.user,
-            info=f"{msg}\n\n**Participants:**\n{partecipanti_text}"
+            "INFO",
+            "TOURNAMENT_STARTED",
+            user=interaction.user,
+            info=f"{msg}\n\n**Participants:**\n{partecipanti_text}",
         )
 
     @discord.app_commands.command(
-        name="drop_giocatore",
-        description="Rimuovi un giocatore da un torneo attivo o in fase di iscrizioni"
+        name="drop_giocatore", description="Rimuovi un giocatore da un torneo attivo o in fase di iscrizioni"
     )
     @is_admin()
     @discord.app_commands.describe(
@@ -669,14 +681,11 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo=torneo)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo attivo." if torneo is None
-                else f"Torneo `{torneo}` non trovato.",
+                "Nessun torneo attivo." if torneo is None else f"Torneo `{torneo}` non trovato.",
                 ephemeral=True,
             )
 
-        msg = await self.service.force_drop_player(
-            tournament.id, giocatore.id
-        )
+        msg = await self.service.force_drop_player(tournament.id, giocatore.id)
 
         if "non trovato" in msg or "non e attivo" in msg or "non iscritto" in msg:
             return await interaction.followup.send(msg, ephemeral=True)
@@ -691,7 +700,9 @@ class TournamentSystemCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._log(
-            "INFO", "PLAYER_DROPPED", user=interaction.user,
+            "INFO",
+            "PLAYER_DROPPED",
+            user=interaction.user,
             info=(
                 f"Player {giocatore.mention} removed from tournament "
                 f"**{tournament.name}** (ID: {tournament.id})."
@@ -700,7 +711,7 @@ class TournamentSystemCog(commands.Cog):
 
     @discord.app_commands.command(
         name="correggi_risultato",
-        description="Correggi o inserisci il risultato di una partita del torneo in corso"
+        description="Correggi o inserisci il risultato di una partita del torneo in corso",
     )
     @is_admin()
     @discord.app_commands.describe(
@@ -710,11 +721,13 @@ class TournamentSystemCog(commands.Cog):
         turno="Round della partita (opzionale, usa quello in corso)",
         torneo="ID o nome del torneo (opzionale, usa l'ultimo)",
     )
-    @discord.app_commands.choices(esito=[
-        discord.app_commands.Choice(name="Vittoria 2-0", value="2-0"),
-        discord.app_commands.Choice(name="Vittoria 2-1", value="2-1"),
-        discord.app_commands.Choice(name="Pareggio", value="draw"),
-    ])
+    @discord.app_commands.choices(
+        esito=[
+            discord.app_commands.Choice(name="Vittoria 2-0", value="2-0"),
+            discord.app_commands.Choice(name="Vittoria 2-1", value="2-1"),
+            discord.app_commands.Choice(name="Pareggio", value="draw"),
+        ]
+    )
     async def correggi_risultato(
         self,
         interaction: discord.Interaction,
@@ -742,8 +755,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo=torneo)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo disponibile." if torneo is None
-                else f"Torneo `{torneo}` non trovato.",
+                "Nessun torneo disponibile." if torneo is None else f"Torneo `{torneo}` non trovato.",
                 ephemeral=True,
             )
 
@@ -769,13 +781,14 @@ class TournamentSystemCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._log(
-            "INFO", "RESULT_CORRECTED", user=interaction.user,
+            "INFO",
+            "RESULT_CORRECTED",
+            user=interaction.user,
             info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 {outcome.message}",
         )
 
     @discord.app_commands.command(
-        name="concludi_torneo",
-        description="Concludi forzatamente un torneo attivo"
+        name="concludi_torneo", description="Concludi forzatamente un torneo attivo"
     )
     @is_admin()
     @discord.app_commands.describe(
@@ -793,8 +806,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo=torneo)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo attivo." if torneo is None
-                else f"Torneo `{torneo}` non trovato.",
+                "Nessun torneo attivo." if torneo is None else f"Torneo `{torneo}` non trovato.",
                 ephemeral=True,
             )
 
@@ -813,21 +825,17 @@ class TournamentSystemCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._log(
-            "INFO", "TOURNAMENT_CONCLUDED", user=interaction.user,
-            info=(
-                f"Tournament **{tournament.name}** (ID: {tournament.id}) "
-                f"force-concluded."
-            ),
+            "INFO",
+            "TOURNAMENT_CONCLUDED",
+            user=interaction.user,
+            info=(f"Tournament **{tournament.name}** (ID: {tournament.id}) force-concluded."),
         )
 
     @discord.app_commands.command(
-        name="torneo_next_turn",
-        description="Genera il prossimo turno del torneo attivo"
+        name="torneo_next_turn", description="Genera il prossimo turno del torneo attivo"
     )
     @is_admin()
-    @discord.app_commands.describe(
-        torneo="ID o nome del torneo (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.describe(torneo="ID o nome del torneo (opzionale, usa l'ultimo)")
     async def torneo_next_turn(
         self,
         interaction: discord.Interaction,
@@ -840,14 +848,11 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo=torneo)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo attivo." if torneo is None
-                else f"Torneo `{torneo}` non trovato.",
+                "Nessun torneo attivo." if torneo is None else f"Torneo `{torneo}` non trovato.",
                 ephemeral=True,
             )
         if tournament.status != TournamentStatus.ACTIVE:
-            return await interaction.followup.send(
-                "Il torneo non \u00e8 attivo.", ephemeral=True
-            )
+            return await interaction.followup.send("Il torneo non \u00e8 attivo.", ephemeral=True)
 
         msg = await self.service.generate_next_round(tournament.id)
 
@@ -876,8 +881,10 @@ class TournamentSystemCog(commands.Cog):
             await interaction.followup.send(embed=embed)
 
             await self._log(
-                "INFO", "TOURNAMENT_COMPLETED", user=interaction.user,
-                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) completed."
+                "INFO",
+                "TOURNAMENT_COMPLETED",
+                user=interaction.user,
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) completed.",
             )
             return
 
@@ -899,22 +906,20 @@ class TournamentSystemCog(commands.Cog):
                 p1_name = self._resolve_name(m.player1) if m.player1 else f"Giocatore #{m.player1_id}"
                 p1_deck = m.player1.deck_name if m.player1 else None
                 if m.player2_id is not None:
-                    p2_name = (
-                        self._resolve_name(m.player2)
-                        if m.player2
-                        else f"Giocatore #{m.player2_id}"
-                    )
+                    p2_name = self._resolve_name(m.player2) if m.player2 else f"Giocatore #{m.player2_id}"
                     p2_deck = m.player2.deck_name if m.player2 else None
                 else:
                     p2_name = None
                     p2_deck = None
-                pairings.append({
-                    "table": m.table_number,
-                    "player1": p1_name,
-                    "player1_deck": p1_deck,
-                    "player2": p2_name,
-                    "player2_deck": p2_deck,
-                })
+                pairings.append(
+                    {
+                        "table": m.table_number,
+                        "player1": p1_name,
+                        "player1_deck": p1_deck,
+                        "player2": p2_name,
+                        "player2_deck": p2_deck,
+                    }
+                )
 
             pairings_embed = build_pairings_embed(
                 tournament_name=tournament.name,
@@ -925,8 +930,10 @@ class TournamentSystemCog(commands.Cog):
             await interaction.followup.send(embed=pairings_embed)
 
         await self._log(
-            "INFO", "ROUND_GENERATED", user=interaction.user,
-            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {msg}"
+            "INFO",
+            "ROUND_GENERATED",
+            user=interaction.user,
+            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {msg}",
         )
 
     # ------------------------------------------------------------------
@@ -934,8 +941,7 @@ class TournamentSystemCog(commands.Cog):
     # ------------------------------------------------------------------
 
     @discord.app_commands.command(
-        name="lista_tornei",
-        description="Mostra tutti i tornei con ID, nome, partecipanti e stato"
+        name="lista_tornei", description="Mostra tutti i tornei con ID, nome, partecipanti e stato"
     )
     async def lista_tornei(self, interaction: discord.Interaction):
         if not await self._check_tournament_channel(interaction):
@@ -984,11 +990,9 @@ class TournamentSystemCog(commands.Cog):
 
     @discord.app_commands.command(
         name="iscriviti",
-        description="Iscriviti a un torneo (il mazzo si invia separatamente con /invia_deck)"
+        description="Iscriviti a un torneo (il mazzo si invia separatamente con /invia_deck)",
     )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.describe(torneo_id="ID del torneo (opzionale, usa l'ultimo)")
     async def iscriviti(
         self,
         interaction: discord.Interaction,
@@ -999,8 +1003,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo_id=torneo_id)
         if tournament is None:
             return await interaction.response.send_message(
-                "Nessun torneo in fase di iscrizioni." if torneo_id is None
-                else "Torneo non trovato.",
+                "Nessun torneo in fase di iscrizioni." if torneo_id is None else "Torneo non trovato.",
                 ephemeral=True,
             )
         if tournament.status != TournamentStatus.REGISTRATION:
@@ -1008,9 +1011,7 @@ class TournamentSystemCog(commands.Cog):
                 "Il torneo non accetta iscrizioni.", ephemeral=True
             )
 
-        already = await self.service.is_player_registered(
-            tournament.id, interaction.user.id
-        )
+        already = await self.service.is_player_registered(tournament.id, interaction.user.id)
         if already:
             return await interaction.response.send_message(
                 "Sei gi\u00e0 iscritto a questo torneo.", ephemeral=True
@@ -1034,17 +1035,16 @@ class TournamentSystemCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._log(
-            "INFO", "REGISTRATION_CONFIRMED", user=interaction.user,
-            info=f"Registered for tournament **{tournament.name}** (ID: {tournament.id}), deck not submitted yet."
+            "INFO",
+            "REGISTRATION_CONFIRMED",
+            user=interaction.user,
+            info=f"Registered for tournament **{tournament.name}** (ID: {tournament.id}), deck not submitted yet.",
         )
 
     @discord.app_commands.command(
-        name="invia_deck",
-        description="Invia o aggiorna il mazzo per un torneo a cui sei gi\u00e0 iscritto"
+        name="invia_deck", description="Invia o aggiorna il mazzo per un torneo a cui sei gi\u00e0 iscritto"
     )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.describe(torneo_id="ID del torneo (opzionale, usa l'ultimo)")
     async def invia_deck(
         self,
         interaction: discord.Interaction,
@@ -1055,8 +1055,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo_id=torneo_id)
         if tournament is None:
             return await interaction.response.send_message(
-                "Nessun torneo in fase di iscrizioni." if torneo_id is None
-                else "Torneo non trovato.",
+                "Nessun torneo in fase di iscrizioni." if torneo_id is None else "Torneo non trovato.",
                 ephemeral=True,
             )
         if tournament.status != TournamentStatus.REGISTRATION:
@@ -1064,26 +1063,20 @@ class TournamentSystemCog(commands.Cog):
                 "Il torneo non accetta pi\u00f9 invii di mazzo.", ephemeral=True
             )
 
-        registered = await self.service.is_player_registered(
-            tournament.id, interaction.user.id
-        )
+        registered = await self.service.is_player_registered(tournament.id, interaction.user.id)
         if not registered:
             return await interaction.response.send_message(
                 "Non sei iscritto a questo torneo: usa /iscriviti prima.", ephemeral=True
             )
 
-        modal = InviaDeckModal(
-            tournament.id, tournament.name, self.service, self.artisan_service, self.bot
-        )
+        modal = InviaDeckModal(tournament.id, tournament.name, self.service, self.artisan_service, self.bot)
         await interaction.response.send_modal(modal)
 
     @discord.app_commands.command(
         name="iscrizioni_torneo",
-        description="Mostra gli iscritti a un torneo e chi ha gi\u00e0 inviato il mazzo"
+        description="Mostra gli iscritti a un torneo e chi ha gi\u00e0 inviato il mazzo",
     )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.describe(torneo_id="ID del torneo (opzionale, usa l'ultimo)")
     async def iscrizioni_torneo(
         self,
         interaction: discord.Interaction,
@@ -1096,8 +1089,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo_id=torneo_id)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo disponibile." if torneo_id is None
-                else "Torneo non trovato.",
+                "Nessun torneo disponibile." if torneo_id is None else "Torneo non trovato.",
                 ephemeral=True,
             )
 
@@ -1127,13 +1119,8 @@ class TournamentSystemCog(commands.Cog):
         )
         await interaction.followup.send(embed=embed)
 
-    @discord.app_commands.command(
-        name="left_torneo",
-        description="Esci da un torneo prima che inizi"
-    )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo da cui uscire (opzionale, usa l'ultimo)"
-    )
+    @discord.app_commands.command(name="left_torneo", description="Esci da un torneo prima che inizi")
+    @discord.app_commands.describe(torneo_id="ID del torneo da cui uscire (opzionale, usa l'ultimo)")
     async def left_torneo(
         self,
         interaction: discord.Interaction,
@@ -1146,8 +1133,7 @@ class TournamentSystemCog(commands.Cog):
         tournament = await self._resolve_tournament(torneo_id=torneo_id)
         if tournament is None:
             return await interaction.followup.send(
-                "Nessun torneo disponibile." if torneo_id is None
-                else "Torneo non trovato.",
+                "Nessun torneo disponibile." if torneo_id is None else "Torneo non trovato.",
                 ephemeral=True,
             )
         if tournament.status != TournamentStatus.REGISTRATION:
@@ -1169,14 +1155,13 @@ class TournamentSystemCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._log(
-            "INFO", "PLAYER_UNREGISTERED", user=interaction.user,
-            info=f"Voluntarily left tournament **{tournament.name}** (ID: {tournament.id})."
+            "INFO",
+            "PLAYER_UNREGISTERED",
+            user=interaction.user,
+            info=f"Voluntarily left tournament **{tournament.name}** (ID: {tournament.id}).",
         )
 
-    @discord.app_commands.command(
-        name="risultato",
-        description="Inserisci il risultato di una partita"
-    )
+    @discord.app_commands.command(name="risultato", description="Inserisci il risultato di una partita")
     @discord.app_commands.describe(
         torneo="ID o nome del torneo (opzionale, usa l'ultimo)",
     )
@@ -1205,9 +1190,7 @@ class TournamentSystemCog(commands.Cog):
         match = None
         chosen_tournament = None
         for t in candidates:
-            m = await self.service.find_pending_match_for_user(
-                t.id, interaction.user.id
-            )
+            m = await self.service.find_pending_match_for_user(t.id, interaction.user.id)
             if m is not None:
                 match = m
                 chosen_tournament = t
@@ -1245,18 +1228,17 @@ class TournamentSystemCog(commands.Cog):
         opponent_tp = tp2 if my_tp is tp1 else tp1
 
         view = RisultatoView(
-            match, chosen_tournament, self.service,
-            my_tp, opponent_tp, self.bot,
+            match,
+            chosen_tournament,
+            self.service,
+            my_tp,
+            opponent_tp,
+            self.bot,
         )
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    @discord.app_commands.command(
-        name="classifica",
-        description="Visualizza la classifica di un torneo"
-    )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo (opzionale, usa il pi\u00f9 recente)"
-    )
+    @discord.app_commands.command(name="classifica", description="Visualizza la classifica di un torneo")
+    @discord.app_commands.describe(torneo_id="ID del torneo (opzionale, usa il pi\u00f9 recente)")
     async def classifica(
         self,
         interaction: discord.Interaction,
@@ -1269,9 +1251,7 @@ class TournamentSystemCog(commands.Cog):
         if torneo_id is None:
             latest = await self.service.get_latest_tournament()
             if latest is None:
-                return await interaction.followup.send(
-                    "Nessun torneo disponibile.", ephemeral=True
-                )
+                return await interaction.followup.send("Nessun torneo disponibile.", ephemeral=True)
             torneo_id = latest.id
 
         result = await self.service.get_standings(torneo_id)
@@ -1306,16 +1286,12 @@ class TournamentSystemCog(commands.Cog):
         if torneo_id is None:
             latest = await self.service.get_latest_tournament()
             if latest is None:
-                return await interaction.followup.send(
-                    "Nessun torneo disponibile.", ephemeral=True
-                )
+                return await interaction.followup.send("Nessun torneo disponibile.", ephemeral=True)
             torneo_id = latest.id
 
         current_round = await self.service.get_current_round(torneo_id)
         if current_round == 0:
-            return await interaction.followup.send(
-                "Il torneo non \u00e8 ancora iniziato.", ephemeral=True
-            )
+            return await interaction.followup.send("Il torneo non \u00e8 ancora iniziato.", ephemeral=True)
 
         matches = await self.service.get_matches(torneo_id)
         round_matches = [m for m in matches if m.round_number == current_round]
@@ -1328,22 +1304,20 @@ class TournamentSystemCog(commands.Cog):
             p1_name = self._resolve_name(m.player1) if m.player1 else f"Giocatore #{m.player1_id}"
             p1_deck = m.player1.deck_name if m.player1 else None
             if m.player2_id is not None:
-                p2_name = (
-                    self._resolve_name(m.player2)
-                    if m.player2
-                    else f"Giocatore #{m.player2_id}"
-                )
+                p2_name = self._resolve_name(m.player2) if m.player2 else f"Giocatore #{m.player2_id}"
                 p2_deck = m.player2.deck_name if m.player2 else None
             else:
                 p2_name = None
                 p2_deck = None
-            pairings.append({
-                "table": m.table_number,
-                "player1": p1_name,
-                "player1_deck": p1_deck,
-                "player2": p2_name,
-                "player2_deck": p2_deck,
-            })
+            pairings.append(
+                {
+                    "table": m.table_number,
+                    "player1": p1_name,
+                    "player1_deck": p1_deck,
+                    "player2": p2_name,
+                    "player2_deck": p2_deck,
+                }
+            )
 
         embed = build_pairings_embed(
             tournament_name=tournament_name,
@@ -1353,13 +1327,8 @@ class TournamentSystemCog(commands.Cog):
         )
         await interaction.followup.send(embed=embed)
 
-    @discord.app_commands.command(
-        name="turni",
-        description="Visualizza gli accoppiamenti del turno corrente"
-    )
-    @discord.app_commands.describe(
-        torneo_id="ID del torneo (opzionale, usa il pi\u00f9 recente)"
-    )
+    @discord.app_commands.command(name="turni", description="Visualizza gli accoppiamenti del turno corrente")
+    @discord.app_commands.describe(torneo_id="ID del torneo (opzionale, usa il pi\u00f9 recente)")
     async def turni(
         self,
         interaction: discord.Interaction,
@@ -1367,13 +1336,8 @@ class TournamentSystemCog(commands.Cog):
     ):
         await self._show_pairings(interaction, torneo_id)
 
-    @discord.app_commands.command(
-        name="leaderboard",
-        description="Classifica rating giocatori (Glicko-2)"
-    )
-    @discord.app_commands.describe(
-        limite="Numero di giocatori da mostrare (default 20)"
-    )
+    @discord.app_commands.command(name="leaderboard", description="Classifica rating giocatori (Glicko-2)")
+    @discord.app_commands.describe(limite="Numero di giocatori da mostrare (default 20)")
     async def leaderboard(
         self,
         interaction: discord.Interaction,
@@ -1389,8 +1353,7 @@ class TournamentSystemCog(commands.Cog):
 
         if not entries:
             await interaction.followup.send(
-                "Nessun giocatore con rating disponibile. "
-                "I rating vengono calcolati al termine dei tornei."
+                "Nessun giocatore con rating disponibile. I rating vengono calcolati al termine dei tornei."
             )
             return
 
@@ -1406,12 +1369,10 @@ class TournamentSystemCog(commands.Cog):
             medal = MEDALS[i] if i < 3 else f"`#{i + 1:<2}`"
             confidence = f"\u00b1{e['rd']:.0f}" if e["rd"] < 100 else "\u00b1>100"
             lines.append(
-                f"{medal} **{e['name']}** \u2014 "
-                f"`{e['rating']:.0f}` {confidence} "
-                f"({e['matches']} partite)"
+                f"{medal} **{e['name']}** \u2014 `{e['rating']:.0f}` {confidence} ({e['matches']} partite)"
             )
 
-        chunks = [lines[i:i + 15] for i in range(0, len(lines), 15)]
+        chunks = [lines[i : i + 15] for i in range(0, len(lines), 15)]
         for i, chunk in enumerate(chunks):
             name = "Giocatori" if len(chunks) == 1 else f"Giocatori (parte {i + 1})"
             embed.add_field(name=name, value="\n".join(chunk), inline=False)
@@ -1419,10 +1380,7 @@ class TournamentSystemCog(commands.Cog):
         embed.set_footer(text=f"Mostrati {len(entries)}/{limit} giocatori")
         await interaction.followup.send(embed=embed)
 
-    @discord.app_commands.command(
-        name="banlist",
-        description="Visualizza le carte bannate"
-    )
+    @discord.app_commands.command(name="banlist", description="Visualizza le carte bannate")
     async def banlist_lista(
         self,
         interaction: discord.Interaction,
@@ -1447,10 +1405,7 @@ class TournamentSystemCog(commands.Cog):
                 color=discord.Color.red(),
                 timestamp=datetime.now(),
             )
-            chunks = [
-                sorted_cards[i:i + 30]
-                for i in range(0, len(sorted_cards), 30)
-            ]
+            chunks = [sorted_cards[i : i + 30] for i in range(0, len(sorted_cards), 30)]
             for i, chunk in enumerate(chunks):
                 name = "Carte" if len(chunks) == 1 else f"Carte (parte {i + 1})"
                 embed.add_field(
@@ -1464,8 +1419,7 @@ class TournamentSystemCog(commands.Cog):
             await session.close()
 
     @discord.app_commands.command(
-        name="banlist_aggiungi",
-        description="Aggiungi una carta alla banlist (admin)"
+        name="banlist_aggiungi", description="Aggiungi una carta alla banlist (admin)"
     )
     @is_admin()
     @discord.app_commands.describe(carta="Nome della carta da bannare")
@@ -1484,19 +1438,13 @@ class TournamentSystemCog(commands.Cog):
             repo = BanlistRepository(session)
             await repo.add_card(carta)
             await self.artisan_service.reload_banlist()
-            await self._log(
-                "INFO", "BANLIST_ADD", user=interaction.user,
-                info=f"Added: {carta}"
-            )
-            await interaction.followup.send(
-                f"Carta **{carta}** aggiunta alla banlist.", ephemeral=True
-            )
+            await self._log("INFO", "BANLIST_ADD", user=interaction.user, info=f"Added: {carta}")
+            await interaction.followup.send(f"Carta **{carta}** aggiunta alla banlist.", ephemeral=True)
         finally:
             await session.close()
 
     @discord.app_commands.command(
-        name="banlist_rimuovi",
-        description="Rimuovi una carta dalla banlist (admin)"
+        name="banlist_rimuovi", description="Rimuovi una carta dalla banlist (admin)"
     )
     @is_admin()
     @discord.app_commands.describe(carta="Nome della carta da rimuovere")
@@ -1516,13 +1464,8 @@ class TournamentSystemCog(commands.Cog):
             ok = await repo.remove_card(carta)
             if ok:
                 await self.artisan_service.reload_banlist()
-                await self._log(
-                    "INFO", "BANLIST_REMOVE", user=interaction.user,
-                    info=f"Removed: {carta}"
-                )
-                await interaction.followup.send(
-                    f"Carta **{carta}** rimossa dalla banlist.", ephemeral=True
-                )
+                await self._log("INFO", "BANLIST_REMOVE", user=interaction.user, info=f"Removed: {carta}")
+                await interaction.followup.send(f"Carta **{carta}** rimossa dalla banlist.", ephemeral=True)
             else:
                 await interaction.followup.send(
                     f"Carta **{carta}** non trovata nella banlist.", ephemeral=True

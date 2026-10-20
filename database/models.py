@@ -1,9 +1,20 @@
+import enum
 from datetime import datetime
+
 from sqlalchemy import (
-    Column, Integer, Float, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
-import enum
 
 
 class Base(DeclarativeBase):
@@ -130,15 +141,9 @@ class Match(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tournament_id = Column(Integer, ForeignKey("tournaments.id"), nullable=False)
     round_number = Column(Integer, nullable=False)
-    player1_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=False
-    )
-    player2_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=True
-    )
-    winner_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=True
-    )
+    player1_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=False)
+    player2_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=True)
+    winner_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=True)
     result = Column(SAEnum(MatchResult), nullable=True)
     table_number = Column(Integer, nullable=True)
     p1_game_wins = Column(Integer, nullable=True)
@@ -157,7 +162,4 @@ class Match(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<Match id={self.id} round={self.round_number} "
-            f"tournament={self.tournament_id}>"
-        )
+        return f"<Match id={self.id} round={self.round_number} tournament={self.tournament_id}>"
