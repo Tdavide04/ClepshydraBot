@@ -19,7 +19,7 @@ parte di questo stesso debito, in parallelo alla stesura di questa roadmap:
 - **Resilienza avvio**: `main.py` intercetta `discord.LoginFailure` e altre eccezioni di startup, logga
   su stderr con prefisso `FATAL:` ed esce con codice non-zero invece di fallire in modo silenzioso.
   `deploy/clepshydrabot.service` (systemd) è disponibile come alternativa, ma **non è quello in uso in
-  produzione** — la VM usa `pm2` (vedi `docs/infrastruttura.md`).
+  produzione** — la VM usa `pm2` (vedi `docs/infrastructure.md`).
 - Un primo tentativo di fix per la cache banlist (`ArtisanService.reload_banlist()`), **incompleto**:
   reload solo sull'istanza chiamata, non sulla seconda `ArtisanService` istanziata da
   `cogs/deck_validation/__init__.py`. Completato nello Step 1 qui sotto (cache spostata a livello di
@@ -48,11 +48,11 @@ Stato di ogni step: `da fare` → `in corso` → `fatto`.
 
 ---
 
-## Step 0 — Refactor `docs/ClepshydraBot_Resoconto_Tecnico.md`
+## Step 0 — Refactor `docs/technical-report.md`
 
 **Stato:** fatto (2026-09-11)
 
-**Problema:** il documento duplicava quasi integralmente `docs/infrastruttura.md` (infra, deployment,
+**Problema:** il documento duplicava quasi integralmente `docs/infrastructure.md` (infra, deployment,
 env, logging) e altri doc dedicati (architettura, funzionalità, cache, flusso validazione), diventando
 una seconda fonte di verità da tenere sincronizzata a mano.
 
@@ -62,7 +62,7 @@ versioni, richiamo al vincolo RAM. Rimosse le sezioni Struttura Repository, Funz
 Esterne, Flusso Validazione, Limitazioni/Debito Tecnico, Architettura V2, Roadmap — sostituite da una
 tabella di rimandi ai documenti dedicati, incluso questo file.
 
-**Documentazione aggiornata:** `docs/ClepshydraBot_Resoconto_Tecnico.md` (questo step).
+**Documentazione aggiornata:** `docs/technical-report.md` (questo step).
 
 ---
 
@@ -145,7 +145,7 @@ il valore calcolato al primo check, senza alcun modo di correggerlo se non edita
 **Documentazione da aggiornare:**
 - `docs/caching.md` — sezione "Cache Carte Scryfall": aggiungere TTL e nuovo comando.
 - `docs/deck-validation.md` — punto 4 "Verifica Legalità Arena": aggiornare l'ordine dei controlli.
-- `docs/comandi.md` — se aggiunto il nuovo comando admin.
+- `docs/commands.md` — se aggiunto il nuovo comando admin.
 - `CHANGELOG.md` — nuova voce `Added`/`Fixed`.
 
 **Implementazione effettiva:** TTL di 30 giorni (`ARTISAN_LEGAL_TTL_DAYS`), timestamp salvato come ISO
@@ -186,7 +186,7 @@ alcun valore storico) — da valutare se rimuoverlo dal tracking indipendentemen
 **Documentazione da aggiornare:**
 - `docs/caching.md` — riscrivere interamente la sezione "Cache Carte Scryfall".
 - `docs/database.md` — aggiungere la nuova tabella allo schema.
-- `docs/architettura.md` — diagramma architetturale (rimuovere `card_cache.json` come storage separato).
+- `docs/architecture.md` — diagramma architetturale (rimuovere `card_cache.json` come storage separato).
 - `CLAUDE.md` — sezione utils/caching.
 - `CHANGELOG.md` — nuova voce `Changed`/`Refactored`.
 
@@ -237,13 +237,13 @@ batch. Impatto oggi trascurabile (tornei da poche decine di persone), ma non sca
   `select(User).where(User.id.in_(user_ids))`.
 
 **Documentazione da aggiornare:**
-- `docs/tornei.md` — se descrive il flusso di aggiornamento rating, aggiornare il riferimento
+- `docs/tournaments.md` — se descrive il flusso di aggiornamento rating, aggiornare il riferimento
   all'implementazione.
 - `CHANGELOG.md` — nuova voce `Changed` (performance).
 
 **Validazione:** `pytest tests/ -v` — 88/88 test verdi, incluso
 `test_tournament_completes_and_updates_rating` che esercita `_update_ratings()` end-to-end contro SQLite
-reale (non solo un compile-check). `docs/tornei.md` non descrive il dettaglio implementativo di
+reale (non solo un compile-check). `docs/tournaments.md` non descrive il dettaglio implementativo di
 `_update_ratings()` (solo il nome nella tabella dei metodi), quindi non necessitava aggiornamento.
 
 ---
@@ -263,7 +263,7 @@ verboso e facile da dimenticare in nuovi metodi.
 
 **Documentazione da aggiornare:**
 - `CHANGELOG.md` — nuova voce `Refactored`.
-- `docs/architettura.md` e `CLAUDE.md` non descrivevano `_get_repos()` nel dettaglio: nessuna modifica
+- `docs/architecture.md` e `CLAUDE.md` non descrivevano `_get_repos()` nel dettaglio: nessuna modifica
   necessaria.
 
 **Validazione:** `pytest tests/ -v` — 88/88 verdi. `test_tournament_service.py` esercita quasi tutti i
@@ -329,7 +329,7 @@ eseguibile in isolamento). Niente `pytest-asyncio`: stesso pattern `asyncio.run(
 - Rimuovere `continue-on-error: true` dal job `lint` in `.github/workflows/ci.yml` una volta pulito.
 
 **Documentazione da aggiornare:**
-- `docs/infrastruttura.md` — sezione "Roadmap Infrastrutturale", Sprint 8: da "parziale" a "completato".
+- `docs/infrastructure.md` — sezione "Roadmap Infrastrutturale", Sprint 8: da "parziale" a "completato".
 - `CHANGELOG.md` — nuova voce `Fixed`.
 
 **Implementazione effettiva:** 54 problemi (42 fuori da `legacy/`, che a quel tempo era escluso in
@@ -363,7 +363,7 @@ rispetto a prima del lint cleanup (nessuna delle correzioni ha toccato la logica
 - `docker-compose.yml` con volume persistente per `data/`, `restart: unless-stopped`, `.env` montato.
 
 **Documentazione da aggiornare:**
-- `docs/infrastruttura.md` — sezione "Roadmap Infrastrutturale", Sprint 7 → completato; sezione
+- `docs/infrastructure.md` — sezione "Roadmap Infrastrutturale", Sprint 7 → completato; sezione
   "Deployment" con le istruzioni Docker come opzione aggiuntiva (senza sostituire la sezione `pm2`, che
   resta il metodo effettivamente in uso finché non si decide di migrare).
 - `README.md` — "Quick Start" con opzione Docker.
@@ -479,7 +479,7 @@ verde.
 - Fissare in `requirements.txt` (con `==`) le versioni oggi installate in produzione. Vanno lette con
   `pip freeze` sulla VM, non da quelle locali.
 - Fissare anche `requirements-dev.txt`.
-- Documentare Python 3.12 come target (`.python-version`) in `README.md` / `docs/infrastruttura.md`.
+- Documentare Python 3.12 come target (`.python-version`) in `README.md` / `docs/infrastructure.md`.
 
 **Validazione:** con un venv 3.12 pulito, `pip install -r requirements-dev.txt` + pytest sono verdi; il
 `docker build` riesce.

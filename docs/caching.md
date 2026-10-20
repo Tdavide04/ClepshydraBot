@@ -56,7 +56,7 @@ ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Arti
 Fino a Settembre 2026 la cache era persistita su `data/card_cache.json`, riscritto per intero ogni 60
 secondi se qualcosa era cambiato — anche per una singola carta modificata su migliaia. Il file era
 inoltre tracciato in git, crescendo senza pulizia ad ogni commit (2.2MB, zero valore come storico
-versionato). Dalla migrazione (Step 4 di `docs/roadmap-miglioramenti.md`), la cache vive nella tabella
+versionato). Dalla migrazione (Step 4 di `docs/roadmap.md`), la cache vive nella tabella
 SQLite `cached_cards` (`database/models.py:CachedCard`), con scritture incrementali (UPSERT/DELETE solo
 sulle entry cambiate). `data/card_cache.json` non è più tracciato in git (resta come file locale inerte,
 utile solo per la migrazione una tantum descritta sotto) e non viene più scritto dal bot.

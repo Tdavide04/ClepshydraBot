@@ -29,7 +29,7 @@ Decided in `docs/adr/0002-standard-di-sviluppo.md`. Every change follows this lo
 3. **Green.** Write the smallest change that turns the test green. Done when `python -m pytest` is fully
    green.
 4. **Refactor.** Remove duplication and sharpen names while the suite stays green. Keep the scope to the
-   change at hand: unrelated debt goes into `docs/roadmap-miglioramenti.md`, not into this diff.
+   change at hand: unrelated debt goes into `docs/roadmap.md`, not into this diff.
 5. **Gate.** Run `python -m pytest` and `python -m ruff check .`. Both must pass.
 6. **Truthful docs.** Update every doc whose description the change made stale (`docs/`, `README.md`,
    this file). Then:
@@ -124,19 +124,19 @@ Target Python is 3.12 (CI, Docker, `ruff.toml`).
 ## Architecture map
 
 Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `utils/`. Each layer calls only
-the layer below it, and repositories hold no business logic. Overview: `docs/architettura.md`.
+the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
 
 | Area | Code | Topic doc |
 |---|---|---|
-| Swiss tournaments, results, Glicko-2 | `cogs/tournament_system/`, `services/` | `docs/tornei.md` |
+| Swiss tournaments, results, Glicko-2 | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
 | Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
 | Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
 | Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |
-| Onboarding | `cogs/presentation/` | `docs/presentazioni.md` |
+| Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
-| Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastruttura.md` |
-| Slash command list | `cogs/` | `docs/comandi.md` |
-| Tech-debt plan | | `docs/roadmap-miglioramenti.md` |
+| Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastructure.md` |
+| Slash command list | `cogs/` | `docs/commands.md` |
+| Tech-debt plan | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
 
 `cogs/deck_validation/` was named `cogs/tournament/` before 1.3.1, and older CHANGELOG entries still use
@@ -188,7 +188,7 @@ listed in the map.
 ## Docs conventions
 
 - Refer to code by symbol name (`check_banlist()` in `validators.py`), not `file.py:line`. The one
-  exception is the "Linea" column of `docs/comandi.md`: recompute it whenever `cogs/` files shift.
+  exception is the "Linea" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
 - Leave volatile counts (tests, commands) out of docs: they go stale with every change.
 - Write rationale and rejected alternatives as an ADR (`docs/adr/NNNN-title.md`), not in this file.
 

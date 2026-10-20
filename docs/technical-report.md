@@ -81,7 +81,7 @@ fondo: questo documento non li ripete.
 Con 1 OCPU e 1 GB RAM (non ridimensionabile su Free Tier), il bot è progettato per minimizzare il
 consumo di memoria e CPU. Questo vincolo ha guidato scelte architetturali chiave: SQLite invece di
 PostgreSQL, cache su file JSON invece di Redis, un solo processo (nessun worker separato). Il dettaglio
-di queste scelte e i relativi trade-off sono tracciati in `docs/infrastruttura.md` (sezione "Vincoli") e
+di queste scelte e i relativi trade-off sono tracciati in `docs/infrastructure.md` (sezione "Vincoli") e
 nella roadmap dei miglioramenti.
 
 ---
@@ -90,14 +90,14 @@ nella roadmap dei miglioramenti.
 
 | Argomento | Documento |
 |---|---|
-| Deployment, variabili d'ambiente, logging, dipendenze, CI | `docs/infrastruttura.md` |
-| Architettura a layer (cogs/services/repositories/database) | `docs/architettura.md` |
-| Comandi slash e permessi | `docs/comandi.md` |
+| Deployment, variabili d'ambiente, logging, dipendenze, CI | `docs/infrastructure.md` |
+| Architettura a layer (cogs/services/repositories/database) | `docs/architecture.md` |
+| Comandi slash e permessi | `docs/commands.md` |
 | Schema database e migrazioni | `docs/database.md` |
 | Sistema di cache (Scryfall, override rarità, banlist) | `docs/caching.md` |
 | Validazione mazzi Artisan | `docs/deck-validation.md` |
 | Sistema banlist | `docs/banlist-system.md` |
-| Sistema presentazioni | `docs/presentazioni.md` |
-| Sistema tornei Swiss | `docs/tornei.md` |
-| Debito tecnico e piano di miglioramento | `docs/roadmap-miglioramenti.md` |
+| Sistema presentazioni | `docs/onboarding.md` |
+| Sistema tornei Swiss | `docs/tournaments.md` |
+| Debito tecnico e piano di miglioramento | `docs/roadmap.md` |
 | Guida per Claude Code | `CLAUDE.md` |

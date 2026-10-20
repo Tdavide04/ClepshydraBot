@@ -215,7 +215,7 @@ che resta il metodo effettivamente in uso in produzione finché non si decide di
 `.github/workflows/ci.yml`, attivo su push/PR:
 - `pytest` su ogni push e PR — **gate bloccante**
 - `ruff` lint (`ruff.toml`, regole minime `E4,E7,E9,F`) — **gate bloccante**: il debito di lint
-  pre-esistente (~54 problemi) è stato sanato nello Step 8 di `docs/roadmap-miglioramenti.md` (allora
+  pre-esistente (~54 problemi) è stato sanato nello Step 8 di `docs/roadmap.md` (allora
   in parte escludendo `legacy/`, poi rimosso dal repository — vedi `CHANGELOG.md`)
 
 Ancora da fare:

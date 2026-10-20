@@ -4,7 +4,7 @@ arena_overrides.py
 Manages rarity overrides for cards that appear on Arena at a higher rarity
 than their paper printings (e.g. SPG).
 
-BUGS FIXED (September 2026, see docs/roadmap-miglioramenti.md):
+BUGS FIXED (September 2026, see docs/roadmap.md):
 - update_spg_overrides used processed_sets to mark a whole set as "done
   forever" after the first successful scan. Wrong for SPG: Scryfall uses a
   single set code "SPG" that keeps growing over time (new Special Guests ship
@@ -50,7 +50,7 @@ _MIN_REQUEST_INTERVAL = 0.11
 _PRINTS_BATCH_SIZE = 25
 
 # New Special Guests ship with almost every main set (~4-8 weeks on average,
-# see the research in docs/roadmap-miglioramenti.md). Weekly leaves a wide
+# see the research in docs/roadmap.md). Weekly leaves a wide
 # margin: after the first run, a check costs only the cards that are new since
 # the last run (thanks to checked_cards), so even when nothing ever changes an
 # empty run costs next to nothing.

@@ -120,7 +120,7 @@ Relazioni: `tournament` → Tournament, `player1/2` → TournamentPlayer
 ### Tabella: `cached_cards`
 
 Cache persistente delle carte Scryfall (dati grezzi + legalità Artisan). Migrata da
-`data/card_cache.json` a SQLite nel Settembre 2026 (Step 4 di `docs/roadmap-miglioramenti.md`) — vedi
+`data/card_cache.json` a SQLite nel Settembre 2026 (Step 4 di `docs/roadmap.md`) — vedi
 `docs/caching.md` per il dettaglio del funzionamento (load/save incrementali, TTL, migrazione legacy).
 
 | Colonna | Tipo | Vincoli | Descrizione |

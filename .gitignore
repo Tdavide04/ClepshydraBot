@@ -29,7 +29,7 @@ Thumbs.db
 *.db
 
 # Scryfall card cache: since the migration to SQLite (Step 4 of
-# roadmap-miglioramenti.md) it lives in the DB, so the legacy JSON no longer
+# roadmap.md) it lives in the DB, so the legacy JSON no longer
 # needs tracking. It can stay on disk as a local backup/migration fallback: the
 # bot neither reads nor writes it once the cached_cards table is populated.
 data/card_cache.json

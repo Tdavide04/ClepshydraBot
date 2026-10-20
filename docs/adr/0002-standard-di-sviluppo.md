@@ -1,7 +1,7 @@
 # ADR-0002 — Standard di sviluppo: TDD, Conventional Commits, gate automatici
 
 **Stato:** accettato (2026-10-20). Gate automatici in arrivo con gli step 10-17 di
-`docs/roadmap-miglioramenti.md`.
+`docs/roadmap.md`.
 
 ## Contesto
 

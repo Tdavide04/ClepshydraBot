@@ -41,7 +41,7 @@ Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automat
 | `/forced_event_schedule_check` | Force an immediate re-check of the latest Arena "Event Schedule" page (also runs automatically every 2 hours) | Admin |
 | `/forced_ban_announcement_check` | Force an immediate re-check of the latest Banned and Restricted Announcement (also runs automatically every 2 hours) | Admin |
 
-Full details (parameters, behaviour, source location) in `docs/comandi.md`.
+Full details (parameters, behaviour, source location) in `docs/commands.md`.
 
 ## Tech Stack
 
@@ -156,7 +156,7 @@ docker compose logs -f bot
 ```
 
 Data (SQLite DB, card cache) persists in a named Docker volume across restarts. See
-`docs/infrastruttura.md` for details — production currently runs via `pm2`, not Docker, but the image is
+`docs/infrastructure.md` for details — production currently runs via `pm2`, not Docker, but the image is
 validated and ready to use.
 
 ## Development
