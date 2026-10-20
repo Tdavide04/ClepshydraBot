@@ -38,9 +38,9 @@ class DeckValidationResult:
     illegal_rarity_cards: list[str] = field(default_factory=list)
     mainboard: list[ArtisanCard] = field(default_factory=list)
     sideboard: list[ArtisanCard] = field(default_factory=list)
-    # Valorizzato se Scryfall non ha risposto: il mazzo non e' stato
-    # valutato (ne' valido ne' "non valido"), il chiamante deve dire di
-    # riprovare invece di mostrare un esito.
+    # Set if Scryfall didn't answer: the deck was not evaluated (neither
+    # valid nor "invalid"), the caller must say to retry instead of showing
+    # a verdict.
     service_error: str | None = None
 
     @property

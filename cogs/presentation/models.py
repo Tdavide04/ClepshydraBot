@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Storage temporaneo per i dati di presentazione tra le interazioni
+# Temporary storage for presentation data across interactions
 PRESENTATION_DATA_STORE: dict[int, 'PresentationData'] = {}
 
 

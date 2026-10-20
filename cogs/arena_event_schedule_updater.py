@@ -48,9 +48,9 @@ class ArenaEventScheduleUpdater(commands.Cog):
             if logger:
                 await send_event_schedule_log(logger, result, user=interaction.user, forced=True)
 
-            esito = "interpretata correttamente" if result["categories"] is not None else "NON interpretabile, vedi WARN nel canale log"
+            outcome = "interpretata correttamente" if result["categories"] is not None else "NON interpretabile, vedi WARN nel canale log"
             await interaction.followup.send(
-                f"✅ Ricontrollata {result['url']} ({esito}). Dettagli nel canale log.",
+                f"✅ Ricontrollata {result['url']} ({outcome}). Dettagli nel canale log.",
                 ephemeral=True
             )
 

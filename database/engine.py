@@ -63,13 +63,13 @@ async def _migrate_banlist():
         repo = BanlistRepository(session)
         imported = await repo.import_from_file(BANLIST_FILE)
         if imported:
-            print(f"Banlist: importate {imported} carte da {BANLIST_FILE}")
+            print(f"Banlist: imported {imported} cards from {BANLIST_FILE}")
     finally:
         await session.close()
 
 
-# (tabella, colonna, DDL): ogni voce aggiunge una colonna mancante a uno schema
-# esistente. Elenco cumulativo, mai rimosso — vedi database.md "Migrazioni Automatiche".
+# (table, column, DDL): each entry adds a missing column to an existing schema.
+# Cumulative list, entries are never removed - see database.md "Migrazioni Automatiche".
 _SCHEMA_MIGRATIONS: list[tuple[str, str, str]] = [
     ("tournament_players", "deck_name", "ALTER TABLE tournament_players ADD COLUMN deck_name VARCHAR(200)"),
     ("matches", "p1_game_wins", "ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER"),
@@ -95,10 +95,10 @@ async def _migrate_schema():
                 continue
             try:
                 await conn.execute(sa_text(ddl))
-                print(f"Migrazione: aggiunta colonna {column} a {table}")
+                print(f"Migration: added column {column} to {table}")
             except Exception as exc:
                 print(
-                    f"ERRORE migrazione: impossibile aggiungere {column} a {table}: {exc}"
+                    f"MIGRATION ERROR: could not add {column} to {table}: {exc}"
                 )
 
 

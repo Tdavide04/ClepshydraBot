@@ -410,7 +410,7 @@ class TestSendBanAnnouncementLog:
         community_title = logger.calls[0]["community_title"]
         community_info = logger.calls[0]["community_info"]
         assert community_title and "banned" in community_title.lower()
-        assert "controllo" not in community_info.lower()
+        assert "check" not in community_info.lower()
         assert ANNOUNCEMENT_A_URL in community_info
 
         # Data/ora dell'annuncio (dal lastmod formattato) nel titolo.
@@ -432,4 +432,4 @@ class TestSendBanAnnouncementLog:
         assert logger.calls[0]["event"] == "BAN_ANNOUNCEMENT_UPDATED"
         assert logger.calls[0]["extra_channel_id"] is None, "gia' comunicato alla community, niente ripost"
         assert [f["name"] for f in logger.calls[0]["fields"]] == ["Standard"]
-        assert "gia' notificato" in logger.calls[0]["info"]
+        assert "already notified" in logger.calls[0]["info"]

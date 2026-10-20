@@ -51,7 +51,7 @@ class DeckImageGenerator:
 
     @classmethod
     def _try_fonts(cls, size):
-        """Prova vari font, fallback al default."""
+        """Tries several fonts, falls back to the default."""
         for name in [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -94,7 +94,7 @@ class DeckImageGenerator:
     
     @classmethod
     def _get_background_path(cls, mainboard: list):
-        """Determina il percorso dell'immagine di sfondo in base ai colori del mazzo."""
+        """Picks the background image path from the deck's colors."""
         color_counts = {
             "red": 0,    # Mountain / Great Furnace
             "blue": 0,   # Island / Seat of the Synod
@@ -232,12 +232,11 @@ class DeckImageGenerator:
     @classmethod
     def _extract_dominant_color(cls, image: Image.Image) -> tuple[int, int, int]:
         """
-        Restituisce il colore medio (R, G, B) dell'immagine passata,
-        ignorando pixel quasi-neri (< soglia 30 su tutti i canali)
-        che porterebbero il risultato verso il nero e nasconderebbero
-        il logo sullo sfondo scurito.
+        Returns the average color (R, G, B) of the given image, ignoring
+        near-black pixels (< 30 on every channel), which would pull the
+        result toward black and hide the logo on the darkened background.
         """
-        # Lavora su una miniatura per velocità
+        # Work on a thumbnail for speed
         thumb = image.convert("RGB").resize((64, 64), Image.LANCZOS)
         pixels = list(thumb.getdata())
 
@@ -263,17 +262,17 @@ class DeckImageGenerator:
         center_x: int | None = None,
     ) -> None:
         """
-        Carica il logo di Clepshydra, lo colora con il colore dominante
-        dello sfondo (pre-oscuramento) e lo incolla come watermark
-        semitrasparente in basso al canvas.
+        Loads the Clepshydra logo, tints it with the background's dominant
+        color (before darkening) and pastes it as a semi-transparent
+        watermark at the bottom of the canvas.
 
-        Posizionamento orizzontale:
-        - Se center_x è fornito, il logo viene centrato su quella coordinata X.
-        - Altrimenti viene centrato sull'intero canvas.
+        Horizontal placement:
+        - If center_x is given, the logo is centered on that X coordinate.
+        - Otherwise it is centered on the whole canvas.
 
-        Verticalmente è sempre ancorato al bordo inferiore con LOGO_MARGIN.
+        Vertically it is always anchored to the bottom edge with LOGO_MARGIN.
 
-        Modifica `canvas` in-place.
+        Modifies `canvas` in place.
         """
         try:
             logo_src = Image.open(cls.LOGO_PATH).convert("RGBA")
@@ -347,8 +346,8 @@ class DeckImageGenerator:
     @classmethod
     def layout_section(cls, cards: list, start_col: int, columns: int):
         """
-        Restituisce lista di (card, col, row) per una sezione.
-        Riempie per colonne (non per righe).
+        Returns a list of (card, col, row) for a section.
+        Fills by columns (not by rows).
         """
         result = []
         col = start_col
@@ -363,7 +362,7 @@ class DeckImageGenerator:
 
     @classmethod
     def draw_card_stack(cls, canvas, draw, card, x, y):
-        """Disegna lo stack di copie di una carta."""
+        """Draws the stack of copies of a card."""
         qty = card.get("quantity", 1)
         img = card.get("image")
 
@@ -416,7 +415,7 @@ class DeckImageGenerator:
 
     @classmethod
     def draw_section_label(cls, draw, x, y, label: str, count: int, font, label_font):
-        """Disegna etichetta sezione (es: 'Creature — 20')."""
+        """Draws a section label (e.g. 'Creature — 20')."""
         text = f"{label}  ·  {count}"
         # Shadow
         draw.text((x + 1, y + 1), text, fill=(0, 0, 0, 200), font=font)
@@ -432,14 +431,14 @@ class DeckImageGenerator:
         deck_name: str = "ARTISAN DECK",
     ):
         # ──────────────────────────────────────────────────
-        # DOWNLOAD IMMAGINI
+        # DOWNLOAD IMAGES
         # ──────────────────────────────────────────────────
         all_cards = mainboard + sideboard
         for card in all_cards:
             card["image"] = await cls.download_card_image(session, card["image_url"])
 
         # ──────────────────────────────────────────────────
-        # SORT MAINBOARD IN SEZIONI
+        # SORT MAINBOARD INTO SECTIONS
         # ──────────────────────────────────────────────────
         creatures, spells, lands = cls.sort_mainboard(mainboard)
         sections = [
@@ -450,7 +449,7 @@ class DeckImageGenerator:
         sections = [(label, cards) for label, cards in sections if cards]
 
         # ──────────────────────────────────────────────────
-        # CALCOLA LAYOUT MAINBOARD
+        # COMPUTE MAINBOARD LAYOUT
         # ──────────────────────────────────────────────────
         col_width = cls.CARD_WIDTH + cls.COLUMN_SPACING
 
@@ -479,7 +478,7 @@ class DeckImageGenerator:
         main_width = cls.MAIN_COLUMNS * col_width - cls.COLUMN_SPACING
 
         # ──────────────────────────────────────────────────
-        # CALCOLA LAYOUT SIDEBOARD
+        # COMPUTE SIDEBOARD LAYOUT
         # ──────────────────────────────────────────────────
         side_col_width = cls.CARD_WIDTH + cls.COLUMN_SPACING
         side_rows = math.ceil(len(sideboard) / cls.SIDEBOARD_COLUMNS)
@@ -502,8 +501,8 @@ class DeckImageGenerator:
 
         bg_path = cls._get_background_path(mainboard)
         
-        # bg_for_logo: riferimento allo sfondo ritagliato PRIMA dell'oscuramento,
-        # usato da _apply_logo_watermark per campionare il colore dominante reale.
+        # bg_for_logo: the cropped background BEFORE darkening, used by
+        # _apply_logo_watermark to sample the real dominant color.
         bg_for_logo = None
 
         try:
@@ -535,7 +534,9 @@ class DeckImageGenerator:
         # ──────────────────────────────────────────────────
         # LOGO WATERMARK
         # ──────────────────────────────────────────────────
-        # div_x è il divisore verticale main/side → calcolato con la stessa
+        # div_x is the vertical main/side divider, computed with the same
+        # formula as the divider drawn below, so the logo is centered on the
+        # sideboard column
         _div_x = cls.PADDING_X + main_width + cls.SIDEBOARD_GAP // 2
         _sideboard_center_x = (_div_x + canvas_width) // 2
 
@@ -588,7 +589,7 @@ class DeckImageGenerator:
         )
 
         # ──────────────────────────────────────────────────
-        # DIVIDER VERTICALE MAIN / SIDE
+        # VERTICAL MAIN / SIDE DIVIDER
         # ──────────────────────────────────────────────────
         div_x = cls.PADDING_X + main_width + cls.SIDEBOARD_GAP // 2
         draw.line(
@@ -598,7 +599,7 @@ class DeckImageGenerator:
         )
 
         # ──────────────────────────────────────────────────
-        # MAINBOARD: RENDER PER SEZIONE
+        # MAINBOARD: RENDER PER SECTION
         # ──────────────────────────────────────────────────
         current_y = cls.PADDING_TOP + 8
         main_x = cls.PADDING_X
@@ -609,7 +610,7 @@ class DeckImageGenerator:
             max_stack_h = sec["max_stack_h"]
             total_in_section = sum(c["quantity"] for c in cards)
 
-            # Label sezione
+            # Section label
             cls.draw_section_label(draw, main_x, current_y, label, total_in_section, font_section, font_label)
             current_y += cls.SECTION_LABEL_HEIGHT + 6
 

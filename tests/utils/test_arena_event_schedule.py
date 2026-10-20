@@ -540,7 +540,7 @@ class TestSendEventScheduleLog:
         community_title = logger.calls[0]["community_title"]
         community_info = logger.calls[0]["community_info"]
         assert community_title and "calendario" in community_title.lower()
-        assert "controllo" not in community_info.lower()
+        assert "check" not in community_info.lower()
         assert SET_A_URL in community_info
 
         # Nome espansione (dallo slug URL) e periodo coperto (dal calendario

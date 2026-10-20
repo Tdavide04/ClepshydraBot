@@ -157,7 +157,7 @@ class TestPeriodicSaveLoop:
             pass
 
         assert len(calls) == 3, "dopo l'errore il ciclo deve continuare a salvare"
-        assert "[CARD CACHE] salvataggio fallito" in capsys.readouterr().out
+        assert "[CARD CACHE] save failed" in capsys.readouterr().out
 
     def test_dirty_entries_survive_a_failed_save(self, isolated_db, monkeypatch):
         """Il ritentativo ha senso solo se le modifiche restano in sospeso:

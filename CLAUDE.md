@@ -70,7 +70,7 @@ Format: `<type>(<scope>): <subject>`.
 - **Body:** why the change was made, and what was verified.
 - **Footer:** `Refs: #<issue>`, `BREAKING CHANGE: ...` when it applies, plus the attribution trailer.
 - **Scopes** (optional, one per commit): `tournament`, `deck`, `banlist`, `cache`, `monitor`,
-  `onboarding`, `logger`, `db`, `deps`, `ci`, `i18n`.
+  `onboarding`, `logger`, `db`, `deps`, `ci`, `lang`.
 
 Type → `VERSION` bump (MAJOR moves only when the user decides it explicitly):
 

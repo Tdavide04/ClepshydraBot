@@ -54,10 +54,10 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
     async def get_by_tournament(
         self, tournament_id: int, include_dropped: bool = False
     ) -> list[TournamentPlayer]:
-        """Iscritti del torneo ordinati per seed. Di default solo quelli
-        attivi (pairing, avvio, elenco iscrizioni); include_dropped=True per
-        classifica e rating, dove le partite gia' giocate da un droppato
-        continuano a contare."""
+        """Tournament registrations ordered by seed. Active ones only by
+        default (pairing, start, registration list); include_dropped=True for
+        standings and rating, where matches a dropped player already played
+        still count."""
         query = (
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
@@ -88,8 +88,8 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
         return len(result.all())
 
     async def max_seed(self, tournament_id: int) -> int:
-        """Seed piu' alto mai assegnato nel torneo, iscrizioni droppate
-        incluse (mantengono il loro seed se il giocatore si reiscrive)."""
+        """Highest seed ever assigned in the tournament, dropped registrations
+        included (they keep their seed if the player registers again)."""
         result = await self.session.execute(
             select(func.max(TournamentPlayer.seed))
             .where(TournamentPlayer.tournament_id == tournament_id)

@@ -1,38 +1,36 @@
 """
 arena_event_schedule.py
 
-Rileva la pubblicazione o l'aggiornamento delle pagine "[Set] MTG Arena Event
-Schedule" di Wizards (una per espansione, non settimanali come i post
-"MTG Arena Announcements") e ne estrae la sezione "Full Event Calendar",
-per notificare la community senza dover controllare manualmente il sito.
+Detects publication or updates of Wizards' "[Set] MTG Arena Event Schedule"
+pages (one per expansion, not weekly like the "MTG Arena Announcements"
+posts) and extracts their "Full Event Calendar" section, to notify the
+community without anyone checking the site by hand.
 
-Approccio:
-- magic.wizards.com/en/sitemap.xml e' un sitemap XML standard con <lastmod>
-  per ogni pagina del sito. Filtrando le URL "*-event-schedule" sotto
-  /en/news/mtg-arena/ si ottiene l'elenco delle pagine schedule esistenti
-  senza dover indovinare in anticipo il nome del prossimo set.
-- Queste pagine vengono aggiornate IN PLACE da Wizards durante il ciclo di
-  vita del set (es. per aggiungere le settimane successive di rotazione
-  Quick Draft), non solo pubblicate una volta: per questo si confronta il
-  lastmod, non solo la presenza dell'URL.
-- Wizards NON rimuove dal sitemap le pagine dei set passati: a un dato
-  momento il sitemap ne contiene sempre diverse (una per ogni set recente).
-  Interessa solo quella del set ATTUALMENTE attivo, non l'intero storico -
-  per questo si guarda solo la pagina con il lastmod piu' recente, non tutte
-  quelle trovate. Senza questo filtro, la prima esecuzione su una macchina
-  nuova (stato vuoto) segnalerebbe come "nuove" anche pagine di set gia'
-  conclusi da mesi, producendo un flood di notifiche per eventi non piu'
-  rilevanti.
-- Il check del sitemap e' economico (una GET su un file statico) e viene
-  fatto ogni 2 ore; il fetch+parsing della singola pagina (piu'
-  costoso e fragile, essendo HTML non un formato dati) scatta solo per le
-  URL il cui lastmod risulta nuovo o cambiato rispetto allo stato salvato.
-- La sezione "Full Event Calendar" di queste pagine e' HTML realmente
-  strutturato (non prosa libera come i post Announcements settimanali):
-  blocchi <h2>/<h3>/<h4>Categoria</h2> seguiti da <ul><li>intervallo di
-  date: descrizione</li></ul>. Se questa struttura non viene trovata (drift
-  del sito), la pagina viene segnalata come non interpretabile invece di
-  pubblicare un riassunto incompleto o sbagliato.
+Approach:
+- magic.wizards.com/en/sitemap.xml is a standard XML sitemap with a <lastmod>
+  for every page on the site. Filtering the "*-event-schedule" URLs under
+  /en/news/mtg-arena/ yields the list of existing schedule pages without
+  guessing the next set's name in advance.
+- Wizards updates these pages IN PLACE during the set's lifecycle (e.g. to
+  add the following weeks of Quick Draft rotation), rather than publishing
+  them once: that is why lastmod is compared, not just the URL's presence.
+- Wizards does NOT remove past sets' pages from the sitemap: at any given
+  time it lists several (one per recent set). Only the CURRENTLY active
+  set's page matters, not the whole history - so only the page with the
+  newest lastmod is considered, not all of them. Without this filter, the
+  first run on a new machine (empty state) would report as "new" pages of
+  sets that ended months ago, flooding notifications for events no longer
+  relevant.
+- The sitemap check is cheap (a GET on a static file) and runs every 2
+  hours; fetching+parsing the page itself (more expensive and fragile,
+  being HTML rather than a data format) only happens for URLs whose lastmod
+  is new or changed versus the saved state.
+- The "Full Event Calendar" section of these pages is genuinely structured
+  HTML (not free prose like the weekly Announcements posts):
+  <h2>/<h3>/<h4>Category</h2> blocks followed by <ul><li>date range:
+  description</li></ul>. If this structure isn't found (site drift), the
+  page is reported as unparseable instead of publishing an incomplete or
+  wrong summary.
 """
 
 import asyncio
@@ -58,8 +56,8 @@ from utils.sitemap_monitor import (
 
 STATE_PATH = "data/arena_event_schedule_state.json"
 
-# Sotto-percorso su cui vivono sia i post settimanali "announcements-*" sia
-# le pagine dedicate "*-event-schedule" che questo modulo osserva.
+# Sub-path hosting both the weekly "announcements-*" posts and the dedicated
+# "*-event-schedule" pages this module watches.
 _NEWS_URL_PREFIX = "https://magic.wizards.com/en/news/mtg-arena/"
 
 _EVENT_SCHEDULE_URL_RE = re.compile(
@@ -72,20 +70,20 @@ _HEADING_LIST_RE = re.compile(
 )
 _LI_RE = re.compile(r"<li>(.*?)</li>", re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
-# [^>]* tollera attributi sul tag heading (es. reality-fracture-event-schedule
-# ha <h2 id="FRACalendar" style="scroll-margin-top: 70px;">Full Event
-# Calendar</h2> invece del bare <h2> osservato sulle pagine precedenti -
-# causa reale di un WARN ARENA_EVENT_SCHEDULE_UNPARSEABLE in produzione il
-# 2026-09-21). Le categorie sotto (_HEADING_LIST_RE) restano bare su questa
-# pagina, quindi non serve la stessa tolleranza li'.
+# [^>]* tolerates attributes on the heading tag (e.g. reality-fracture-event-schedule
+# has <h2 id="FRACalendar" style="scroll-margin-top: 70px;">Full Event
+# Calendar</h2> instead of the bare <h2> seen on earlier pages - the actual
+# cause of an ARENA_EVENT_SCHEDULE_UNPARSEABLE WARN in production on
+# 2026-09-21). The category headings below (_HEADING_LIST_RE) stay bare on
+# that page, so they don't need the same tolerance.
 _CALENDAR_HEADING_RE = re.compile(r"<h[234][^>]*>\s*Full Event Calendar\s*</h[234]>")
 _ARTICLE_END_RE = re.compile(r"</article>")
 
-# Ogni voce della "Full Event Calendar" ha il formato osservato dal vivo
-# "Mese Giorno[-Mese] Giorno: Nome evento" (es. "August 11-September 29: ...",
-# "August 11-19: ..."), senza anno esplicito - il mese di fine e' opzionale
-# quando il range resta nello stesso mese. Il trattino puo' essere un en dash
-# "-" (quello effettivamente usato dal sito) o un normale "-".
+# Every "Full Event Calendar" entry has the format observed live
+# "Month Day[-Month] Day: Event name" (e.g. "August 11-September 29: ...",
+# "August 11-19: ..."), with no explicit year - the end month is optional
+# when the range stays within the same month. The dash can be an en dash
+# (the one the site actually uses) or a plain "-".
 _ENTRY_DATE_RE = re.compile(
     r"^(?P<m1>[A-Za-z]+)\s+(?P<d1>\d{1,2})\s*[–-]\s*"
     r"(?:(?P<m2>[A-Za-z]+)\s+)?(?P<d2>\d{1,2})\s*:\s*(?P<name>.+)$"
@@ -107,7 +105,7 @@ _state_cache: dict | None = None
 
 
 # ==========================================
-# LOAD / SAVE STATO
+# LOAD / SAVE STATE
 # ==========================================
 
 def _load_state() -> dict:
@@ -133,11 +131,11 @@ def invalidate_state_cache() -> None:
 
 
 def get_latest_known_event_schedule() -> dict:
-    """Ritorna l'ultima pagina Event Schedule nota da stato salvato su disco
-    - {"url": str | None, "lastmod": str | None} - senza alcuna richiesta di
-    rete. Usata dal log di stato all'avvio del bot (main.py), distinto dal
-    check periodico vero e proprio: qui interessa solo mostrare cosa il bot
-    sa gia', non verificare se c'e' qualcosa di nuovo."""
+    """Returns the latest Event Schedule page known from the state saved on
+    disk - {"url": str | None, "lastmod": str | None} - with no network
+    request. Used by the startup status log (main.py), distinct from the real
+    periodic check: here the point is only to show what the bot already
+    knows, not to check for anything new."""
 
     state = _load_state()
     return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
@@ -148,9 +146,9 @@ def get_latest_known_event_schedule() -> dict:
 # ==========================================
 
 def _parse_sitemap_xml(body: str) -> dict[str, str]:
-    """Estrae {url: lastmod} per le sole pagine '*-event-schedule' sotto
-    /en/news/mtg-arena/. Separata dal fetch HTTP per essere testabile senza
-    mockare aiohttp."""
+    """Extracts {url: lastmod} for the '*-event-schedule' pages under
+    /en/news/mtg-arena/ only. Kept separate from the HTTP fetch so it can be
+    tested without mocking aiohttp."""
 
     try:
         root = ET.fromstring(body)
@@ -178,8 +176,8 @@ def _parse_sitemap_xml(body: str) -> dict[str, str]:
 async def _fetch_sitemap_event_schedule_urls(
     session: aiohttp.ClientSession,
 ) -> dict[str, str]:
-    """Scarica il sitemap e restituisce {url: lastmod} per le sole pagine
-    '*-event-schedule' sotto /en/news/mtg-arena/."""
+    """Fetches the sitemap and returns {url: lastmod} for the
+    '*-event-schedule' pages under /en/news/mtg-arena/ only."""
 
     body = await fetch_sitemap_xml(session)
     if body is None:
@@ -189,7 +187,7 @@ async def _fetch_sitemap_event_schedule_urls(
 
 
 # ==========================================
-# PARSING PAGINA "FULL EVENT CALENDAR"
+# PARSING THE "FULL EVENT CALENDAR" PAGE
 # ==========================================
 
 def _strip_tags(text: str) -> str:
@@ -197,10 +195,10 @@ def _strip_tags(text: str) -> str:
 
 
 def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
-    """Estrae {categoria: [voci]} dalla sezione 'Full Event Calendar' di una
-    pagina Event Schedule. Restituisce None se la sezione non viene trovata
-    (drift strutturale del sito) - il chiamante deve trattarlo come
-    'non interpretabile', non come 'nessun evento'."""
+    """Extracts {category: [entries]} from the 'Full Event Calendar' section
+    of an Event Schedule page. Returns None if the section isn't found
+    (structural site drift) - the caller must treat it as 'unparseable', not
+    as 'no events'."""
 
     calendar_match = _CALENDAR_HEADING_RE.search(page_html)
     if not calendar_match:
@@ -223,16 +221,16 @@ def parse_full_event_calendar(page_html: str) -> dict[str, list[str]] | None:
 
 
 # ==========================================
-# PARSING DATE VOCE + RAGGRUPPAMENTO PER MESE
+# ENTRY DATE PARSING + GROUPING BY MONTH
 # ==========================================
 
 def parse_event_entry(text: str) -> dict | None:
-    """Estrae mese/giorno di inizio e fine da una voce testuale della
-    'Full Event Calendar' (es. 'August 11-September 29: Nome evento' o
-    'August 11-19: Nome evento'). Restituisce None se il testo non segue il
-    formato atteso - il chiamante deve escludere la voce dal calendario a
-    immagine invece di inventare una data, ma puo' comunque mostrarla intatta
-    negli embed testuali (che non dipendono da questo parsing)."""
+    """Extracts start and end month/day from a 'Full Event Calendar' text
+    entry (e.g. 'August 11-September 29: Event name' or 'August 11-19: Event
+    name'). Returns None if the text doesn't follow the expected format - the
+    caller must leave the entry out of the calendar image instead of making
+    up a date, but can still show it untouched in text embeds (which don't
+    depend on this parsing)."""
 
     match = _ENTRY_DATE_RE.match(text.strip())
     if not match:
@@ -261,12 +259,12 @@ def parse_event_entry(text: str) -> dict | None:
 
 
 def _infer_start_year(start_month: int, reference: date) -> int:
-    """Assume l'anno corrente al momento del check; se il mese di inizio
-    risulta molto "indietro" rispetto al mese corrente (es. Gennaio quando il
-    check avviene a Dicembre), lo si considera dell'anno prossimo invece che
-    di uno gia' passato - copre il turno di anno per un range pubblicato a
-    fine anno. La soglia (6 mesi) evita falsi positivi sulle voci "Flashback"
-    che si riferiscono correttamente a un mese recente dello stesso anno."""
+    """Assumes the current year at check time; if the start month is far
+    "behind" the current month (e.g. January when the check runs in
+    December), it is taken as next year rather than a past one - covers the
+    year boundary for a range published at year end. The threshold (6
+    months) avoids false positives on "Flashback" entries that correctly
+    refer to a recent month of the same year."""
 
     diff = start_month - reference.month
     if diff <= -6:
@@ -278,12 +276,12 @@ def build_month_calendar(
     categories: dict[str, list[str]],
     reference_date: date | None = None,
 ) -> dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]]:
-    """Trasforma {categoria: [voci testuali]} in
-    {(anno, mese): {categoria: [(giorno_inizio, giorno_fine, nome), ...]}},
-    spezzando ogni range che attraversa piu' mesi in un segmento per mese
-    toccato (i giorni vengono ritagliati ai limiti del mese). Voci non
-    parsabili (formato data imprevisto) vengono escluse silenziosamente -
-    restano visibili solo negli embed testuali, che non passano da qui."""
+    """Turns {category: [text entries]} into
+    {(year, month): {category: [(start_day, end_day, name), ...]}},
+    splitting every range spanning several months into one segment per
+    month it touches (days are clipped to the month's bounds). Unparseable
+    entries (unexpected date format) are silently left out - they stay
+    visible only in text embeds, which don't go through here."""
 
     if reference_date is None:
         reference_date = date.today()
@@ -327,12 +325,11 @@ def build_month_calendar(
 
 
 def extract_set_name_from_url(url: str) -> str:
-    """Deriva un nome leggibile dell'espansione dallo slug della pagina
-    Event Schedule (es. '.../the-hobbit-event-schedule' -> 'The Hobbit').
-    La pagina non espone il nome del set in un campo dedicato che si possa
-    estrarre in modo affidabile (compare solo dentro prosa/HTML vario), ma
-    lo slug e' sempre presente e stabile, quindi e' la fonte piu' sicura per
-    un titolo comunity leggibile."""
+    """Derives a readable expansion name from the Event Schedule page slug
+    (e.g. '.../the-hobbit-event-schedule' -> 'The Hobbit'). The page has no
+    dedicated set-name field that can be extracted reliably (the name only
+    shows up inside assorted prose/HTML), but the slug is always present and
+    stable, so it is the safest source for a readable community title."""
 
     slug = url.rstrip("/").rsplit("/", 1)[-1]
     if slug.endswith("-event-schedule"):
@@ -344,14 +341,14 @@ def extract_set_name_from_url(url: str) -> str:
 def format_period_covered(
     month_calendar: dict[tuple[int, int], dict[str, list[tuple[int, int, str]]]],
 ) -> str | None:
-    """Formatta in italiano il periodo complessivo coperto da tutte le voci
-    di un calendario gia' costruito da build_month_calendar() (es. '11
-    Agosto - 29 Settembre 2026'), o None se il calendario e' vuoto. Il
-    confronto cronologico usa tuple (anno, mese, giorno): dato che le chiavi
-    (anno, mese) sono gia' in ordine cronologico e i giorni sono ritagliati
-    ai limiti del mese per i segmenti intermedi, il min/max su queste tuple
-    coincide con l'inizio/fine reali dell'intervallo originale, senza dover
-    ricostruire i range pre-split."""
+    """Formats, in Italian (it is shown to the community), the overall
+    period covered by every entry of a calendar already built by
+    build_month_calendar() (e.g. '11 Agosto - 29 Settembre 2026'), or None
+    if the calendar is empty. The chronological comparison uses (year,
+    month, day) tuples: since the (year, month) keys are already in
+    chronological order and days are clipped to month bounds for the middle
+    segments, min/max over these tuples matches the real start/end of the
+    original range, without rebuilding the pre-split ranges."""
 
     starts: list[date] = []
     ends: list[date] = []
@@ -379,8 +376,8 @@ def format_period_covered(
     )
 
 
-# In pratica seleziona il set attualmente attivo - vedi
-# pick_latest_by_lastmod() in utils/sitemap_monitor.py per il razionale.
+# In practice this selects the currently active set - see
+# pick_latest_by_lastmod() in utils/sitemap_monitor.py for the rationale.
 _pick_latest = pick_latest_by_lastmod
 
 
@@ -389,22 +386,21 @@ async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | No
 
 
 # ==========================================
-# CHECK (API pubblica)
+# CHECK (public API)
 # ==========================================
 
 async def check_event_schedule_updates(force: bool = False) -> list[dict]:
-    """Individua la pagina Event Schedule PIU' RECENTE (per lastmod) sul
-    sitemap e, se e' nuova o cambiata rispetto all'ultima nota (o comunque,
-    se force=True), la scarica e prova a interpretare la sezione
-    'Full Event Calendar'. Le pagine di set passati ancora presenti sul
-    sitemap vengono ignorate (vedi _pick_latest).
+    """Finds the NEWEST Event Schedule page (by lastmod) in the sitemap and,
+    if it is new or changed versus the last known one (or anyway, if
+    force=True), fetches it and tries to parse the 'Full Event Calendar'
+    section. Past sets' pages still listed in the sitemap are ignored (see
+    _pick_latest).
 
-    Ritorna una lista con zero o un elemento {url, lastmod, categories}
-    (categories None se il parsing e' fallito - il chiamante deve segnalarlo
-    come tale, non ignorarlo silenziosamente) - la forma a lista resta per
-    compatibilita' con i chiamanti che iterano sul risultato. Aggiorna e
-    salva lo stato solo se la pagina e' stata effettivamente processata in
-    questa chiamata.
+    Returns a list with zero or one {url, lastmod, categories} item
+    (categories None if parsing failed - the caller must report it as such,
+    not silently ignore it) - the list shape stays for compatibility with
+    callers that iterate over the result. Updates and saves the state only if
+    the page was actually processed in this call.
     """
 
     headers = {"User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"}
@@ -417,7 +413,7 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
-            log("[EVENT SCHEDULE] nessuna pagina Event Schedule trovata sul sitemap")
+            log("[EVENT SCHEDULE] no Event Schedule page found in the sitemap")
             return []
 
         url, lastmod = latest
@@ -427,17 +423,17 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
             and state.get("latest_lastmod") == lastmod
         )
         if already_seen and not force:
-            log(f"[EVENT SCHEDULE] nessun cambiamento (piu' recente: {url})")
+            log(f"[EVENT SCHEDULE] no change (latest: {url})")
             return []
 
-        log(f"[EVENT SCHEDULE] pagina nuova/aggiornata: {url}")
+        log(f"[EVENT SCHEDULE] new/updated page: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
-            # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
-            # prossimo giro invece di marcarla come vista.
-            log(f"[EVENT SCHEDULE] fetch fallito per {url}, ritento al prossimo giro")
+            # Fetch failed: leave the state untouched and retry on the next
+            # run instead of marking the page as seen.
+            log(f"[EVENT SCHEDULE] fetch failed for {url}, retrying on the next run")
             return []
 
         categories = parse_full_event_calendar(page_html)
@@ -445,9 +441,9 @@ async def check_event_schedule_updates(force: bool = False) -> list[dict]:
     _save_state({"latest_url": url, "latest_lastmod": lastmod})
 
     if categories is None:
-        log(f"[EVENT SCHEDULE] {url}: sezione 'Full Event Calendar' non riconosciuta")
+        log(f"[EVENT SCHEDULE] {url}: 'Full Event Calendar' section not recognized")
     else:
-        log(f"[EVENT SCHEDULE] {url}: {len(categories)} categorie interpretate")
+        log(f"[EVENT SCHEDULE] {url}: {len(categories)} categories parsed")
 
     return [{"url": url, "lastmod": lastmod, "categories": categories}]
 
@@ -456,9 +452,9 @@ async def periodic_event_schedule_check_loop(
     bot=None,
     interval_seconds: int = _CHECK_INTERVAL_SECONDS,
 ) -> None:
-    """Task in background: controlla ogni 2 ore il sitemap e notifica su
-    Discord ogni pagina Event Schedule nuova o aggiornata. Il primo giro
-    parte subito all'avvio, come periodic_spg_refresh_loop."""
+    """Background task: checks the sitemap every 2 hours and notifies
+    Discord of every new or updated Event Schedule page. The first run starts
+    right at startup, like periodic_spg_refresh_loop."""
 
     while True:
         try:
@@ -471,43 +467,41 @@ async def periodic_event_schedule_check_loop(
                         await send_event_schedule_log(logger, result, user=None, forced=False)
 
         except Exception as e:
-            log(f"[EVENT SCHEDULE AUTO-CHECK] errore: {e}")
+            log(f"[EVENT SCHEDULE AUTO-CHECK] error: {e}")
 
         await asyncio.sleep(interval_seconds)
 
 
 async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> None:
-    """Posta su Discord (via Logger cog) l'esito del controllo di una singola
-    pagina Event Schedule. Esposta come funzione pubblica perche' usata sia
-    dal loop automatico sia dal comando admin manuale (stesso formato di
-    log per entrambi i percorsi).
+    """Posts to Discord (via the Logger cog) the outcome of checking a single
+    Event Schedule page. Public because both the automatic loop and the
+    manual admin command use it (same log format for both paths).
 
-    Genera e allega un'immagine calendario per mese (EventCalendarImageGenerator)
-    invece di descrivere gli eventi a parole in campi embed - sostituisce il
-    design precedente (un campo per categoria, diviso in piu' messaggi),
-    poco leggibile con le 13-15 categorie reali. Import di
-    EventCalendarImageGenerator locale alla funzione (non in cima al modulo)
-    per evitare un import circolare: quel modulo importa MONTHS_IT da qui.
+    Generates and attaches one calendar image per month
+    (EventCalendarImageGenerator) instead of describing events in words in
+    embed fields - replaces the previous design (one field per category,
+    split across several messages), hard to read with the 13-15 real
+    categories. EventCalendarImageGenerator is imported inside the function
+    (not at module top) to avoid a circular import: that module imports
+    MONTHS_IT from here.
 
-    Quando il calendario viene generato con successo, le immagini vengono
-    postate anche in COMUNICATION_CHANNEL_ID (via `extra_channel_id` di
-    Logger.send_log(), stesso schema di send_ban_announcement_log() in
-    utils/ban_announcement.py) - un aggiornamento reale riguarda tutta la
-    community, non solo lo staff. Quel canale e' pubblico (si fa anche
-    @everyone): `community_title`/`community_info` costruiscono un embed
-    dedicato senza il gergo da staff ("Controllo manuale forzato", l'utente
-    che ha invocato il comando) che resta nell'`info` del canale log - solo
-    le immagini sono condivise tra i due invii. I due casi WARN (pagina non
-    interpretabile o senza date) restano solo nel canale log: sono rumore
-    operativo per chi manutiene il bot, non contenuto da mostrare alla
-    community. Import di
-    COMUNICATION_CHANNEL_ID differito (come in ban_announcement.py, vedi
-    utils/permissions.py per lo stesso pattern) per restare importabile nei
-    test senza un .env completo."""
+    When the calendar is generated successfully, the images are also posted
+    to COMUNICATION_CHANNEL_ID (via Logger.send_log()'s `extra_channel_id`,
+    same scheme as send_ban_announcement_log() in utils/ban_announcement.py)
+    - a real update concerns the whole community, not just staff. That
+    channel is public (@everyone gets pinged): `community_title` /
+    `community_info` build a dedicated Italian embed without the staff
+    jargon ("Forced manual check", the user who invoked the command) that
+    stays in the log channel's `info` - only the images are shared between
+    the two posts. The two WARN cases (unparseable page or no dates) stay in
+    the log channel only: they are operational noise for whoever maintains
+    the bot, not content for the community. COMUNICATION_CHANNEL_ID is
+    imported lazily (as in ban_announcement.py, see utils/permissions.py for
+    the same pattern) to stay importable in tests without a full .env."""
 
     url = result["url"]
     categories = result["categories"]
-    prefix = "Controllo manuale forzato" if forced else "Controllo automatico"
+    prefix = "Forced manual check" if forced else "Automatic check"
 
     if categories is None:
         await logger.send_log(
@@ -515,9 +509,9 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
             event="ARENA_EVENT_SCHEDULE_UNPARSEABLE",
             user=user,
             info=(
-                f"{prefix}: trovato aggiornamento su {url} ma la sezione "
-                f"'Full Event Calendar' non e' stata riconosciuta (possibile "
-                f"cambio di struttura del sito). Controllo manuale consigliato."
+                f"{prefix}: found an update on {url} but the "
+                f"'Full Event Calendar' section was not recognized (the site "
+                f"structure may have changed). A manual check is recommended."
             ),
         )
         return
@@ -530,9 +524,9 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
             event="ARENA_EVENT_SCHEDULE_NO_DATES",
             user=user,
             info=(
-                f"{prefix}: {url} interpretata ma nessuna voce aveva un "
-                f"formato data riconoscibile - calendario non generato, "
-                f"controllo manuale consigliato."
+                f"{prefix}: {url} parsed but no entry had a recognizable "
+                f"date format - calendar not generated, a manual check is "
+                f"recommended."
             ),
         )
         return

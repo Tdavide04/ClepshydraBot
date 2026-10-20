@@ -32,41 +32,41 @@ _ARENA_LEGAL_CACHE: dict[str, bool] = {}
 
 
 class ScryfallUnavailable(Exception):
-    """Scryfall non ha dato una risposta utilizzabile (errore di rete,
-    timeout, 5xx o 429 oltre i tentativi, altro status inatteso). Distinto
-    di proposito dal 404, che su /cards/search e' una risposta valida
-    ("nessuna stampa trovata") e rende la carta illegale: fino alla 3.5.6
-    entrambi diventavano None, e un semplice timeout salvava la carta come
-    illegale in _ARENA_LEGAL_CACHE fino al riavvio del bot."""
+    """Scryfall gave no usable answer (network error, timeout, 5xx or 429
+    past the retries, any other unexpected status). Deliberately distinct
+    from 404, which on /cards/search is a valid answer ("no printings
+    found") and makes the card illegal: until 3.5.6 both became None, and a
+    plain timeout stored the card as illegal in _ARENA_LEGAL_CACHE until the
+    bot restarted."""
 
-# Cache banlist condivisa a livello di modulo: il bot istanzia due ArtisanService
-# separate (tournament_system e deck_validation), che devono vedere la stessa
-# banlist, incluse le invalidazioni esplicite dopo add/remove. Un attributo
-# self._banlist per istanza (come in precedenza) lascia stale l'istanza non
-# usata dal comando che ha fatto la modifica.
+# Module-level banlist cache: the bot creates two separate ArtisanService
+# instances (tournament_system and deck_validation), which must see the same
+# banlist, explicit invalidations after add/remove included. A per-instance
+# self._banlist attribute (as before) left stale the instance not used by the
+# command that made the change.
 _banlist_cache: set[str] | None = None
 
 
 def invalidate_banlist_cache() -> None:
-    """Forza il ricaricamento della banlist dal DB alla prossima validazione."""
+    """Forces the banlist to be reloaded from the DB on the next validation."""
     global _banlist_cache
     _banlist_cache = None
 
 
 def _expand_double_faced(names: set[str]) -> set[str]:
-    """Aggiunge la sola meta' fronte per ogni carta double-faced ("fronte //
-    retro") gia' presente nel set.
+    """Adds the front half alone for every double-faced card ("front //
+    back") already in the set.
 
-    cards.txt (e quindi banned_cards) salva le double-faced col nome completo,
-    ma parse_decklist() tronca al fronte quando legge il deck dell'utente
-    (mimando il formato di export di MTG Arena) — senza questa espansione,
-    check_banlist() (confronto esatto su set) non fa mai match per queste
-    carte, che quindi non vengono mai catturate come bandite.
+    cards.txt (and therefore banned_cards) stores double-faced cards with the
+    full name, but parse_decklist() truncates to the front face when reading
+    the user's deck (mimicking MTG Arena's export format) - without this
+    expansion, check_banlist() (exact set comparison) never matches these
+    cards, so they are never caught as banned.
 
-    Usata solo per costruire la cache di ArtisanService._load_banlist(), NON
-    dentro BanlistRepository.get_all_for_format(): quel metodo alimenta anche
-    /banlist (comando pubblico), che deve elencare solo le carte davvero
-    salvate nel DB, non varianti sintetiche derivate.
+    Used only to build the ArtisanService._load_banlist() cache, NOT inside
+    BanlistRepository.get_all_for_format(): that method also feeds /banlist
+    (a public command), which must list only the cards actually stored in the
+    DB, not derived synthetic variants.
     """
     expanded = set(names)
     for name in names:
@@ -100,11 +100,12 @@ class ArtisanService:
             await session.close()
 
     async def reload_banlist(self) -> set[str]:
-        """Invalida la cache di modulo e ricarica subito la banlist dal DB.
+        """Invalidates the module cache and reloads the banlist from the DB
+        right away.
 
-        Chiamata da /banlist_aggiungi e /banlist_rimuovi: essendo la cache
-        condivisa a livello di modulo, l'effetto e' visibile immediatamente
-        anche dall'altra istanza di ArtisanService (cogs/deck_validation).
+        Called by /banlist_aggiungi and /banlist_rimuovi: since the cache is
+        shared at module level, the effect is immediately visible to the
+        other ArtisanService instance too (cogs/deck_validation).
         """
         invalidate_banlist_cache()
         return await self._load_banlist()
@@ -131,8 +132,8 @@ class ArtisanService:
         try:
             return await self._validate_with_scryfall(entries, deck_name, total_cards)
         except ScryfallUnavailable as e:
-            # Nessuna carta marcata come non trovata o illegale: il mazzo
-            # semplicemente non e' stato valutato, e va ritentato.
+            # No card marked as not found or illegal: the deck simply wasn't
+            # evaluated, and must be retried.
             return DeckValidationResult(
                 deck_name=deck_name,
                 total_cards=total_cards,
@@ -230,7 +231,7 @@ class ArtisanService:
                     level="WARN",
                     event="SCRYFALL_UNAVAILABLE",
                     user=member,
-                    info=f"/artisan_check_deck: mazzo non valutato ({result.service_error})",
+                    info=f"/artisan_check_deck: deck not evaluated ({result.service_error})",
                 )
             return result
 
@@ -294,7 +295,7 @@ class ArtisanService:
                     await logger.send_log(
                         level="ERROR",
                         event="PUBLISH_FORBIDDEN",
-                        info=f"Nessun accesso al canale {channel_id}"
+                        info=f"No access to channel {channel_id}"
                     )
             except Exception:
                 import traceback
@@ -307,8 +308,8 @@ class ArtisanService:
 
         if logger:
             logger_info = (
-                f"Esito: {'OK' if result.is_valid else 'NON VALIDO'}\n"
-                f"Carte: {result.total_cards}"
+                f"Outcome: {'OK' if result.is_valid else 'INVALID'}\n"
+                f"Cards: {result.total_cards}"
             )
             await logger.send_log(
                 level="INFO" if result.is_valid else "WARN",
@@ -341,7 +342,7 @@ class ArtisanService:
 
         for idx, chunk in enumerate(chunks):
             payload = {"identifiers": [{"name": n} for n in chunk]}
-            label = f"collection {idx + 1}/{len(chunks)} ({len(chunk)} carte)"
+            label = f"collection {idx + 1}/{len(chunks)} ({len(chunk)} cards)"
             data = await self._post_with_retry(session, _COLLECTION_URL, payload, label)
 
             for card in data.get("data", []):
@@ -380,9 +381,9 @@ class ArtisanService:
             return False
 
         arena_uri = self._arena_prints_uri(prints_uri)
-        # Un 404 (nessuna stampa Arena) arriva qui come {"data": []} e rende
-        # la carta illegale, correttamente memorizzato sotto. Un errore di
-        # Scryfall invece solleva ScryfallUnavailable e non tocca le cache.
+        # A 404 (no Arena printings) arrives here as {"data": []} and makes
+        # the card illegal, correctly stored below. A Scryfall failure instead
+        # raises ScryfallUnavailable and leaves the caches untouched.
         prints_data = await self._get_with_retry(session, arena_uri, f"{card_name} [prints]")
 
         legal = False
@@ -431,14 +432,14 @@ class ArtisanService:
         retries: int,
         payload: dict | None = None,
     ) -> dict:
-        """Richiesta Scryfall serializzata dal semaforo, con retry su 429, 5xx
-        ed errori di rete. Ritorna il JSON della risposta; un 404 diventa
-        {"data": []} (su /cards/search significa "nessun risultato", l'unico
-        endpoint dove capita - /cards/collection riporta le carte mancanti in
-        `not_found` con status 200). Qualunque altro esito solleva
-        ScryfallUnavailable invece di restituire None."""
+        """Scryfall request serialized by the semaphore, with retries on 429,
+        5xx and network errors. Returns the response JSON; a 404 becomes
+        {"data": []} (on /cards/search it means "no results", the only
+        endpoint where it happens - /cards/collection reports missing cards in
+        `not_found` with status 200). Any other outcome raises
+        ScryfallUnavailable instead of returning None."""
 
-        last_problem = "nessun tentativo"
+        last_problem = "no attempt made"
         async with _SCRYFALL_SEMAPHORE:
             for attempt in range(retries):
                 try:
@@ -463,7 +464,7 @@ class ArtisanService:
                     last_problem = type(e).__name__
                     await asyncio.sleep(2 ** attempt)
 
-        raise ScryfallUnavailable(f"{label}: {last_problem} dopo {retries} tentativi")
+        raise ScryfallUnavailable(f"{label}: {last_problem} after {retries} attempts")
 
     def _arena_prints_uri(self, prints_search_uri: str) -> str:
         parsed = urllib.parse.urlparse(prints_search_uri)

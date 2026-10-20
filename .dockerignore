@@ -15,11 +15,11 @@ env
 build
 dist
 
-# Secrets / runtime data — mai nell'immagine, solo a runtime via volume/env_file
+# Secrets / runtime data — never in the image, only at runtime via volume/env_file
 .env
 data
 
-# Non necessari a runtime
+# Not needed at runtime
 tests
 docs
 deploy

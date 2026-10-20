@@ -24,7 +24,7 @@ class PresentationCog(commands.Cog):
                     level=level,
                     event="JOIN_ROLE_FAIL",
                     user=member,
-                    info=f"Errore API {e.status}: {e.text}"
+                    info=f"API error {e.status}: {e.text}"
                 )
         except discord.errors.Forbidden:
             if logger:
@@ -32,7 +32,7 @@ class PresentationCog(commands.Cog):
                     level="ERROR",
                     event="JOIN_PERMISSIONS_FAIL",
                     user=member,
-                    info="Il bot non ha permessi per gestire il ruolo Viandante."
+                    info="The bot lacks permission to manage the Viandante role."
                 )
 
         channel = member.guild.get_channel(PRESENTATION_CHANNEL_ID)
@@ -105,12 +105,12 @@ class PresentationCog(commands.Cog):
                     level="ERROR",
                     event="CLEANUP_ERROR",
                     channel=message.channel,
-                    info=f"Impossibile eliminare messaggio: {str(e)}"
+                    info=f"Could not delete message: {str(e)}"
                 )
 
     def _format_content(self, message):
         if not message.content:
-            return "[Solo allegati]"
+            return "[Attachments only]"
 
         content = message.content
 
@@ -125,7 +125,7 @@ class PresentationCog(commands.Cog):
         types = set()
 
         if message.content:
-            types.add("Testo")
+            types.add("Text")
 
         if message.content and re.search(r'https?://', message.content):
             types.add("Link")
@@ -156,7 +156,7 @@ class PresentationCog(commands.Cog):
         if has_gif:
             types.add("GIF")
         if has_image:
-            types.add("Immagine")
+            types.add("Image")
         if has_video:
             types.add("Video")
         if has_audio:
@@ -170,7 +170,7 @@ class PresentationCog(commands.Cog):
         if message.embeds:
             types.add("Embed")
 
-        return " + ".join(sorted(types)) if types else "Sconosciuto"
+        return " + ".join(sorted(types)) if types else "Unknown"
 
     def _get_attachments_info(self, message):
         if not message.attachments:

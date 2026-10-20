@@ -5,9 +5,9 @@ from utils.interaction_errors import report_interaction_error
 
 
 class ErrorHandler(commands.Cog):
-    """Aggancia CommandTree.on_error: unico punto in cui discord.py
-    instrada le eccezioni non gestite degli slash command. Il gestore
-    precedente viene ripristinato allo scaricamento del cog."""
+    """Hooks CommandTree.on_error: the only place where discord.py routes
+    unhandled slash-command exceptions. The previous handler is restored
+    when the cog is unloaded."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -22,9 +22,9 @@ class ErrorHandler(commands.Cog):
 
     async def on_app_command_error(self, interaction, error):
         if isinstance(error, app_commands.CheckFailure):
-            # @is_admin() risponde gia' da se' prima di fallire: qui si
-            # risponde solo se nessun check l'ha fatto. Nessun log: un
-            # permesso mancante non e' un errore del bot.
+            # @is_admin() already replies on its own before failing: reply
+            # here only if no check did. No log: a missing permission is not
+            # a bot error.
             if not interaction.response.is_done():
                 await interaction.response.send_message(
                     "Non hai i permessi per usare questo comando.", ephemeral=True

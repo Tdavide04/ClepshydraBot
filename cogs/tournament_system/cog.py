@@ -90,14 +90,14 @@ class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):
                 level="INFO",
                 event="TOURNAMENT_CREATED",
                 user=interaction.user,
-                info=f"Torneo **{tournament.name}** (ID: {tournament.id}) creato."
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) created."
             )
 
 
 class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
-    """Invio/aggiornamento del mazzo per un'iscrizione gia' esistente (creata
-    da /iscriviti). Non crea ne' modifica l'iscrizione stessa: aggiorna solo
-    TournamentPlayer.deck_name tramite TournamentService.submit_deck()."""
+    """Submits/updates the deck for an existing registration (created by
+    /iscriviti). It neither creates nor changes the registration itself: it
+    only updates TournamentPlayer.deck_name via TournamentService.submit_deck()."""
 
     def __init__(
         self,
@@ -158,8 +158,8 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                     event="SCRYFALL_UNAVAILABLE",
                     user=interaction.user,
                     info=(
-                        f"/invia_deck: mazzo non valutato ({result.service_error})\n"
-                        f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})"
+                        f"/invia_deck: deck not evaluated ({result.service_error})\n"
+                        f"Tournament: **{self.torneo_name}** (ID: {self.torneo_id})"
                     ),
                 )
             return
@@ -223,13 +223,13 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                     event="TOURNAMENT_DECK_SUBMITTED",
                     user=interaction.user,
                     info=(
-                        f"Esito: NON VALIDO\n"
-                        f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
-                        f"Mazzo: **{deck_name}**\n"
-                        f"Carte: {result.total_cards} ({result.main_count}M + {result.side_count}S)\n"
-                        f"Bannate: {len(result.banned_cards)} | "
-                        f"Illegali: {len(result.illegal_rarity_cards)} | "
-                        f"Non trovate: {len(result.invalid_cards)}"
+                        f"Outcome: INVALID\n"
+                        f"Tournament: **{self.torneo_name}** (ID: {self.torneo_id})\n"
+                        f"Deck: **{deck_name}**\n"
+                        f"Cards: {result.total_cards} ({result.main_count}M + {result.side_count}S)\n"
+                        f"Banned: {len(result.banned_cards)} | "
+                        f"Illegal: {len(result.illegal_rarity_cards)} | "
+                        f"Not found: {len(result.invalid_cards)}"
                     ),
                 )
             return
@@ -246,9 +246,9 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                     event="TOURNAMENT_DECK_SUBMITTED",
                     user=interaction.user,
                     info=(
-                        f"Esito: RIFIUTATO ({msg})\n"
-                        f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
-                        f"Mazzo: **{deck_name}**"
+                        f"Outcome: REJECTED ({msg})\n"
+                        f"Tournament: **{self.torneo_name}** (ID: {self.torneo_id})\n"
+                        f"Deck: **{deck_name}**"
                     ),
                 )
             return
@@ -299,10 +299,10 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                 event="TOURNAMENT_DECK_SUBMITTED",
                 user=interaction.user,
                 info=(
-                    f"Esito: OK\n"
-                    f"Torneo: **{self.torneo_name}** (ID: {self.torneo_id})\n"
-                    f"Mazzo: **{deck_name}**\n"
-                    f"Carte: {result.total_cards} ({result.main_count}M + {result.side_count}S)"
+                    f"Outcome: OK\n"
+                    f"Tournament: **{self.torneo_name}** (ID: {self.torneo_id})\n"
+                    f"Deck: **{deck_name}**\n"
+                    f"Cards: {result.total_cards} ({result.main_count}M + {result.side_count}S)"
                 ),
             )
 
@@ -406,9 +406,9 @@ class RisultatoView(ReportingView):
         logger = self.bot.get_cog("Logger")
 
         if not outcome.ok:
-            # Rifiutato (es. l'avversario l'aveva gia' inserito): solo il
-            # giocatore lo vede, niente annuncio pubblico di un risultato
-            # che non e' stato registrato.
+            # Rejected (e.g. the opponent had already entered it): only the
+            # player sees it, no public announcement of a result that was not
+            # recorded.
             await interaction.response.edit_message(
                 content=f"\u26a0\ufe0f {outcome.message}", embed=None, view=None,
             )
@@ -417,7 +417,7 @@ class RisultatoView(ReportingView):
                     level="WARN",
                     event="MATCH_RESULT",
                     user=interaction.user,
-                    info=f"Match {self.match.id}: rifiutato \u2014 {outcome.message}",
+                    info=f"Match {self.match.id}: rejected \u2014 {outcome.message}",
                 )
             self.stop()
             return
@@ -533,7 +533,7 @@ class TournamentSystemCog(commands.Cog):
         return name
 
     # ------------------------------------------------------------------
-    # Comandi Admin
+    # Admin commands
     # ------------------------------------------------------------------
 
     @discord.app_commands.command(
@@ -584,7 +584,7 @@ class TournamentSystemCog(commands.Cog):
         ):
             await self._log(
                 "WARN", "TOURNAMENT_START_BLOCKED", user=interaction.user,
-                info=f"Torneo **{tournament.name}** (ID: {tournament.id}): {msg}"
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {msg}"
             )
             return await interaction.followup.send(msg, ephemeral=True)
 
@@ -636,15 +636,15 @@ class TournamentSystemCog(commands.Cog):
             await interaction.followup.send(embed=embed_pairings)
 
         partecipanti_lines = [
-            f"• {name} — **{deck or 'N/D'}**" for name, deck in player_data
+            f"• {name} — **{deck or 'N/A'}**" for name, deck in player_data
         ]
         partecipanti_text = "\n".join(partecipanti_lines[:25])
         if len(partecipanti_lines) > 25:
-            partecipanti_text += f"\n_...e altri {len(partecipanti_lines) - 25}_"
+            partecipanti_text += f"\n_...and {len(partecipanti_lines) - 25} more_"
 
         await self._log(
             "INFO", "TOURNAMENT_STARTED", user=interaction.user,
-            info=f"{msg}\n\n**Partecipanti:**\n{partecipanti_text}"
+            info=f"{msg}\n\n**Participants:**\n{partecipanti_text}"
         )
 
     @discord.app_commands.command(
@@ -693,7 +693,7 @@ class TournamentSystemCog(commands.Cog):
         await self._log(
             "INFO", "PLAYER_DROPPED", user=interaction.user,
             info=(
-                f"Giocatore {giocatore.mention} rimosso dal torneo "
+                f"Player {giocatore.mention} removed from tournament "
                 f"**{tournament.name}** (ID: {tournament.id})."
             ),
         )
@@ -770,7 +770,7 @@ class TournamentSystemCog(commands.Cog):
 
         await self._log(
             "INFO", "RESULT_CORRECTED", user=interaction.user,
-            info=f"Torneo **{tournament.name}** (ID: {tournament.id}) \u2014 {outcome.message}",
+            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 {outcome.message}",
         )
 
     @discord.app_commands.command(
@@ -815,8 +815,8 @@ class TournamentSystemCog(commands.Cog):
         await self._log(
             "INFO", "TOURNAMENT_CONCLUDED", user=interaction.user,
             info=(
-                f"Torneo **{tournament.name}** (ID: {tournament.id}) "
-                f"concluso forzatamente."
+                f"Tournament **{tournament.name}** (ID: {tournament.id}) "
+                f"force-concluded."
             ),
         )
 
@@ -877,7 +877,7 @@ class TournamentSystemCog(commands.Cog):
 
             await self._log(
                 "INFO", "TOURNAMENT_COMPLETED", user=interaction.user,
-                info=f"Torneo **{tournament.name}** (ID: {tournament.id}) completato."
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}) completed."
             )
             return
 
@@ -926,11 +926,11 @@ class TournamentSystemCog(commands.Cog):
 
         await self._log(
             "INFO", "ROUND_GENERATED", user=interaction.user,
-            info=f"Torneo **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {msg}"
+            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {msg}"
         )
 
     # ------------------------------------------------------------------
-    # Comandi Giocatori
+    # Player commands
     # ------------------------------------------------------------------
 
     @discord.app_commands.command(
@@ -1035,7 +1035,7 @@ class TournamentSystemCog(commands.Cog):
 
         await self._log(
             "INFO", "REGISTRATION_CONFIRMED", user=interaction.user,
-            info=f"Iscritto al torneo **{tournament.name}** (ID: {tournament.id}), mazzo non ancora inviato."
+            info=f"Registered for tournament **{tournament.name}** (ID: {tournament.id}), deck not submitted yet."
         )
 
     @discord.app_commands.command(
@@ -1170,7 +1170,7 @@ class TournamentSystemCog(commands.Cog):
 
         await self._log(
             "INFO", "PLAYER_UNREGISTERED", user=interaction.user,
-            info=f"Uscito volontariamente dal torneo **{tournament.name}** (ID: {tournament.id})."
+            info=f"Voluntarily left tournament **{tournament.name}** (ID: {tournament.id})."
         )
 
     @discord.app_commands.command(
@@ -1486,7 +1486,7 @@ class TournamentSystemCog(commands.Cog):
             await self.artisan_service.reload_banlist()
             await self._log(
                 "INFO", "BANLIST_ADD", user=interaction.user,
-                info=f"Aggiunta: {carta}"
+                info=f"Added: {carta}"
             )
             await interaction.followup.send(
                 f"Carta **{carta}** aggiunta alla banlist.", ephemeral=True
@@ -1518,7 +1518,7 @@ class TournamentSystemCog(commands.Cog):
                 await self.artisan_service.reload_banlist()
                 await self._log(
                     "INFO", "BANLIST_REMOVE", user=interaction.user,
-                    info=f"Rimossa: {carta}"
+                    info=f"Removed: {carta}"
                 )
                 await interaction.followup.send(
                     f"Carta **{carta}** rimossa dalla banlist.", ephemeral=True

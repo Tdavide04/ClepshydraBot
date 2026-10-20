@@ -48,9 +48,9 @@ class BanAnnouncementUpdater(commands.Cog):
             if logger:
                 await send_ban_announcement_log(logger, result, user=interaction.user, forced=True)
 
-            esito = "interpretato correttamente" if result["changes"] is not None else "NON interpretabile, vedi WARN nel canale log"
+            outcome = "interpretato correttamente" if result["changes"] is not None else "NON interpretabile, vedi WARN nel canale log"
             await interaction.followup.send(
-                f"✅ Ricontrollato {result['url']} ({esito}). Dettagli nel canale log.",
+                f"✅ Ricontrollato {result['url']} ({outcome}). Dettagli nel canale log.",
                 ephemeral=True
             )
 

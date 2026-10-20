@@ -37,55 +37,54 @@ class ClepshydraBotte(commands.Bot):
                 level="DEBUG",
                 event="SYSTEM_STARTUP",
                 info=(
-                    f"**Nome:** ClepshydraBotte\n"
-                    f"**Versione:** {VERSION}\n"
-                    f"**Stato:** Online e Operativo\n"
-                    f"**Database:** Inizializzato\n"
-                    f"**Comandi Sync:** {len(synced)}\n"
-                    f"**Versione Library:** {discord.__version__}"
+                    f"**Name:** ClepshydraBotte\n"
+                    f"**Version:** {VERSION}\n"
+                    f"**Status:** Online and operational\n"
+                    f"**Database:** Initialized\n"
+                    f"**Commands synced:** {len(synced)}\n"
+                    f"**Library version:** {discord.__version__}"
                 )
             )
 
-            # Riepilogo di stato SOLO nel canale log (non community): quale
-            # sia l'ultima pagina Event Schedule/Banned and Restricted GIA'
-            # nota al bot, letta dagli state file su disco senza fare
-            # richieste di rete. Distinto dal check periodico vero e proprio
-            # (che invece interroga il sitemap e scatta poco dopo, appena i
-            # create_task sotto partono) - qui interessa solo mostrare cosa
-            # il bot sa gia' ad ogni riavvio, utile per verificare al volo
-            # se lo stato salvato risulta quello aspettato.
+            # Status summary for the log channel ONLY (not community): the
+            # latest Event Schedule/Banned and Restricted page the bot ALREADY
+            # knows, read from the state files on disk with no network request.
+            # Distinct from the real periodic check (which queries the sitemap
+            # shortly after, once the create_task calls below start) - this only
+            # shows what the bot already knows at each restart, handy to verify
+            # at a glance that the saved state is the expected one.
             event_schedule_state = get_latest_known_event_schedule()
             ban_announcement_state = get_latest_known_ban_announcement()
             await logger.send_log(
                 level="INFO",
                 event="STARTUP_STATUS",
                 info=(
-                    f"**Ultima pagina Event Schedule nota:** "
-                    f"{event_schedule_state['url'] or 'nessuna (stato vuoto)'}\n"
-                    f"**Ultimo Banned and Restricted Announcement noto:** "
-                    f"{ban_announcement_state['url'] or 'nessuno (stato vuoto)'}"
+                    f"**Latest known Event Schedule page:** "
+                    f"{event_schedule_state['url'] or 'none (empty state)'}\n"
+                    f"**Latest known Banned and Restricted Announcement:** "
+                    f"{ban_announcement_state['url'] or 'none (empty state)'}"
                 )
             )
 
-        # Avviati DOPO il log di startup: create_task schedula solo, non
-        # esegue subito, ma i loro primi giri (check SPG/Event Schedule,
-        # entrambi HTTP e non istantanei) possono comunque superare in
-        # velocita' l'await di tree.sync() sopra se partono prima di lui -
-        # osservato in produzione, il log SYSTEM_STARTUP arrivava dopo i log
-        # dei controlli automatici invece che prima.
+        # Started AFTER the startup logs: create_task only schedules, it doesn't
+        # run right away, but the tasks' first runs (SPG/Event Schedule checks,
+        # both HTTP and not instant) can still finish before the await on
+        # tree.sync() above if they start before it - observed in production,
+        # the SYSTEM_STARTUP log arrived after the automatic check logs instead
+        # of before.
         self.loop.create_task(periodic_save_loop())
         self.loop.create_task(periodic_spg_refresh_loop(self))
         self.loop.create_task(periodic_event_schedule_check_loop(self))
         self.loop.create_task(periodic_ban_announcement_check_loop(self))
 
     async def close(self):
-        # Salva le modifiche alla cache carte non ancora persistite dal ciclo
-        # da 60s (es. a un `pm2 restart`), prima di chiudere il DB. Un errore
-        # qui non deve impedire la chiusura.
+        # Save card cache changes the 60s loop hasn't persisted yet (e.g. on a
+        # `pm2 restart`) before closing the DB. A failure here must not block
+        # shutdown.
         try:
             await save_cache()
         except Exception as e:
-            print(f"Salvataggio cache carte in chiusura fallito: {e}", file=sys.stderr)
+            print(f"Saving the card cache on shutdown failed: {e}", file=sys.stderr)
         await close_db()
         await super().close()
 
@@ -95,8 +94,8 @@ bot = ClepshydraBotte()
 try:
     bot.run(DISCORD_TOKEN)
 except discord.LoginFailure:
-    print("FATAL: token Discord non valido o scaduto. Il bot non puo' avviarsi.", file=sys.stderr)
+    print("FATAL: invalid or expired Discord token. The bot cannot start.", file=sys.stderr)
     sys.exit(1)
 except Exception as e:
-    print(f"FATAL: avvio del bot fallito: {e}", file=sys.stderr)
+    print(f"FATAL: bot startup failed: {e}", file=sys.stderr)
     sys.exit(1)

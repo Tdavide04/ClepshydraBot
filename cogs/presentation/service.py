@@ -22,7 +22,7 @@ class PresentationService:
         else:
             guild = interaction.guild
             if not guild:
-                raise ValueError("Impossibile trovare il server.")
+                raise ValueError("Could not find the guild.")
 
             member = guild.get_member(data.user_id)
             if not member:
@@ -35,11 +35,11 @@ class PresentationService:
             if logger:
                 await logger.send_log(
                     level="WARN",
-                    event="VERIFICA_FALLITA",
+                    event="PRESENTATION_VALIDATION_FAILED",
                     user=member,
                     info=(
-                        f"Campi mancanti: {', '.join(missing)} "
-                        f"Campi invalidi: {', '.join(errors)}"
+                        f"Missing fields: {', '.join(missing)} "
+                        f"Invalid fields: {', '.join(errors)}"
                     )
                 )
 
@@ -62,7 +62,7 @@ class PresentationService:
                     level="ERROR",
                     event="PRESENTATION_CHANNEL_MISSING",
                     user=member,
-                    info=f"Canale presentazioni con ID {PRESENTATION_CHANNEL_ID} non trovato."
+                    info=f"Presentation channel with ID {PRESENTATION_CHANNEL_ID} not found."
                 )
             return
 
@@ -75,12 +75,12 @@ class PresentationService:
         await self._assign_final_role(member, data)
 
         if logger:
-            info = f"Utente promosso a {FINAL_ROLE}"
+            info = f"User promoted to {FINAL_ROLE}"
             if presentation_msg:
                 info += f"\n**Link:** [Presentation]({presentation_msg.jump_url})"
             await logger.send_log(
                 level="INFO",
-                event="PRESENTAZIONE_COMPLETATA",
+                event="PRESENTATION_COMPLETED",
                 user=member,
                 info=info
             )
@@ -97,7 +97,7 @@ class PresentationService:
                         level="ERROR",
                         event="INITIAL_ROLE_FAIL",
                         user=member,
-                        info="Il bot non ha permessi per assegnare il ruolo Viandante."
+                        info="The bot lacks permission to assign the Viandante role."
                     )
 
     async def _assign_final_role(self, member, data: PresentationData):
@@ -116,9 +116,9 @@ class PresentationService:
                     level="ERROR",
                     event="ROLE_TRANSITION_FAIL",
                     user=member,
-                    info="Il bot non ha permessi per gestire i ruoli."
+                    info="The bot lacks permission to manage roles."
                 )
 
-        # Pulizia storage temporaneo
+        # Clean up temporary storage
         if data.user_id in PRESENTATION_DATA_STORE:
             del PRESENTATION_DATA_STORE[data.user_id]

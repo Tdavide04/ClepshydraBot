@@ -101,7 +101,7 @@ def valida_colori(colori: list[str]) -> bool:
     if not colori:
         return True
     normalizzati = [normalizza_colore(c) for c in colori]
-    # Confronta in minuscolo per matching case-insensitive
+    # Compare lowercased for case-insensitive matching
     return all(c.lower() in VALIDI_colori for c in normalizzati)
 
 
@@ -109,7 +109,7 @@ def valida_gilde(gilde: list[str]) -> bool:
     if not gilde:
         return True
     normalizzate = [normalizza_gilda(g) for g in gilde]
-    # Confronta in minuscolo per matching case-insensitive
+    # Compare lowercased for case-insensitive matching
     return all(g.lower() in VALIDI_gilde for g in normalizzate)
 
 

@@ -53,7 +53,7 @@ class SPGOverrideUpdater(commands.Cog):
                         level="INFO",
                         event="SPG_OVERRIDES_UPDATED",
                         user=interaction.user,
-                        info="Controllo manuale forzato: nessun nuovo override trovato.",
+                        info="Forced manual check: no new override found.",
                     )
                 return
 
@@ -77,7 +77,7 @@ class SPGOverrideUpdater(commands.Cog):
                     level="INFO",
                     event="SPG_OVERRIDES_UPDATED",
                     user=interaction.user,
-                    info=f"Controllo manuale forzato: {len(added)} nuovi override trovati\n\n{text}",
+                    info=f"Forced manual check: {len(added)} new overrides found\n\n{text}",
                 )
 
         except Exception as e:

@@ -111,13 +111,13 @@ class BannedCard(Base):
 class CachedCard(Base):
     __tablename__ = "cached_cards"
 
-    # card_name e' gia' normalizzato a lowercase dal chiamante (utils/card_cache.py),
-    # stesso key format usato da sempre nel dict in memoria e nel JSON legacy.
+    # card_name is already lowercased by the caller (utils/card_cache.py), the
+    # same key format the in-memory dict and the legacy JSON have always used.
     card_name = Column(String(200), primary_key=True)
-    # Dati Scryfall grezzi (form variabile: card_faces per le doppie facce, ecc.)
-    # piu' artisan_legal/artisan_legal_checked_at, serializzati come un unico blob
-    # JSON invece di colonne dedicate: nessuna query SQL li filtra oggi, e tenerli
-    # come blob evita di duplicare la forma del dizionario in due posti.
+    # Raw Scryfall data (variable shape: card_faces for double-faced cards, etc.)
+    # plus artisan_legal/artisan_legal_checked_at, serialized as a single JSON
+    # blob instead of dedicated columns: no SQL query filters on them today, and
+    # a blob avoids duplicating the dict's shape in two places.
     data = Column(Text, nullable=False)
 
     def __repr__(self):

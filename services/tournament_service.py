@@ -26,19 +26,18 @@ class TournamentService:
 
     def __init__(self, bot=None):
         self.bot = bot
-        # Serializza register_player(): il controllo di max_players e
-        # l'inserimento sono query separate, con await in mezzo - due
-        # /iscriviti simultanei per l'ultimo posto passavano entrambi. Lock
-        # per istanza e non di modulo (asyncio.Lock si lega all'event loop
-        # alla prima contesa, e i test usano un loop per scenario): basta
-        # perche' il bot crea un solo TournamentService
-        # (cogs/tournament_system/cog.py).
+        # Serializes register_player(): the max_players check and the insert
+        # are separate queries with an await in between - two simultaneous
+        # /iscriviti for the last seat both got through. Per-instance lock,
+        # not module-level (asyncio.Lock binds to the event loop on first
+        # contention, and tests use one loop per scenario): enough because the
+        # bot creates a single TournamentService (cogs/tournament_system/cog.py).
         self._registration_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def _repos(self):
-        """Apre una sessione DB e i repository associati; li chiude sempre all'uscita del blocco,
-        sia in caso di return normale che di eccezione."""
+        """Opens a DB session and its repositories; always closes them when the
+        block exits, on a normal return as well as on an exception."""
         session = get_session()
         try:
             yield (
@@ -124,8 +123,8 @@ class TournamentService:
                 deck_info = f" con **{deck_name}**" if deck_name else ""
                 return f"Iscrizione confermata al torneo **{tournament.name}** (seed #{existing.seed}){deck_info}."
 
-            # Non count + 1: il conteggio esclude i droppati, quindi dopo
-            # un'uscita il nuovo seed collideva con uno gia' assegnato.
+            # Not count + 1: the count excludes dropped players, so after a
+            # drop the new seed collided with one already assigned.
             seed = await tprepo.max_seed(tournament_id) + 1
             tp = TournamentPlayer(
                 tournament_id=tournament_id,
@@ -140,11 +139,11 @@ class TournamentService:
     async def submit_deck(
         self, tournament_id: int, discord_id: int, deck_name: str
     ) -> str:
-        """Registra/aggiorna il mazzo di un giocatore gia' iscritto. A differenza
-        di register_player(), non crea una nuova iscrizione: richiede che il
-        TournamentPlayer esista gia' (e non sia droppato). Richiamabile piu'
-        volte finche' il torneo resta in REGISTRATION: l'ultimo invio valido
-        sovrascrive il precedente."""
+        """Records/updates the deck of an already registered player. Unlike
+        register_player(), it doesn't create a registration: the
+        TournamentPlayer must already exist (and not be dropped). Can be called
+        repeatedly while the tournament is in REGISTRATION: the latest valid
+        submission overwrites the previous one."""
         async with self._repos() as (session, trepo, tprepo, _, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -276,10 +275,10 @@ class TournamentService:
     async def force_drop_player(
         self, tournament_id: int, discord_id: int
     ) -> str:
-        """Rimozione decisa dallo staff. Vale anche in REGISTRATION: un
-        iscritto che non invia mai il mazzo blocca start_tournament(), e
-        unregister_player() puo' invocarlo solo il giocatore stesso - senza
-        questo caso lo staff non aveva modo di sbloccare l'avvio."""
+        """Removal decided by staff. Also valid in REGISTRATION: a registered
+        player who never submits a deck blocks start_tournament(), and only
+        the player themselves can call unregister_player() - without this case
+        staff had no way to unblock the start."""
         async with self._repos() as (session, trepo, tprepo, mrepo, urepo):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -443,16 +442,16 @@ class TournamentService:
         winner_games: int,
         loser_games: int,
     ) -> ServiceResult:
-        """Correzione staff (/correggi_risultato): sovrascrive il risultato di
-        una partita, o lo inserisce se manca (giocatore assente). Prima un
-        risultato sbagliato - il primo dei due giocatori che lo inserisce
-        decide, senza conferma - si poteva correggere solo a mano sul DB.
+        """Staff correction (/correggi_risultato): overwrites a match result, or
+        enters it if missing (absent player). Before this, a wrong result -
+        the first of the two players to submit decides, with no confirmation -
+        could only be fixed by hand in the DB.
 
-        winner_discord_id None = pareggio. round_number None = round in corso.
-        Solo a torneo ACTIVE: a torneo concluso il rating Glicko-2 e' gia'
-        stato applicato e una correzione lo renderebbe incoerente. Correggere
-        un round passato e' permesso: la classifica si ricalcola da sola, gli
-        abbinamenti gia' generati restano quelli."""
+        winner_discord_id None = draw. round_number None = current round.
+        ACTIVE tournaments only: once concluded, Glicko-2 ratings have already
+        been applied and a correction would make them inconsistent. Correcting
+        a past round is allowed: standings recompute on their own, pairings
+        already generated stay as they are."""
         async with self._repos() as (session, trepo, _, mrepo, _):
             tournament = await trepo.get_by_id(tournament_id)
             if tournament is None:
@@ -514,8 +513,8 @@ class TournamentService:
             if tournament is None:
                 return
 
-            # Droppati inclusi: le partite gia' giocate contro chi si e'
-            # ritirato contano per il rating di entrambi.
+            # Dropped players included: matches already played against someone
+            # who dropped count toward both players' ratings.
             players = await tprepo.get_by_tournament(tournament_id, include_dropped=True)
             matches = await mrepo.get_by_tournament(tournament_id)
 
@@ -632,9 +631,9 @@ class TournamentService:
                 return "Torneo non trovato."
 
             matches = await mrepo.get_by_tournament(tournament_id)
-            # Un droppato resta in classifica (marcato) solo se ha giocato:
-            # le sue partite contano per l'OMW degli avversari, come nei
-            # tornei Wizards. Chi e' uscito durante le iscrizioni no.
+            # A dropped player stays in the standings (marked) only if they
+            # played: their matches count toward opponents' OMW, as in Wizards
+            # tournaments. Someone who left during registration doesn't.
             played = {m.player1_id for m in matches} | {m.player2_id for m in matches}
             players = [
                 tp for tp in await tprepo.get_by_tournament(tournament_id, include_dropped=True)

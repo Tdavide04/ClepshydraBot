@@ -69,9 +69,9 @@ class StandingsCalculator:
             pid = p.id if hasattr(p, "id") else p
             stats[pid] = _PlayerStats()
 
-        # setdefault e non stats[...]: un giocatore puo' comparire nelle
-        # partite senza essere in `players` (es. droppato, se il chiamante
-        # passa i soli attivi) - prima era un KeyError su /classifica.
+        # setdefault rather than stats[...]: a player can appear in matches
+        # without being in `players` (e.g. dropped, if the caller passes only
+        # active players) - this used to be a KeyError on /classifica.
         for m in matches:
             if m.player2_id is None:
                 if m.player1_id is not None:
@@ -84,8 +84,8 @@ class StandingsCalculator:
             if m.player1_id is None or m.player2_id is None:
                 continue
 
-            # Partita del round in corso non ancora giocata: non deve contare
-            # ne' come game (prima valeva 1-1) ne' per l'OMW dell'avversario.
+            # A current-round match not played yet: it must count neither as
+            # games (it used to count as 1-1) nor toward the opponent's OMW.
             if m.result is None:
                 continue
 

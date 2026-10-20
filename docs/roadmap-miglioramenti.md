@@ -420,7 +420,7 @@ file che non hanno modifiche reali; restano soltanto differenze di fine riga, ch
 **Stato:** da fare
 
 **Modifiche:** un solo punto, diviso in 4 commit, ognuno approvato prima di essere fatto:
-1. `refactor(i18n)`: commenti, docstring, log in console e canale log, commenti dei file di contorno
+1. `refactor(lang)`: commenti, docstring, log in console e canale log, commenti dei file di contorno
    (`.env.example`, `Dockerfile`, `ci.yml`, `deploy/`, `ruff.toml`)
 2. `test`: nomi dei test
 3. `docs`: `docs/` e `README.md`, con i file rinominati in inglese (`git mv`) e i riferimenti aggiornati

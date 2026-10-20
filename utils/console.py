@@ -2,12 +2,11 @@ from datetime import datetime
 
 
 def log(message: str) -> None:
-    """print() su console con timestamp, nello stesso formato dei log di
-    discord.py ('[2026-10-12 15:20:04]') - senza, in `pm2 logs` era
-    impossibile capire QUANDO un evento fosse avvenuto (osservato il
-    2026-10-12: non si poteva stabilire se il check del Banned and Restricted
-    avesse preceduto la comparsa del nuovo annuncio sul sitemap). Nata in
-    utils/sitemap_monitor.py, spostata qui quando e' servita anche fuori dai
-    monitor sitemap."""
+    """Console print() with a timestamp, in the same format as discord.py's
+    logs ('[2026-10-12 15:20:04]') - without it, `pm2 logs` gave no way to
+    tell WHEN an event happened (observed 2026-10-12: it was impossible to
+    establish whether the Banned and Restricted check ran before the new
+    announcement appeared in the sitemap). Born in utils/sitemap_monitor.py,
+    moved here once it was needed outside the sitemap monitors too."""
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")

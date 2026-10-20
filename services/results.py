@@ -3,13 +3,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ServiceResult:
-    """Esito di un'operazione del service: `ok` per decidere il flusso,
-    `message` da mostrare all'utente.
+    """Outcome of a service operation: `ok` drives the flow, `message` is
+    shown to the user.
 
-    Sostituisce, un metodo alla volta, il ritorno di una semplice stringa
-    che i cog interpretavano per confronto di testo - fragile: RisultatoView
-    cercava "Registrato" con la maiuscola mentre submit_result() restituiva
-    "Risultato registrato!", quindi ogni risultato andava a log come WARN.
+    Replaces, one method at a time, plain string returns that cogs parsed by
+    text matching - fragile: RisultatoView looked for "Registrato" capitalized
+    while submit_result() returned "Risultato registrato!", so every result
+    was logged as WARN.
     """
 
     ok: bool
