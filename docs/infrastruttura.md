@@ -165,6 +165,21 @@ Tutti gli eventi vengono loggati su un canale Discord dedicato tramite embed:
 | `ERROR` | Rosso | Eccezioni non gestite, errori Scryfall, problemi DB |
 | `DEBUG` | Grigio | Startup, migrazioni, sync comandi |
 
+Gli altri cog recuperano il Logger con `bot.get_cog('Logger')` e chiamano
+`send_log(level, event, info, ...)`. Argomenti opzionali:
+
+- `fields`: lista di `{"name", "value", "inline"}`, ognuno aggiunto all'embed come campo separato.
+- `files`: lista di `discord.File`, allegati allo stesso messaggio.
+- `extra_channel_id`: ripubblica l'aggiornamento in un secondo canale, di norma
+  `config.COMUNICATION_CHANNEL_ID`. Se vale `0`/`None` non fa nulla. Nel secondo canale va un embed
+  **separato**, costruito da `community_title`/`community_info`, non una copia di quello del canale log:
+  l'embed di log contiene dettagli per lo staff (chi ha forzato il controllo, "Controllo
+  manuale/automatico") che non vanno mostrati nel canale pubblico, dove viene pingato `@everyone`. I
+  `files` vengono invece reinviati tali e quali: prima si chiama `discord.File.reset()` su ciascuno,
+  perché il primo `send()` ha già consumato lo stream.
+
+`fields` e `files` sono usati dai monitor Event Schedule e Banned and Restricted (`docs/caching.md`).
+
 ### Log su Console
 
 Oltre al canale Discord, il bot scrive log su stdout/stderr per debug via SSH. I fallimenti di avvio (token invalido, eccezioni non gestite in `setup_hook`) vengono sempre scritti su stderr con prefisso `FATAL:`, anche quando il canale Discord di log non e' raggiungibile.

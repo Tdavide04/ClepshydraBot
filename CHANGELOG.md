@@ -8,6 +8,29 @@ precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La ver
 `VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
 che aggiorna questo file, non è derivata automaticamente da git.
 
+**Language:** from 3.6.4 onward entries are written in English (`docs/adr/0003-project-language.md`).
+Entries up to 3.6.3 stay in Italian as an archive.
+
+## 3.6.4 (2026-10-20)
+
+Docs only, no code changes.
+
+### Docs
+- New development standard (`docs/adr/0002-standard-di-sviluppo.md`): test-first for logic layers (cogs
+  exempt, with manual verification in `TEST_MODE`), Conventional Commits with project scopes, lint that
+  only grows, `pre-commit` + CI gates (not in place yet, roadmap steps 12-13)
+- Project language (`docs/adr/0003-project-language.md`): English for code, logs, docs and commits; Italian
+  for everything users see. The translation itself is roadmap step 11
+- `CLAUDE.md` rewritten: from 384 to about 200 lines. It now holds the working loop, the commit
+  conventions, an architecture map pointing to the topic docs, the invariants and the test-writing
+  notes. The historical rationale moved out:
+  - the Event Schedule calendar image design → `docs/adr/0001-layout-immagine-calendario-eventi.md`
+    (`docs/caching.md` now points there)
+  - `Logger.send_log()` details (`fields`, `files`, `extra_channel_id`) → `docs/infrastruttura.md`
+- `docs/roadmap-miglioramenti.md`: new phase 2 (steps 10-18): line endings, translation, `ruff format`,
+  `pre-commit`, pinned dependencies, coverage, wider lint, `ServiceResult` instead of message matching,
+  English slash command names (no priority)
+
 ## 3.6.3 (2026-10-14)
 
 Solo documentazione: nessun cambiamento al codice.

@@ -393,3 +393,150 @@ esistente. Poi l'invalidazione TTL (3), che non tocca lo schema. Lo Step 7 (test
 completato subito prima dello Step 4, così la migrazione della cache carte a SQLite — il cambiamento più
 invasivo dell'elenco — può essere validata con test reali. La chiusura del gate `ruff` (8) e Docker (9)
 chiudono la lista: non correggono debito applicativo, riducono il rischio operativo futuro.
+
+---
+
+# Fase 2 — Standard di sviluppo (ADR-0002, ADR-0003)
+
+Emersa dalla discovery del 2026-10-20 (`docs/adr/0002-standard-di-sviluppo.md`). Valgono le stesse
+"Regole per ogni step" della fase 1, più lo standard descritto in `CLAUDE.md` → "Working standard".
+
+## Step 10 — Line endings deterministici
+
+**Stato:** da fare
+
+**Problema:** `core.autocrlf=true` senza `.gitattributes`. `git status` segnala come modificati circa 35
+file che non hanno modifiche reali; restano soltanto differenze di fine riga, che coprono le modifiche vere.
+
+**Modifiche:** `.gitattributes` con `* text=auto eol=lf`, più `binary` per `*.png`, `*.db` e
+`*.ttf`/`*.otf` se presenti. Poi `git add --renormalize .` in un commit dedicato
+(`chore: normalizza i fine riga a LF`).
+
+**Validazione:** dopo il commit, `git status` su un checkout pulito non mostra file modificati.
+
+## Step 11 — Progetto in inglese (ADR-0003)
+
+**Stato:** da fare
+
+**Modifiche:** un solo punto, diviso in 4 commit, ognuno approvato prima di essere fatto:
+1. `refactor(i18n)`: commenti, docstring, log in console e canale log, commenti dei file di contorno
+   (`.env.example`, `Dockerfile`, `ci.yml`, `deploy/`, `ruff.toml`)
+2. `test`: nomi dei test
+3. `docs`: `docs/` e `README.md`, con i file rinominati in inglese (`git mv`) e i riferimenti aggiornati
+4. `docs`: `CLAUDE.md`, gli ADR, `docs/agents/` e il nuovo `CONTEXT.md` (glossario inglese ↔ termini UI
+   italiani)
+
+Una sola voce di CHANGELOG e un solo bump PATCH, nell'ultimo commit. Restano in italiano: le stringhe che
+l'utente vede (risposte ai comandi, modal, view, embed community), i nomi e le descrizioni degli slash
+command, le voci passate del CHANGELOG.
+
+**Validazione:**
+- un grep delle parole funzionali italiane non trova nulla fuori dalle stringhe UI;
+- pytest verde e ruff pulito;
+- i vecchi nomi dei file di documentazione non compaiono più (grep = 0);
+- le stringhe letterali in `send`/`Embed`/`Modal` sono identiche prima e dopo.
+
+## Step 12 — `ruff format` + import ordinati
+
+**Stato:** da fare
+
+**Modifiche:** `ruff.toml` aggiunge `I` (isort) a `select` e una sezione `[format]`. Un solo commit di
+riformattazione (`style: applica ruff format e ordina gli import`), senza altre modifiche. Il suo hash va
+in `.git-blame-ignore-revs`. La CI aggiunge `ruff format --check .` al job `lint`.
+
+**Validazione:** `python -m ruff format --check .` e `python -m ruff check .` puliti; la suite pytest
+resta verde (la riformattazione non cambia il comportamento).
+
+## Step 13 — Hook `pre-commit`
+
+**Stato:** da fare
+
+**Modifiche:**
+- `.pre-commit-config.yaml` con questi hook, ognuno con la versione fissata (`rev`):
+  - `ruff-pre-commit` (`ruff-check --fix`, `ruff-format`)
+  - `conventional-pre-commit` (stage `commit-msg`), configurato con gli scope di `CLAUDE.md`
+  - hook base: `check-yaml`, `end-of-file-fixer`, `trailing-whitespace`, `check-added-large-files`,
+    `detect-private-key`
+- `pre-commit` va in `requirements-dev.txt`.
+- La CI esegue `pre-commit run --all-files`.
+- L'attivazione locale (`pre-commit install --hook-type pre-commit --hook-type commit-msg`) va scritta in
+  `README.md` e in `CLAUDE.md`.
+
+**Validazione:** un commit con messaggio non conforme viene rifiutato; `pre-commit run --all-files` è
+verde.
+
+## Step 14 — Dipendenze riproducibili
+
+**Stato:** da fare
+
+**Problema:**
+- `requirements.txt` non fissa le versioni, quindi un `pip install` sulla VM di produzione può portare
+  una major nuova di discord.py o SQLAlchemy.
+- In locale gira Python 3.14, mentre CI e Docker usano 3.12.
+
+**Modifiche:**
+- Fissare in `requirements.txt` (con `==`) le versioni oggi installate in produzione. Vanno lette con
+  `pip freeze` sulla VM, non da quelle locali.
+- Fissare anche `requirements-dev.txt`.
+- Documentare Python 3.12 come target (`.python-version`) in `README.md` / `docs/infrastruttura.md`.
+
+**Validazione:** con un venv 3.12 pulito, `pip install -r requirements-dev.txt` + pytest sono verdi; il
+`docker build` riesce.
+
+## Step 15 — Coverage misurata
+
+**Stato:** da fare
+
+**Modifiche:** `pytest-cov` in `requirements-dev.txt`. In CI: `pytest --cov=services --cov=utils
+--cov=repositories --cov=database --cov=cogs --cov-report=term-missing`, solo come report, senza soglia.
+La soglia (`--cov-fail-under`) si introduce in un secondo momento, fissata al valore misurato, e da lì può
+solo salire.
+
+**Validazione:** il report appare nel log CI. Annotare la baseline in questo step.
+
+## Step 16 — Allargare il lint: `B`, `ASYNC`, `UP`
+
+**Stato:** da fare
+
+**Problema:** `ASYNC230`/`ASYNC240` segnalano I/O su file bloccante dentro funzioni async (event loop
+fermo durante la lettura/scrittura, su una VM da 1 OCPU); `B007` segnala una variabile di ciclo
+inutilizzata.
+
+**Modifiche:**
+- Correggere i 6 finding `B`/`ASYNC` (`asyncio.to_thread` o lettura fuori dal path async), con TDD dove
+  il comportamento è osservabile.
+- Aggiungere `B` e `ASYNC` a `select`.
+- `UP` in un commit separato (fix automatici).
+
+**Validazione:** `python -m ruff check .` pulito con le nuove regole; pytest verde.
+
+## Step 17 — `ServiceResult` al posto del confronto sui messaggi
+
+**Stato:** da fare
+
+**Problema:** 9 punti di `cogs/tournament_system/cog.py` decidono cosa fare cercando frasi nel messaggio
+del service (`"non trovato" in msg`, `"completato" in msg`...). Se si riformula un messaggio, la logica
+del cog si rompe senza che nessun test lo segnali.
+
+**Modifiche:** i metodi di `TournamentService` interessati restituiscono `ServiceResult` (eventualmente
+con un campo `reason` enumerato); il cog decide in base ai campi del risultato. TDD: i test di
+`test_tournament_service.py` verificano `ok`/`reason`, non il testo.
+
+**Validazione:** nel cog non resta nessun `in msg` (`grep`); pytest verde; verifica manuale in
+`TEST_MODE` dei comandi toccati, annotata nel `CHANGELOG.md`.
+
+## Step 18 — Nomi degli slash command in inglese
+
+**Stato:** da fare, senza priorità, da decidere in una sessione dedicata
+
+**Problema:** i nomi dei comandi sono misti (`/iscriviti`, `/classifica`, ma `/forced_rarity_refresh`). Uno
+slash command rinominato non lascia alias: va annunciato alla community. Restano da decidere quali comandi
+rinominare e se le descrizioni restano in italiano.
+
+## Ordine consigliato (fase 2)
+
+10 → 11 → 12 → 13 → 14 → 15 → 16 → 17; 18 quando verrà deciso. Prima la pulizia
+meccanica (10), poi la traduzione (11), così i diff successivi sono già in inglese e senza rumore di fine riga.
+Il `ruff format` (12) va dopo la traduzione, perché tradurre i commenti cambia la lunghezza delle righe;
+poi il gate (13) parte da un codice già conforme. Seguono riproducibilità (14) e misura (15). Le
+correzioni al codice (16, 17) vengono per ultime, quando gate e coverage sono già attivi.
