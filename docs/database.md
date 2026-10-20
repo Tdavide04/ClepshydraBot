@@ -133,12 +133,12 @@ access pattern — an in-memory dict with dirty tracking — differs from the ot
 ### Enums
 
 ```python
-class TournamentStatus(str, enum.Enum):
+class TournamentStatus(enum.StrEnum):
     REGISTRATION = "registration"
     ACTIVE = "active"
     COMPLETED = "completed"
 
-class MatchResult(str, enum.Enum):
+class MatchResult(enum.StrEnum):
     WIN = "win"
     LOSS = "loss"
     DRAW = "draw"

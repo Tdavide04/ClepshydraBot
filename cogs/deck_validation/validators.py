@@ -10,7 +10,7 @@ def load_banlist(path: str = BANLIST_PATH) -> set[str]:
     banned: set[str] = set()
     if not os.path.exists(path):
         return banned
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             name = line.strip()
             if not name:

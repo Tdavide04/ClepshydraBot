@@ -34,7 +34,7 @@ class BanlistRepository(BaseRepository[BannedCard]):
 
         imported = 0
         # Blocking read is fine here: called once at startup by _migrate_banlist(), on an empty table only.
-        with open(path, "r", encoding="utf-8") as f:  # noqa: ASYNC230
+        with open(path, encoding="utf-8") as f:  # noqa: ASYNC230
             for line in f:
                 name = line.strip()
                 if not name:

@@ -1,8 +1,7 @@
 import asyncio
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from utils.console import log
 
@@ -77,7 +76,7 @@ async def load_cache() -> None:
 
 def _load_legacy_json() -> dict:
     try:
-        with open(CACHE_PATH, "r", encoding="utf-8") as f:
+        with open(CACHE_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -125,7 +124,7 @@ async def save_cache() -> None:
             await session.close()
 
 
-def get_cached_card(card_name: str) -> Optional[dict]:
+def get_cached_card(card_name: str) -> dict | None:
     return _card_cache.get(card_name.lower())
 
 
@@ -146,14 +145,14 @@ def is_artisan_legal_stale(entry: dict) -> bool:
     except ValueError:
         return True
     if checked.tzinfo is None:
-        checked = checked.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - checked > timedelta(days=ARTISAN_LEGAL_TTL_DAYS)
+        checked = checked.replace(tzinfo=UTC)
+    return datetime.now(UTC) - checked > timedelta(days=ARTISAN_LEGAL_TTL_DAYS)
 
 
 def mark_artisan_legal(card_name: str, entry: dict, legal: bool) -> None:
     """Sets artisan_legal + the check timestamp and stores the entry in the cache."""
     entry["artisan_legal"] = legal
-    entry["artisan_legal_checked_at"] = datetime.now(timezone.utc).isoformat()
+    entry["artisan_legal_checked_at"] = datetime.now(UTC).isoformat()
     set_cached_card(card_name, entry)
 
 

@@ -20,7 +20,10 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 - Lint widened with `ruff` rule families `B` (bugbear) and `ASYNC`. The 5 `ASYNC230`/`ASYNC240` findings
   are blocking file calls that run only once at startup, before the bot serves interactions, so they get a
   `# noqa` with that reason instead of an `asyncio.to_thread` wrapper; the rules stay on to catch runtime
-  cases. One unused loop variable removed (`B007`, `start_tournament()`). Roadmap step 16 (part 1).
+  cases. One unused loop variable removed (`B007`, `start_tournament()`).
+- Rule family `UP` enabled (Python 3.12 idioms): 13 automatic fixes, `TournamentStatus`/`MatchResult` now
+  `enum.StrEnum` (still stored by name in SQLite, checked with raw SQL), `BaseRepository[T: Base]` generics.
+  Roadmap step 16.
 
 ## 3.6.6 (2026-10-20)
 

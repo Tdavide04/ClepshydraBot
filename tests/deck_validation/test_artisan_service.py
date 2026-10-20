@@ -377,7 +377,7 @@ class TestRequestWithRetry:
         assert session.calls == 2
 
     def test_exhausted_retries_raise_scryfall_unavailable(self, no_sleep):
-        session = FakeSession(*[asyncio.TimeoutError() for _ in range(3)])
+        session = FakeSession(*[TimeoutError() for _ in range(3)])
         with pytest.raises(ScryfallUnavailable):
             asyncio.run(ArtisanService()._post_with_retry(session, "u", {}, "x", retries=3))
         assert session.calls == 3

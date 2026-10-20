@@ -21,13 +21,13 @@ class Base(DeclarativeBase):
     pass
 
 
-class TournamentStatus(str, enum.Enum):
+class TournamentStatus(enum.StrEnum):
     REGISTRATION = "registration"
     ACTIVE = "active"
     COMPLETED = "completed"
 
 
-class MatchResult(str, enum.Enum):
+class MatchResult(enum.StrEnum):
     WIN = "win"
     LOSS = "loss"
     DRAW = "draw"

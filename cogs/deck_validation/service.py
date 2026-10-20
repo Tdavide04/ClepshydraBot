@@ -431,7 +431,7 @@ class ArtisanService:
                         data = await resp.json()
                         await asyncio.sleep(_MIN_REQUEST_INTERVAL)
                         return data
-                except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                except (TimeoutError, aiohttp.ClientError) as e:
                     last_problem = type(e).__name__
                     await asyncio.sleep(2**attempt)
 

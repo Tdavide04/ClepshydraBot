@@ -44,7 +44,7 @@ def load_json_state(path: str, default: dict) -> dict:
     if not os.path.exists(path):
         return dict(default)
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

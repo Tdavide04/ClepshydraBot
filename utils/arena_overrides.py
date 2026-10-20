@@ -82,7 +82,7 @@ def _load_override_data() -> dict:
         }
         return _override_cache
 
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
+    with open(DATA_PATH, encoding="utf-8") as f:
         _override_cache = json.load(f)
 
     return _override_cache
@@ -157,7 +157,7 @@ async def _scryfall_get(
 
                 return data
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print(f"[TIMEOUT] {label} (attempt {attempt + 1}/{retries})")
             await asyncio.sleep(2**attempt)
 

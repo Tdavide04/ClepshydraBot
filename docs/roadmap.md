@@ -493,11 +493,13 @@ threshold (`--cov-fail-under`) comes later, set to the measured value, and from 
 
 ## Step 16 — Wider lint: `B`, `ASYNC`, `UP`
 
-**Status:** in progress (2026-10-20). Part 1 done: `B` and `ASYNC` enabled. On inspection the 5 `ASYNC`
+**Status:** done (2026-10-20). Part 1: `B` and `ASYNC` enabled. On inspection the 5 `ASYNC`
 findings all run once at startup (`setup_hook` cog loading, `init_db()`, the banlist import, the legacy card
 cache check), before the bot serves any interaction — no real stall, contrary to the problem stated below. They
 got a `# noqa` naming the rule and the reason rather than an `asyncio.to_thread` wrapper; the rules stay on to
-catch runtime cases. `B007` fixed (unused loop variable). Part 2: `UP`.
+catch runtime cases. `B007` fixed (unused loop variable). Part 2: `UP` enabled, 13 autofixes plus
+`StrEnum` for the two enums (stored by name, verified with raw SQL: no data migration) and PEP 695 generics for
+`BaseRepository`.
 
 **Problem:** `ASYNC230`/`ASYNC240` flag blocking file I/O inside async functions (the event loop stalls during
 the read/write, on a 1-OCPU VM); `B007` flags an unused loop variable.
