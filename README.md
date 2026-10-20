@@ -165,7 +165,8 @@ validated and ready to use.
 ## Development
 
 ```bash
-pip install -r requirements-dev.txt   # adds pytest and ruff
+pip install -r requirements-dev.txt   # adds pytest, ruff and pre-commit
+pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per clone
 
 # Test mode (uses separate channels and test database)
 TEST_MODE=True python main.py

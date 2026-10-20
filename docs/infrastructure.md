@@ -233,9 +233,13 @@ stays the method actually used in production until a migration is decided.
 - `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in Step 8 of `docs/roadmap.md` (at the time partly by excluding `legacy/`, later
   removed from the repository — see `CHANGELOG.md`)
-- `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since roadmap step 12;
-  the lint job installs the `ruff` version pinned in `requirements-dev.txt`. The one-off reformatting commit
-  is listed in `.git-blame-ignore-revs`
+- `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since roadmap step 12. The
+  one-off reformatting commit is listed in `.git-blame-ignore-revs`
+- since roadmap step 13 the lint job runs `pre-commit run --all-files --show-diff-on-failure`
+  (`.pre-commit-config.yaml`): ruff check and ruff format (`ruff-pre-commit` at the same version as the
+  `ruff` pin in `requirements-dev.txt`), plus YAML, end-of-file, trailing-whitespace, large-file and
+  private-key checks. It installs only the `pre-commit` version pinned in `requirements-dev.txt`. The
+  commit-message hook (`conventional-pre-commit`) runs locally only, at `commit-msg`
 
 Still to do:
 - Docker `build` check in CI (verify the image builds on every push, without deploying)

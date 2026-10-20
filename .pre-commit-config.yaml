@@ -1,0 +1,42 @@
+# Local hooks: pre-commit install --hook-type pre-commit --hook-type commit-msg
+# CI runs the pre-commit stage on every file: pre-commit run --all-files
+repos:
+  # Keep rev in sync with the ruff pin in requirements-dev.txt.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        # Two trailing spaces are a Markdown line break.
+        args: [--markdown-linebreak-ext=md]
+      - id: check-added-large-files
+      - id: detect-private-key
+
+  # Commit message: Conventional Commits with the types and scopes in CLAUDE.md. No --strict, so merge
+  # commits stay allowed; no --force-scope, since a scope is optional.
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --scopes=tournament,deck,banlist,cache,monitor,onboarding,logger,db,deps,ci,lang
+          - feat
+          - fix
+          - perf
+          - refactor
+          - docs
+          - test
+          - style
+          - chore
+          - ci
+          - build
+          - revert

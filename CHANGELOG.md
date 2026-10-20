@@ -22,9 +22,17 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   now also runs `ruff format --check .`, and `ruff` is pinned to 0.16.6 in `requirements-dev.txt` so a ruff
   release can't flip that check. Roadmap step 12.
 
+- `pre-commit` hooks (`.pre-commit-config.yaml`): ruff check, ruff format, YAML, end-of-file,
+  trailing-whitespace, large-file and private-key checks on commit, and Conventional Commits with the
+  project's types and scopes on the commit message. CI's lint job now runs `pre-commit run --all-files`.
+  Activate once per clone: `pre-commit install --hook-type pre-commit --hook-type commit-msg`. The first
+  run only fixed whitespace (`cards.txt`, `data/arena_rarity_data.json`, `.gitignore`,
+  `cogs/__init__.py`). Roadmap step 13.
+
 ### Docs
 - `docs/commands.md`: "Line" column recomputed after the reformatting.
-- `CLAUDE.md`, `README.md`, `docs/infrastructure.md`: the format check joins the gate.
+- `CLAUDE.md`, `README.md`, `docs/infrastructure.md`: the format check and the pre-commit hooks join the
+  gate.
 
 ## 3.6.5 (2026-10-20)
 

@@ -442,7 +442,13 @@ green (reformatting doesn't change behavior).
 
 ## Step 13 — `pre-commit` hooks
 
-**Status:** todo
+**Status:** done (2026-10-20). `pre-commit` 4.6.2 (4.7.0 was only 8 days old), `ruff-pre-commit` v0.16.6,
+`pre-commit-hooks` v6.0.0, `conventional-pre-commit` v4.4.0 with the CLAUDE.md types and scopes, scope
+optional, no `--strict` (it would reject merge commits). The first run fixed whitespace only: a trailing
+space after the last card in `cards.txt` (already stripped on import) and missing final newlines.
+Verified: a message without a type and one with an unknown scope (`feat(torneo): ...`) are refused, no commit
+created; a message with scope and attribution trailer and one without scope pass. The CI lint job now runs
+`pre-commit run --all-files` instead of the two ruff commands.
 
 **Changes:**
 - `.pre-commit-config.yaml` with these hooks, each with a pinned version (`rev`):
@@ -469,7 +475,7 @@ green (reformatting doesn't change behavior).
 **Changes:**
 - Pin in `requirements.txt` (with `==`) the versions installed in production today. They must be read with
   `pip freeze` on the VM, not from the local ones.
-- Pin the rest of `requirements-dev.txt` too (`ruff` is pinned since step 12).
+- Pin the rest of `requirements-dev.txt` too (`ruff` is pinned since step 12, `pre-commit` since step 13).
 - Document Python 3.12 as the target (`.python-version`) in `README.md` / `docs/infrastructure.md`.
 
 **Validation:** with a clean 3.12 venv, `pip install -r requirements-dev.txt` + pytest are green; `docker build`

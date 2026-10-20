@@ -73,7 +73,8 @@ Format: `<type>(<scope>): <subject>`.
 - **Body:** why the change was made, and what was verified.
 - **Footer:** `Refs: #<issue>`, `BREAKING CHANGE: ...` when it applies, plus the attribution trailer.
 - **Scopes** (optional, one per commit): `tournament`, `deck`, `banlist`, `cache`, `monitor`,
-  `onboarding`, `logger`, `db`, `deps`, `ci`, `lang`.
+  `onboarding`, `logger`, `db`, `deps`, `ci`, `lang`. The `commit-msg` hook in `.pre-commit-config.yaml`
+  enforces this list: add a scope in both places.
 
 Type → `VERSION` bump (MAJOR moves only when the user decides it explicitly):
 
@@ -88,8 +89,9 @@ Type → `VERSION` bump (MAJOR moves only when the user decides it explicitly):
 **A mechanical change across several areas is one point** (for example the translation): several
 commits, one per area, but a single CHANGELOG entry and a single bump, in the last commit.
 
-CI enforces lint and formatting; nothing checks commit messages yet (`pre-commit`, roadmap step 13). Until
-then, apply these rules by hand.
+`pre-commit` enforces all of this: on commit it runs ruff check, ruff format and whitespace/YAML/private-key
+checks, and rejects a message that isn't Conventional Commits with a listed type and scope. Activate it once
+per clone (see Commands). CI runs the same pre-commit-stage hooks on every file.
 
 ### Branches and versions
 
@@ -115,13 +117,15 @@ then, apply these rules by hand.
 ## Commands
 
 ```bash
-pip install -r requirements-dev.txt          # deps + pytest + ruff
+pip install -r requirements-dev.txt          # deps + pytest + ruff + pre-commit
+pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per clone
 python main.py                                # needs .env (see .env.example)
 TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
 python -m pytest                              # CI runs `pytest tests/ -v`
 python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
 python -m ruff format .                       # CI runs `ruff format --check .`
+pre-commit run --all-files                    # what the CI lint job runs
 ```
 
 Target Python is 3.12 (CI, Docker, `ruff.toml`).

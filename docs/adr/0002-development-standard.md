@@ -1,6 +1,6 @@
 # ADR-0002 — Development standard: test-first, Conventional Commits, automated gates
 
-**Status:** accepted (2026-10-20). Automated gates come with steps 12-13 of `docs/roadmap.md`.
+**Status:** accepted (2026-10-20). Automated gates in place since steps 12-13 of `docs/roadmap.md`.
 
 ## Context
 

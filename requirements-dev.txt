@@ -1,4 +1,6 @@
 -r requirements.txt
 pytest
 # Pinned: the CI format check must not change verdict on a ruff release.
+# Keep in sync with the ruff-pre-commit rev in .pre-commit-config.yaml.
 ruff==0.16.6
+pre-commit==4.6.2

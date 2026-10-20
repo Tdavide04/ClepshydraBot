@@ -24,7 +24,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # Same ruff version as requirements-dev.txt, without installing the bot's dependencies.
-      - run: pip install "$(grep -E '^ruff==' requirements-dev.txt)"
-      - run: ruff check .
-      - run: ruff format --check .
+      # Same pre-commit version as requirements-dev.txt, without installing the bot's dependencies.
+      # The hooks (ruff check, ruff format, whitespace, YAML, private keys) come from .pre-commit-config.yaml;
+      # a hook that fixes a file fails the job and prints the diff.
+      - run: pip install "$(grep -E '^pre-commit==' requirements-dev.txt)"
+      - run: pre-commit run --all-files --show-diff-on-failure
