@@ -38,6 +38,8 @@ from urllib.parse import quote
 
 import aiohttp
 
+from utils.sitemap_monitor import save_json_state
+
 DATA_PATH = "data/arena_rarity_data.json"
 
 _MIN_REQUEST_INTERVAL = 0.11
@@ -87,14 +89,12 @@ def _load_override_data() -> dict:
 
 
 def _save_override_data(data: dict) -> None:
-    """Saves the JSON and updates the in-memory cache."""
+    """Saves the JSON and updates the in-memory cache. The write is atomic: the file is curated data, and a
+    failure mid-write used to leave it truncated (roadmap step 19)."""
 
     global _override_cache
 
-    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    save_json_state(DATA_PATH, data)
 
     _override_cache = data
 

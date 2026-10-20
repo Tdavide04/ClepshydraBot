@@ -209,8 +209,8 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - **Rate limiting**: asyncio semaphore to respect Scryfall limits
 - **Scryfall outage ≠ illegal card**: `ScryfallUnavailable` leaves the deck unevaluated instead of marking
   cards illegal (see `docs/deck-validation.md`)
-- **Atomic writes**: the monitors' state files are written to `.tmp` then `os.replace()`
-  (`save_json_state()` in `utils/sitemap_monitor.py`)
+- **Atomic writes**: the monitors' state files and the SPG override JSON are written to `.tmp` then
+  `os.replace()` (`save_json_state()` in `utils/sitemap_monitor.py`)
 - **Async lock**: `asyncio.Lock()` around concurrent card cache saves
 - **Bot startup**: `main.py` catches `discord.LoginFailure` (invalid/expired token) and any other startup
   exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor

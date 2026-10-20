@@ -26,7 +26,8 @@ ClepshydraBot is hosted on **Oracle Cloud Infrastructure (OCI) Free Tier**, runn
 1 GB RAM drove key architectural choices:
 - **SQLite** instead of PostgreSQL (no separate DB process)
 - **SQLite tables and local JSON files** for caches instead of Redis (no external in-memory service)
-- **Atomic file writes** (`.tmp` + `os.replace`) for the monitors' state files instead of a heavier journal
+- **Atomic file writes** (`.tmp` + `os.replace`) for the monitors' state files and the SPG override JSON
+  instead of a heavier journal
 
 ---
 

@@ -14,14 +14,21 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
+## 3.6.6 (2026-10-20)
+
+### Fixed
+- **An interrupted save could corrupt the SPG override file**: `_save_override_data()`
+  (`utils/arena_overrides.py`) wrote `data/arena_rarity_data.json` in place, so a failure mid-write (full
+  disk, crash) left a truncated JSON, and `json.load` failed on the next start until the file was restored
+  from git. It now uses the atomic `save_json_state()` (`.tmp` + `os.replace`) the monitors already used.
+  New regression test `TestOverrideFileSurvivesFailedWrite`, red on the previous code. `data/*.tmp` is now
+  git-ignored. Roadmap step 19.
 
 ### Changed
 - Code formatted with `ruff format` (line length 110) and imports sorted (`ruff` rule `I`), in a single
   mechanical commit (`24cff10`, listed in `.git-blame-ignore-revs`); identical AST in every Python file. CI
   now also runs `ruff format --check .`, and `ruff` is pinned to 0.16.6 in `requirements-dev.txt` so a ruff
   release can't flip that check. Roadmap step 12.
-
 - `pre-commit` hooks (`.pre-commit-config.yaml`): ruff check, ruff format, YAML, end-of-file,
   trailing-whitespace, large-file and private-key checks on commit, and Conventional Commits with the
   project's types and scopes on the commit message. CI's lint job now runs `pre-commit run --all-files`.

@@ -43,6 +43,9 @@ data/arena_event_schedule_state.json
 # (utils/ban_announcement.py) - pure bookkeeping, no editorial value.
 data/ban_announcement_state.json
 
+# Leftover of an interrupted atomic write (save_json_state(): `.tmp` + os.replace), never real data.
+data/*.tmp
+
 # Coverage
 .coverage
 htmlcov/

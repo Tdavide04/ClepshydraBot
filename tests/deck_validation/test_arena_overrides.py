@@ -160,6 +160,34 @@ class TestUpdateSpgOverridesIncremental:
         assert {oid for batch in batch_calls for oid in batch} == {ORACLE_A, ORACLE_B}
 
 
+class TestOverrideFileSurvivesFailedWrite:
+    def test_a_write_interrupted_midway_leaves_the_previous_file_intact(self, monkeypatch):
+        """Regression (roadmap step 19): the override JSON was written in place with open(..., "w"), so a
+        failure mid-write (full disk, crash) left a truncated file that broke json.load on the next start.
+        The file is curated data tracked in git, so it must survive a failed save untouched."""
+        previous = {"overrides": {"Old Card": "common"}, "checked_cards": {"SPG": ["Old Card"]}}
+        with open(arena_overrides.DATA_PATH, "w", encoding="utf-8") as f:
+            json.dump(previous, f, indent=4, ensure_ascii=False)
+        with open(arena_overrides.DATA_PATH, encoding="utf-8") as f:
+            previous_text = f.read()
+
+        search_calls, batch_calls = [], []
+        _install_fake_search(monkeypatch, BASE_SEARCH, search_calls)
+        _install_fake_prints_batch(monkeypatch, BASE_PRINTINGS, batch_calls)
+
+        def write_half_then_fail(obj, fp, **kwargs):
+            fp.write('{"overrides": {')
+            raise OSError("No space left on device")
+
+        monkeypatch.setattr(json, "dump", write_half_then_fail)
+
+        with pytest.raises(OSError):
+            run(arena_overrides.update_spg_overrides())
+
+        with open(arena_overrides.DATA_PATH, encoding="utf-8") as f:
+            assert f.read() == previous_text
+
+
 class TestPrintsBatching:
     def test_unchecked_cards_are_split_into_batches_of_configured_size(self, monkeypatch):
         """With more unevaluated cards than _PRINTS_BATCH_SIZE, the scan must

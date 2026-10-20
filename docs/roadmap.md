@@ -531,7 +531,11 @@ and whether descriptions stay in Italian.
 
 ## Step 19 — Atomic write for the SPG override JSON
 
-**Status:** todo (found 2026-10-20 while translating the docs)
+**Status:** done (2026-10-20, 3.6.6). Reused `save_json_state()` from `utils/sitemap_monitor.py`. Regression
+test `TestOverrideFileSurvivesFailedWrite` (through `update_spg_overrides()`, with `json.dump` writing half
+the file then raising) was red on the old code — the file on disk was left as `{"overrides": {` — and is
+green now. `data/*.tmp` added to `.gitignore`, since an interrupted write leaves the `.tmp` behind next to a
+tracked file (the monitors' `.tmp` files weren't ignored either).
 
 **Problem:** `_save_override_data()` in `utils/arena_overrides.py` writes `data/arena_rarity_data.json` directly
 with `open(..., "w")`. A crash mid-write leaves a truncated JSON, and on the next start `json.load` fails. The

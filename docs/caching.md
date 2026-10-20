@@ -164,8 +164,10 @@ by hand via `/forced_rarity_refresh` (admin).
 
 `_override_cache`: global variable filled on first access, explicitly invalidatable. `_update_lock`
 (`asyncio.Lock()`) keeps the automatic task and a manual `/forced_rarity_refresh` from overwriting the JSON at
-the same time if they coincide. The JSON itself is written directly with `open(..., "w")`, not with the
-`.tmp` + `os.replace` atomic write the monitors use.
+the same time if they coincide. The JSON is written atomically with `save_json_state()` (`.tmp` +
+`os.replace`, the same helper the monitors use): a failure mid-write leaves the previous file intact. Until
+3.6.6 it was written in place with `open(..., "w")`, so an interrupted write left a truncated JSON that broke
+`json.load` on the next start.
 
 ### Batching the Scryfall Requests
 
