@@ -403,7 +403,8 @@ Emersa dalla discovery del 2026-10-20 (`docs/adr/0002-standard-di-sviluppo.md`).
 
 ## Step 10 — Line endings deterministici
 
-**Stato:** da fare
+**Stato:** fatto (2026-10-20). Normalizzati 13 file salvati con CRLF nel repo; il diff ignorando i CR è
+vuoto. I file sul disco, 50 CRLF più 1 misto, sono stati riscritti in LF con contenuto identico.
 
 **Problema:** `core.autocrlf=true` senza `.gitattributes`. `git status` segnala come modificati circa 35
 file che non hanno modifiche reali; restano soltanto differenze di fine riga, che coprono le modifiche vere.
