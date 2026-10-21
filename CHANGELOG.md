@@ -28,6 +28,12 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   `utils/sitemap_monitor.py`, which no longer re-exports `log`). Moves and import rewrites only; CI coverage
   now includes `core`. Verified: pytest (292 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs
   and 9 slash commands.
+- New `features/monitors/` package for the Wizards monitors: `sitemap.py` (was `utils/sitemap_monitor.py`),
+  `event_schedule.py` (`utils/arena_event_schedule.py`), `ban_announcement.py`, `calendar_image.py`
+  (`utils/event_calendar_image_generator.py`) and the two cogs `event_schedule_cog.py` and
+  `ban_announcement_cog.py` (`cogs/*_updater.py`). Tests moved to `tests/monitors/`. Moves and import
+  rewrites only. Verified: pytest (294 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
+  slash commands.
 
 ### Added
 - `tests/core/test_extensions.py`: imports every application module and checks that every module with a

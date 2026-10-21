@@ -1,9 +1,9 @@
 """
-sitemap_monitor.py
+sitemap.py
 
 Logic shared by the monitors that follow Wizards pages through the standard
-XML sitemap of magic.wizards.com (utils/arena_event_schedule.py and
-utils/ban_announcement.py): both fetch the same sitemap.xml every 2 hours,
+XML sitemap of magic.wizards.com (features/monitors/event_schedule.py and
+features/monitors/ban_announcement.py): both fetch the same sitemap.xml every 2 hours,
 pick the newest page of interest by `lastmod` (Wizards never removes past
 pages from the sitemap, so several always coexist) and keep a "last page
 seen" state in a local JSON file (core/json_state.py). Extracted here after the

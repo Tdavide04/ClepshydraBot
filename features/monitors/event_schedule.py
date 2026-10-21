@@ -1,5 +1,5 @@
 """
-arena_event_schedule.py
+event_schedule.py
 
 Detects publication or updates of Wizards' "[Set] MTG Arena Event Schedule"
 pages (one per expansion, not weekly like the "MTG Arena Announcements"
@@ -45,7 +45,7 @@ import discord
 
 from core.console import log
 from core.json_state import load_json_state, save_json_state
-from utils.sitemap_monitor import (
+from features.monitors.sitemap import (
     _CHECK_INTERVAL_SECONDS,
     _SITEMAP_NS,
     fetch_page_html,
@@ -396,7 +396,7 @@ def format_period_covered(
 
 
 # In practice this selects the currently active set - see
-# pick_latest_by_lastmod() in utils/sitemap_monitor.py for the rationale.
+# pick_latest_by_lastmod() in features/monitors/sitemap.py for the rationale.
 _pick_latest = pick_latest_by_lastmod
 
 
@@ -504,7 +504,7 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
 
     When the calendar is generated successfully, the images are also posted
     to COMUNICATION_CHANNEL_ID (via Logger.send_log()'s `extra_channel_id`,
-    same scheme as send_ban_announcement_log() in utils/ban_announcement.py)
+    same scheme as send_ban_announcement_log() in features/monitors/ban_announcement.py)
     - a real update concerns the whole community, not just staff. That
     channel is public (@everyone gets pinged): `community_title` /
     `community_info` build a dedicated Italian embed without the staff
@@ -548,7 +548,7 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
         )
         return
 
-    from utils.event_calendar_image_generator import EventCalendarImageGenerator
+    from features.monitors.calendar_image import EventCalendarImageGenerator
 
     files = [
         discord.File(

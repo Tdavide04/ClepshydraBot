@@ -1,8 +1,8 @@
 """
-event_calendar_image_generator.py
+calendar_image.py
 
 Draws, for a single month, the Arena event calendar image from the data
-already structured by `utils.arena_event_schedule.build_month_calendar()`
+already structured by `features.monitors.event_schedule.build_month_calendar()`
 ({category: [(start_day, end_day, event_name), ...]}). Rendered text is in
 Italian, since the image is posted to the community.
 
@@ -47,7 +47,7 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.arena_event_schedule import MONTHS_IT
+from features.monitors.event_schedule import MONTHS_IT
 
 
 class EventCalendarImageGenerator:

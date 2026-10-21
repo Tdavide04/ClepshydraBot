@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.permissions import is_admin
-from utils.ban_announcement import check_ban_announcement_updates, send_ban_announcement_log
+from features.monitors.ban_announcement import check_ban_announcement_updates, send_ban_announcement_log
 
 # ==========================================
 # COG

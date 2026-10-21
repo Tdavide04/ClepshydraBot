@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.permissions import is_admin
-from utils.arena_event_schedule import check_event_schedule_updates, send_event_schedule_log
+from features.monitors.event_schedule import check_event_schedule_updates, send_event_schedule_log
 
 # ==========================================
 # COG

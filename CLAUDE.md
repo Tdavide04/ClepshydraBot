@@ -27,9 +27,9 @@ Decided in `docs/adr/0002-development-standard.md`. Every change follows this lo
    it. Use the terms defined in `CONTEXT.md`. Check `git log` on `main` and on open `feature/*` branches,
    since parallel work may already have touched the area. Done when you can name the files you will change
    and the behaviour you will change.
-2. **Red.** Write the test first for logic in `services/`, `utils/`, `core/`, `repositories/` or `database/`. A
-   bug fix starts from a regression test that fails on the current code, and fails on an assertion about
-   behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
+2. **Red.** Write the test first for logic in `features/`, `services/`, `utils/`, `core/`, `repositories/`
+   or `database/`. A bug fix starts from a regression test that fails on the current code, and fails on an
+   assertion about behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
    reason you expect.
 3. **Green.** Write the smallest change that turns the test green. Done when `python -m pytest` is fully
    green.
@@ -53,7 +53,7 @@ in the CHANGELOG entry.
 ### Pragmatic rules
 
 - **DRY applies to knowledge, not just code.** Every fact has one owning doc, and this file points to it
-  rather than repeating it. Code example: `utils/sitemap_monitor.py`, extracted once two monitors had
+  rather than repeating it. Code example: `features/monitors/sitemap.py`, extracted once two monitors had
   duplicated it.
 - **No broken windows.** The lint set only grows. A rule family joins `ruff.toml` once the code is clean
   for it. Every `# noqa` names the rule and gives a reason.
@@ -138,8 +138,9 @@ Target Python is 3.12 (CI, `ruff.toml`, production venv).
 ## Architecture map
 
 Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `core/` (logging, error
-handling, `ServiceResult`, JSON state, permissions) and `utils/` (feature code still waiting to move,
-`docs/roadmap.md` phase 2). Each layer calls only
+handling, `ServiceResult`, JSON state, permissions). A finished feature lives in its own `features/<name>/`
+package (cog, logic, data access together); `utils/` holds feature code still waiting to move
+(`docs/roadmap.md` phase 2). Each layer calls only
 the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
 
 | Area | Code | Topic doc |
@@ -147,7 +148,8 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
 | Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
 | Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
-| Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |
+| Scryfall card cache, SPG overrides | `utils/card_cache.py`, `utils/arena_overrides.py` | `docs/caching.md` |
+| Wizards monitors (Event Schedule, Banned and Restricted, calendar image) | `features/monitors/` | `docs/caching.md` |
 | Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
 | Config, logging, deploy | `config/config.py`, `core/logger.py`, `main.py` | `docs/infrastructure.md` |
@@ -183,9 +185,9 @@ listed in the map.
   which logs a `WARN`.
 - **Anything posted to `COMUNICATION_CHANNEL_ID` is a dedicated community embed** with no staff detail.
   Note the spelling of the constant. `LOG_CHANNEL_ID` has no `_TEST` variant.
-- **Inside `utils/` and `core/` (except the `core/logger.py` extension), `config.config` is imported inside
-  the function that uses it**, never at module top, so these modules stay importable in tests without a
-  `.env`. Examples: `core/permissions.py` and the two monitors.
+- **Inside `utils/`, `core/` and `features/monitors/` (except the `core/logger.py` extension),
+  `config.config` is imported inside the function that uses it**, never at module top, so these modules stay
+  importable in tests without a `.env`. Examples: `core/permissions.py` and the two monitors.
 - **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
   systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 

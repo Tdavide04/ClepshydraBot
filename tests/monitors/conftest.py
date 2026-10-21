@@ -1,6 +1,6 @@
 import os
 
-# send_ban_announcement_log() (utils/ban_announcement.py) lazily imports
+# send_ban_announcement_log() (features/monitors/ban_announcement.py) lazily imports
 # COMUNICATION_CHANNEL_ID from config.config when the announcement has real
 # changes - same reason as the lazy import in core/permissions.py: running
 # this test file alone (without going through tests/tournament or

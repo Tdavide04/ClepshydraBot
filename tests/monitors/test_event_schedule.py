@@ -4,15 +4,15 @@ from datetime import date
 
 import pytest
 
-import utils.arena_event_schedule as arena_event_schedule
+import features.monitors.event_schedule as event_schedule
 
 
 @pytest.fixture(autouse=True)
 def isolated_state(tmp_path, monkeypatch):
     """Every test starts from a clean state on disk and in cache, like
     isolated_overrides in test_arena_overrides.py."""
-    monkeypatch.setattr(arena_event_schedule, "STATE_PATH", str(tmp_path / "arena_event_schedule_state.json"))
-    monkeypatch.setattr(arena_event_schedule, "_state_cache", None)
+    monkeypatch.setattr(event_schedule, "STATE_PATH", str(tmp_path / "arena_event_schedule_state.json"))
+    monkeypatch.setattr(event_schedule, "_state_cache", None)
     yield
 
 
@@ -29,8 +29,8 @@ def _install_fake_network(monkeypatch, sitemap: dict, pages: dict, calls: list):
         calls.append(url)
         return pages.get(url)
 
-    monkeypatch.setattr(arena_event_schedule, "_fetch_sitemap_event_schedule_urls", fake_sitemap)
-    monkeypatch.setattr(arena_event_schedule, "_fetch_page_html", fake_page)
+    monkeypatch.setattr(event_schedule, "_fetch_sitemap_event_schedule_urls", fake_sitemap)
+    monkeypatch.setattr(event_schedule, "_fetch_page_html", fake_page)
 
 
 SET_A_URL = "https://magic.wizards.com/en/news/mtg-arena/set-a-event-schedule"
@@ -96,7 +96,7 @@ SAMPLE_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 class TestParseSitemapXml:
     def test_extracts_only_event_schedule_urls_with_lastmod(self):
-        found = arena_event_schedule._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
+        found = event_schedule._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
 
         assert found == {
             "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule": "2026-09-02T16:05:08.364Z",
@@ -104,19 +104,19 @@ class TestParseSitemapXml:
         }
 
     def test_ignores_weekly_announcements_and_unrelated_pages(self):
-        found = arena_event_schedule._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
+        found = event_schedule._parse_sitemap_xml(SAMPLE_SITEMAP_XML)
 
         urls = set(found.keys())
         assert not any("announcements-" in u for u in urls)
         assert not any("/products/" in u for u in urls)
 
     def test_malformed_xml_returns_empty_dict_instead_of_raising(self):
-        assert arena_event_schedule._parse_sitemap_xml("<not valid xml") == {}
+        assert event_schedule._parse_sitemap_xml("<not valid xml") == {}
 
 
 class TestParseFullEventCalendar:
     def test_extracts_categories_and_entries(self):
-        categories = arena_event_schedule.parse_full_event_calendar(VALID_CALENDAR_HTML)
+        categories = event_schedule.parse_full_event_calendar(VALID_CALENDAR_HTML)
 
         assert categories is not None
         assert categories["Premier Draft"] == ["August 11–September 29: Magic: The Gathering | Set A"]
@@ -126,18 +126,18 @@ class TestParseFullEventCalendar:
         ]
 
     def test_ignores_content_outside_article_boundary(self):
-        categories = arena_event_schedule.parse_full_event_calendar(VALID_CALENDAR_HTML)
+        categories = event_schedule.parse_full_event_calendar(VALID_CALENDAR_HTML)
 
         assert "Not part of the calendar" not in categories
 
     def test_returns_none_when_calendar_heading_missing(self):
-        assert arena_event_schedule.parse_full_event_calendar(NO_CALENDAR_HTML) is None
+        assert event_schedule.parse_full_event_calendar(NO_CALENDAR_HTML) is None
 
     def test_recognizes_the_calendar_heading_even_with_attributes(self):
         """Regression: the 'Full Event Calendar' heading can carry attributes
         (id/style) as on reality-fracture-event-schedule, not just the bare
         <h2> of earlier pages."""
-        categories = arena_event_schedule.parse_full_event_calendar(ATTRIBUTED_CALENDAR_HEADING_HTML)
+        categories = event_schedule.parse_full_event_calendar(ATTRIBUTED_CALENDAR_HEADING_HTML)
 
         assert categories is not None
         assert categories["Premier Draft"] == ["September 29–November 9: Reality Fracture"]
@@ -145,9 +145,7 @@ class TestParseFullEventCalendar:
 
 class TestParseEventEntry:
     def test_parses_range_spanning_two_months(self):
-        parsed = arena_event_schedule.parse_event_entry(
-            "August 11–September 29: Magic: The Gathering | The Hobbit"
-        )
+        parsed = event_schedule.parse_event_entry("August 11–September 29: Magic: The Gathering | The Hobbit")
         assert parsed == {
             "start_month": 8,
             "start_day": 11,
@@ -157,7 +155,7 @@ class TestParseEventEntry:
         }
 
     def test_parses_range_within_a_single_month_without_repeating_month_name(self):
-        parsed = arena_event_schedule.parse_event_entry("August 11–19: Duskmourn: House of Horror")
+        parsed = event_schedule.parse_event_entry("August 11–19: Duskmourn: House of Horror")
         assert parsed["start_month"] == 8
         assert parsed["end_month"] == 8
         assert parsed["start_day"] == 11
@@ -166,11 +164,11 @@ class TestParseEventEntry:
         assert parsed["name"] == "Duskmourn: House of Horror"
 
     def test_accepts_plain_hyphen_as_well_as_en_dash(self):
-        parsed = arena_event_schedule.parse_event_entry("August 11-19: Set")
+        parsed = event_schedule.parse_event_entry("August 11-19: Set")
         assert parsed is not None
 
     def test_returns_none_for_text_without_a_recognizable_date(self):
-        assert arena_event_schedule.parse_event_entry("Event without a date") is None
+        assert event_schedule.parse_event_entry("Event without a date") is None
 
 
 class TestBuildMonthCalendar:
@@ -178,27 +176,27 @@ class TestBuildMonthCalendar:
         categories = {
             "Premier Draft": ["August 11–September 29: The Hobbit"],
         }
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert result[(2026, 8)]["Premier Draft"] == [(11, 31, "The Hobbit")]
         assert result[(2026, 9)]["Premier Draft"] == [(1, 29, "The Hobbit")]
 
     def test_single_month_range_is_not_split(self):
         categories = {"Quick Draft": ["August 11–19: Duskmourn"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert list(result.keys()) == [(2026, 8)]
         assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
 
     def test_unparseable_entry_is_silently_excluded(self):
         categories = {"Quick Draft": ["Event without a date", "August 11–19: Duskmourn"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
 
     def test_range_crossing_december_into_january_bumps_the_year(self):
         categories = {"Quick Draft": ["December 28–January 4: New Year Set"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 1))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 1))
 
         assert result[(2026, 12)]["Quick Draft"] == [(28, 31, "New Year Set")]
         assert result[(2027, 1)]["Quick Draft"] == [(1, 4, "New Year Set")]
@@ -208,7 +206,7 @@ class TestBuildMonthCalendar:
         in December belongs to next year, not to one 11 months in the past -
         covers the _infer_start_year heuristic."""
         categories = {"Quick Draft": ["January 5–11: Some Set"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 20))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 20))
 
         assert list(result.keys()) == [(2027, 1)]
 
@@ -217,53 +215,45 @@ class TestBuildMonthCalendar:
         back) must stay in the current year, not be wrongly pushed to next
         year."""
         categories = {"Flashback Premier Draft": ["August 25–September 7: LOTR"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
 
         assert (2026, 8) in result
         assert (2027, 8) not in result
 
     def test_no_parseable_entries_returns_empty_dict(self):
         categories = {"Quick Draft": ["Event without a date"]}
-        result = arena_event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
         assert result == {}
 
 
 class TestExtractSetNameFromUrl:
     def test_strips_the_event_schedule_suffix_and_title_cases_words(self):
         url = "https://magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule"
-        assert arena_event_schedule.extract_set_name_from_url(url) == "The Hobbit"
+        assert event_schedule.extract_set_name_from_url(url) == "The Hobbit"
 
     def test_handles_a_trailing_slash(self):
         url = "https://magic.wizards.com/en/news/mtg-arena/duskmourn-event-schedule/"
-        assert arena_event_schedule.extract_set_name_from_url(url) == "Duskmourn"
+        assert event_schedule.extract_set_name_from_url(url) == "Duskmourn"
 
 
 class TestFormatPeriodCovered:
     def test_returns_none_for_an_empty_calendar(self):
-        assert arena_event_schedule.format_period_covered({}) is None
+        assert event_schedule.format_period_covered({}) is None
 
     def test_single_month_range_has_no_repeated_year(self):
         categories = {"Quick Draft": ["August 11-19: Duskmourn"]}
-        month_calendar = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
-        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 19 Agosto 2026"
+        month_calendar = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        assert event_schedule.format_period_covered(month_calendar) == "11 Agosto - 19 Agosto 2026"
 
     def test_multi_month_range_spans_both_months(self):
         categories = {"Premier Draft": ["August 11-September 29: The Hobbit"]}
-        month_calendar = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
-        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 29 Settembre 2026"
+        month_calendar = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        assert event_schedule.format_period_covered(month_calendar) == "11 Agosto - 29 Settembre 2026"
 
     def test_range_crossing_into_next_year_shows_both_years(self):
         categories = {"Quick Draft": ["December 28-January 4: New Year Set"]}
-        month_calendar = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 12, 1)
-        )
-        assert (
-            arena_event_schedule.format_period_covered(month_calendar) == "28 Dicembre 2026 - 4 Gennaio 2027"
-        )
+        month_calendar = event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 1))
+        assert event_schedule.format_period_covered(month_calendar) == "28 Dicembre 2026 - 4 Gennaio 2027"
 
     def test_covers_the_full_span_across_multiple_categories(self):
         """The period must reflect the widest range across ALL categories,
@@ -272,19 +262,17 @@ class TestFormatPeriodCovered:
             "Quick Draft": ["September 1-7: Secrets of Strixhaven"],
             "Premier Draft": ["August 11-19: Duskmourn"],
         }
-        month_calendar = arena_event_schedule.build_month_calendar(
-            categories, reference_date=date(2026, 9, 15)
-        )
-        assert arena_event_schedule.format_period_covered(month_calendar) == "11 Agosto - 7 Settembre 2026"
+        month_calendar = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+        assert event_schedule.format_period_covered(month_calendar) == "11 Agosto - 7 Settembre 2026"
 
 
 class TestPickLatest:
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
         entries = {SET_A_URL: "2026-08-03T00:00:00Z", SET_B_URL: "2026-06-15T00:00:00Z"}
-        assert arena_event_schedule._pick_latest(entries) == (SET_A_URL, "2026-08-03T00:00:00Z")
+        assert event_schedule._pick_latest(entries) == (SET_A_URL, "2026-08-03T00:00:00Z")
 
     def test_returns_none_for_empty_input(self):
-        assert arena_event_schedule._pick_latest({}) is None
+        assert event_schedule._pick_latest({}) is None
 
 
 class TestCheckEventScheduleUpdates:
@@ -305,7 +293,7 @@ class TestCheckEventScheduleUpdates:
             calls=calls,
         )
 
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert [r["url"] for r in results] == [SET_A_URL]
         assert SET_B_URL not in calls, "the ended set's page must not even be downloaded"
@@ -318,10 +306,10 @@ class TestCheckEventScheduleUpdates:
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
-        run(arena_event_schedule.check_event_schedule_updates())
+        run(event_schedule.check_event_schedule_updates())
 
         calls.clear()
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert results == [], "lastmod unchanged: the page must not be fetched again"
         assert SET_A_URL not in calls
@@ -335,7 +323,7 @@ class TestCheckEventScheduleUpdates:
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
-        run(arena_event_schedule.check_event_schedule_updates())
+        run(event_schedule.check_event_schedule_updates())
 
         # Simulates the in-place update seen on the-hobbit-event-schedule
         # (published August 3, lastmod updated to September 2).
@@ -346,12 +334,12 @@ class TestCheckEventScheduleUpdates:
             calls=calls,
         )
         calls.clear()
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert [r["url"] for r in results] == [SET_A_URL]
         assert SET_A_URL in calls
 
-        with open(arena_event_schedule.STATE_PATH, encoding="utf-8") as f:
+        with open(event_schedule.STATE_PATH, encoding="utf-8") as f:
             on_disk = json.load(f)
         assert on_disk["latest_lastmod"] == "2026-09-02T00:00:00Z"
 
@@ -366,7 +354,7 @@ class TestCheckEventScheduleUpdates:
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
-        run(arena_event_schedule.check_event_schedule_updates())
+        run(event_schedule.check_event_schedule_updates())
 
         _install_fake_network(
             monkeypatch,
@@ -378,7 +366,7 @@ class TestCheckEventScheduleUpdates:
             calls=calls,
         )
         calls.clear()
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert [r["url"] for r in results] == [SET_B_URL]
         assert SET_A_URL not in calls
@@ -391,10 +379,10 @@ class TestCheckEventScheduleUpdates:
             pages={SET_A_URL: VALID_CALENDAR_HTML},
             calls=calls,
         )
-        run(arena_event_schedule.check_event_schedule_updates())
+        run(event_schedule.check_event_schedule_updates())
 
         calls.clear()
-        results = run(arena_event_schedule.check_event_schedule_updates(force=True))
+        results = run(event_schedule.check_event_schedule_updates(force=True))
 
         assert [r["url"] for r in results] == [SET_A_URL]
         assert SET_A_URL in calls
@@ -411,13 +399,13 @@ class TestCheckEventScheduleUpdates:
             calls=calls,
         )
 
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert len(results) == 1
         assert results[0]["categories"] is None
         # Even if unparseable, the state must still be updated so the same
         # unchanged page isn't retried on every run.
-        with open(arena_event_schedule.STATE_PATH, encoding="utf-8") as f:
+        with open(event_schedule.STATE_PATH, encoding="utf-8") as f:
             on_disk = json.load(f)
         assert on_disk["latest_url"] == SET_A_URL
 
@@ -432,12 +420,12 @@ class TestCheckEventScheduleUpdates:
             calls=calls,
         )
 
-        results = run(arena_event_schedule.check_event_schedule_updates())
+        results = run(event_schedule.check_event_schedule_updates())
 
         assert results == []
         import os
 
-        assert not os.path.exists(arena_event_schedule.STATE_PATH)
+        assert not os.path.exists(event_schedule.STATE_PATH)
 
 
 class FakeLogger:
@@ -476,7 +464,7 @@ class TestSendEventScheduleLog:
         logger = FakeLogger()
         result = {"url": SET_A_URL, "lastmod": "2026-08-03T00:00:00Z", "categories": None}
 
-        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+        run(event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
 
         assert len(logger.calls) == 1
         assert logger.calls[0]["level"] == "WARN"
@@ -495,7 +483,7 @@ class TestSendEventScheduleLog:
         categories = {"Premier Draft": ["Event without a recognizable date"]}
         result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
 
-        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+        run(event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
 
         assert len(logger.calls) == 1
         assert logger.calls[0]["level"] == "WARN"
@@ -521,11 +509,11 @@ class TestSendEventScheduleLog:
         }
         result = {"url": SET_A_URL, "lastmod": "x", "categories": categories}
 
-        run(arena_event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
+        run(event_schedule.send_event_schedule_log(logger, result, user=None, forced=False))
 
         # Same default (no explicit reference_date) as the code under test,
         # so the expectation doesn't depend on the real date the test runs on.
-        expected_months = arena_event_schedule.build_month_calendar(categories)
+        expected_months = event_schedule.build_month_calendar(categories)
 
         assert len(logger.calls) == 1
         assert logger.calls[0]["level"] == "INFO"
@@ -546,5 +534,5 @@ class TestSendEventScheduleLog:
         # Expansion name (from the URL slug) and period covered (from the
         # built calendar) - the extra content asked for beyond the bare link.
         assert community_title == "📅 Calendario Eventi Arena — Set A"
-        expected_period = arena_event_schedule.format_period_covered(expected_months)
+        expected_period = event_schedule.format_period_covered(expected_months)
         assert expected_period in community_info

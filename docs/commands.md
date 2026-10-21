@@ -109,8 +109,8 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 | `/banlist_aggiungi` | `cogs/deck_validation/__init__.py` | 103 |
 | `/banlist_rimuovi` | `cogs/deck_validation/__init__.py` | 126 |
 | `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 27 |
-| `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 26 |
-| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 26 |
+| `/forced_event_schedule_check` | `features/monitors/event_schedule_cog.py` | 26 |
+| `/forced_ban_announcement_check` | `features/monitors/ban_announcement_cog.py` | 26 |
 | `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 87 |
 
 ---

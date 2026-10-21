@@ -6,7 +6,7 @@ The system manages the cards banned in the **Artisan** format (only Common and U
 The banlist lists cards that, although common or uncommon, are banned because they are considered too strong
 for the format.
 
-**Note**: `utils/ban_announcement.py` watches Wizards' official "Banned and Restricted Announcement" posts
+**Note**: `features/monitors/ban_announcement.py` watches Wizards' official "Banned and Restricted Announcement" posts
 and notifies when a new one comes out (see `docs/caching.md` section 3b), but it is **only a reminder** — it
 never writes to `banned_cards`. None of the official formats those announcements cover (Standard, Modern,
 Alchemy, etc.) is this community's homebrew Artisan, so updating the banlist always stays manual via

@@ -3,13 +3,13 @@ import json
 
 import pytest
 
-import utils.ban_announcement as ban_announcement
+import features.monitors.ban_announcement as ban_announcement
 
 
 @pytest.fixture(autouse=True)
 def isolated_state(tmp_path, monkeypatch):
     """Every test starts from a clean state on disk and in cache, like
-    isolated_state in test_arena_event_schedule.py."""
+    isolated_state in test_event_schedule.py."""
     monkeypatch.setattr(ban_announcement, "STATE_PATH", str(tmp_path / "ban_announcement_state.json"))
     monkeypatch.setattr(ban_announcement, "_state_cache", None)
     yield

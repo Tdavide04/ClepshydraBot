@@ -9,8 +9,9 @@ ClepshydraBot uses a **three-tier** architecture with a clean separation of resp
 3. **Repository Layer** — data access, CRUD, queries
 
 On top of these sit the **Database Layer** (SQLAlchemy ORM), **`core/`** (cross-cutting: the log channel,
-error handling, `ServiceResult`, JSON state files, permissions, the repository base class) and **`utils/`**
-(feature code that `docs/roadmap.md` phase 2 moves into `features/`).
+error handling, `ServiceResult`, JSON state files, permissions, the repository base class),
+**`features/<name>/`** (one feature's cog, logic and data access together; so far `features/monitors/`) and
+**`utils/`** (feature code that `docs/roadmap.md` phase 2 moves into `features/`).
 
 ---
 
@@ -229,7 +230,7 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
   results and corrections, next round, forced drop, standings, rating).
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
   SQLite card cache, SPG overrides.
-- `tests/utils/`: the Wizards monitors and the shared sitemap logic.
+- `tests/monitors/`: the Wizards monitors and the shared sitemap logic.
 - `tests/core/`: every application module imports (`main.py` included) and every extension is listed in
   `EXTENSIONS`; interaction error handling, JSON state files, the timestamped console log.
 - `tests/onboarding/`: `PresentationService.publish()` outcomes (published, refused on validation, missing

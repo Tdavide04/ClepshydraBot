@@ -233,7 +233,7 @@ yet" and rescanned once in full.
 
 ---
 
-## 3. Arena Event Schedule Monitor (`utils/arena_event_schedule.py`)
+## 3. Arena Event Schedule Monitor (`features/monitors/event_schedule.py`)
 
 ### Problem
 
@@ -256,7 +256,7 @@ over. Only if the newest one is new or has a changed `lastmod` versus the saved 
 downloaded and parsed (fetch + HTML parsing, more expensive and fragile) — most checks do nothing beyond the
 sitemap GET, because the real content only changes every 6-9 weeks.
 
-The cadence (`_CHECK_INTERVAL_SECONDS` in `utils/sitemap_monitor.py`, shared by both monitors) is 2 hours.
+The cadence (`_CHECK_INTERVAL_SECONDS` in `features/monitors/sitemap.py`, shared by both monitors) is 2 hours.
 Until 3.5.3 it was 24 hours: Wizards serves the sitemap with a `Cache-Control: max-age` of about 1 hour and
 regenerates it *after* the article is published, so a page just out may not show up there for a while. On
 2026-10-12 the daily check ran before the October Banned and Restricted appeared in the sitemap, and the next
@@ -266,7 +266,7 @@ of one extra ~660 KB GET every 2 hours per monitor.
 | Function | Description |
 |---|---|
 | `check_event_schedule_updates(force=False)` | Finds the newest page in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, categories}]` |
-| `_pick_latest(entries)` | Local alias of `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (shared with the Ban Announcement monitor) — picks the page with the highest `lastmod` |
+| `_pick_latest(entries)` | Local alias of `pick_latest_by_lastmod()` in `features/monitors/sitemap.py` (shared with the Ban Announcement monitor) — picks the page with the highest `lastmod` |
 | `parse_full_event_calendar(html)` | Extracts `{category: [entries]}` from the "Full Event Calendar" section; `None` if the section isn't found (structural site drift) |
 | `periodic_event_schedule_check_loop(bot)` | Background task: calls `check_event_schedule_updates()` every 2 hours (first run right at startup), logs to Discord if the newest page is new/updated |
 | `parse_event_entry(text)` | Extracts start and end month/day from a text entry ("Month Day[-Month] Day: Event name"); `None` if the format isn't recognized |
@@ -326,7 +326,7 @@ WARN cases (unparseable page or no dates) stay in the log channel only. There us
 
 ---
 
-## 3b. Banned and Restricted Announcement Monitor (`utils/ban_announcement.py`)
+## 3b. Banned and Restricted Announcement Monitor (`features/monitors/ban_announcement.py`)
 
 ### Problem
 
@@ -356,7 +356,7 @@ decklists (too unstructured for reliable extraction, and out of scope anyway for
 | Function | Description |
 |---|---|
 | `check_ban_announcement_updates(force=False)` | Finds the newest announcement in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, changes, already_notified}]` — `already_notified` is `True` if that same URL's changes were already posted to the community channel |
-| `_pick_latest(entries)` | Same alias of `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) as the Event Schedule monitor |
+| `_pick_latest(entries)` | Same alias of `pick_latest_by_lastmod()` (`features/monitors/sitemap.py`) as the Event Schedule monitor |
 | `parse_ban_announcement(html)` | Extracts `{format: [change lines]}` from each section's summary; formats with `"No changes"` are left out; `{}` if the announcement is parsed but no format changed (a valid outcome), `None` if not even one structured summary is found (site drift) |
 | `periodic_ban_announcement_check_loop(bot)` | Background task: calls `check_ban_announcement_updates()` every 2 hours (first run right at startup), logs to Discord if the newest announcement is new |
 | `send_ban_announcement_log(logger, result, user, forced)` | Posts the result to Discord: one embed field per changed format (`Logger.send_log()`'s `fields`). If there are real changes and the announcement isn't `already_notified`, it also goes to `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) with a dedicated Italian embed (title with the announcement's date/time, body with just the link — no staff jargon) besides the log channel; WARN/no-change cases stay in the log channel only |

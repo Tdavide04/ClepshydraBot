@@ -11,7 +11,7 @@ Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) is
 this community's homebrew Artisan, so there is no correct way to apply these
 changes to the bot automatically.
 
-Approach (same scheme as arena_event_schedule.py):
+Approach (same scheme as event_schedule.py):
 - The magic.wizards.com/en/sitemap.xml sitemap lists these announcements too,
   with <lastmod>. As with the Event Schedule pages, Wizards doesn't remove
   past announcements from the sitemap, so several always coexist - only the
@@ -33,7 +33,7 @@ Approach (same scheme as arena_event_schedule.py):
 - If not even one format heading with the expected summary is found, the
   page is reported as unparseable (site drift) instead of publishing an
   empty or wrong summary - same philosophy as parse_full_event_calendar() in
-  arena_event_schedule.py.
+  event_schedule.py.
 """
 
 import asyncio
@@ -46,8 +46,8 @@ import aiohttp
 
 from core.console import log
 from core.json_state import load_json_state, save_json_state
-from utils.arena_event_schedule import MONTHS_IT
-from utils.sitemap_monitor import (
+from features.monitors.event_schedule import MONTHS_IT
+from features.monitors.sitemap import (
     _CHECK_INTERVAL_SECONDS,
     _SITEMAP_NS,
     fetch_page_html,
@@ -109,7 +109,7 @@ def get_latest_known_ban_announcement() -> dict:
     """Returns the latest Banned and Restricted Announcement known from the
     state saved on disk - {"url": str | None, "lastmod": str | None} - with
     no network request. Same role as get_latest_known_event_schedule() in
-    arena_event_schedule.py: used by the startup status log."""
+    event_schedule.py: used by the startup status log."""
 
     state = _load_state()
     return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
@@ -238,8 +238,8 @@ def format_lastmod(lastmod: str) -> str:
     return f"{dt.day} {MONTHS_IT[dt.month]} {dt.year}, {dt.strftime('%H:%M')} UTC"
 
 
-# Same newest-lastmod selection as arena_event_schedule.py - see
-# pick_latest_by_lastmod() in utils/sitemap_monitor.py.
+# Same newest-lastmod selection as event_schedule.py - see
+# pick_latest_by_lastmod() in features/monitors/sitemap.py.
 _pick_latest = pick_latest_by_lastmod
 
 

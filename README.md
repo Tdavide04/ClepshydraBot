@@ -84,13 +84,19 @@ ClepshydraBot/
 │   ├── json_state.py        # Atomic JSON state files
 │   ├── console.py           # Timestamped console log()
 │   └── permissions.py       # @is_admin() check
+├── features/
+│   └── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
+│       ├── sitemap.py       # Shared sitemap fetch and newest-page selection
+│       ├── event_schedule.py
+│       ├── calendar_image.py  # Monthly event calendar images
+│       ├── ban_announcement.py
+│       ├── event_schedule_cog.py
+│       └── ban_announcement_cog.py
 ├── cogs/
 │   ├── presentation/        # User presentation wizard
 │   ├── deck_validation/     # Artisan deck validation
 │   ├── tournament_system/   # Swiss tournaments (disabled, not loaded)
-│   ├── spg_override_updater.py
-│   ├── arena_event_schedule_updater.py
-│   └── ban_announcement_updater.py
+│   └── spg_override_updater.py
 ├── services/                # Business logic
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
@@ -106,10 +112,6 @@ ClepshydraBot/
 ├── utils/                   # Utilities
 │   ├── card_cache.py
 │   ├── arena_overrides.py
-│   ├── arena_event_schedule.py
-│   ├── event_calendar_image_generator.py
-│   ├── ban_announcement.py
-│   ├── sitemap_monitor.py
 │   ├── tournament_embeds.py
 │   ├── tournament_logic.py
 │   └── deck_image_generator.py

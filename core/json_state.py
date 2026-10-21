@@ -1,5 +1,5 @@
 """Small JSON state files on disk: the monitors' "last page seen" and the SPG
-override data. Moved out of utils/sitemap_monitor.py because the SPG overrides
+override data. Moved out of features/monitors/sitemap.py because the SPG overrides
 use it too and are not a sitemap monitor."""
 
 import json

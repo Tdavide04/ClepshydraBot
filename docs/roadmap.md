@@ -180,11 +180,16 @@ and 9 commands, the logger and error handler now as `core.logger` and `core.erro
 
 ## Step 5 — `features/monitors/`
 
-**Status:** todo · `refactor(monitor)`
+**Status:** done (2026-10-21) · `refactor(monitor)` · bump with step 9
 
 Event schedule, ban announcement, sitemap helpers, the calendar image generator and their two cogs. Goes
 first among the features because the calendar redesign comes next. `MONTHS_IT`, shared by the ban
 announcement and the calendar image, stays in `event_schedule.py`.
+
+Done: `sitemap.py`, `event_schedule.py`, `ban_announcement.py`, `calendar_image.py`, `event_schedule_cog.py`,
+`ban_announcement_cog.py` (from `utils/` and `cogs/`), tests in `tests/monitors/`. Module names lost their
+redundant prefixes and suffixes (`arena_`, `_monitor`, `_generator`, `_updater`); class names (cogs
+included) are unchanged, so `get_cog()` lookups and the log channel are unaffected.
 
 ## Step 6 — `features/deck_validation/`
 

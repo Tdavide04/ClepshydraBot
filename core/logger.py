@@ -50,7 +50,7 @@ class Logger(commands.Cog):
 
         files: optional list of discord.File attached to the same message as
         the embed - used by the Arena event calendar
-        (utils/arena_event_schedule.py) to attach the generated calendar
+        (features/monitors/event_schedule.py) to attach the generated calendar
         images instead of describing events in words only.
 
         extra_channel_id: if set (and not 0/None), the same update is also
