@@ -160,7 +160,7 @@ Generic repository with basic CRUD:
 | `delete(instance)` | Delete + commit |
 | `count()` | Record count |
 
-### UserRepository (`repositories/user_repository.py`)
+### UserRepository (`features/tournaments/user_repository.py`)
 
 | Method | Description |
 |---|---|
@@ -168,7 +168,7 @@ Generic repository with basic CRUD:
 | `get_or_create(discord_id)` | Find or create |
 | `get_leaderboard(limit)` | Top N by rating, only users with at least one rated match |
 
-### TournamentRepository (`repositories/tournament_repository.py`)
+### TournamentRepository (`features/tournaments/repository.py`)
 
 | Method | Description |
 |---|---|
@@ -209,7 +209,7 @@ Generic repository with basic CRUD:
 
 ## Testing
 
-`tests/tournament/test_tournament_service.py` exercises the whole DB stack (engine, sessions, repositories,
+`tests/tournaments/test_service.py` exercises the whole DB stack (engine, sessions, repositories,
 migrations) against a temporary SQLite file, isolated per test:
 
 1. The `isolated_db` fixture (`tmp_path` + `monkeypatch`) points `database.engine.DB_PATH` to a temporary file

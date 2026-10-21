@@ -1,6 +1,6 @@
 import discord
 
-from utils.tournament_logic import (
+from features.tournaments.logic import (
     omw_bar,
     rank_label,
     split_field_value,

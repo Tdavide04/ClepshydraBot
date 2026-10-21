@@ -1,6 +1,6 @@
 import pytest
 
-from services.rating import (
+from features.tournaments.rating import (
     RATING_FLOOR,
     Rating,
     rate_1vs1,

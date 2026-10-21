@@ -217,21 +217,30 @@ Done. The package no longer re-exports the cog from `__init__.py`: the extension
 
 ## Step 8 — `features/tournaments/`
 
-**Status:** todo · `refactor(tournament)`
+**Status:** done (2026-10-21) · `refactor(tournament)` · bump with step 9
 
 The disabled feature as one block: cog, service, pairing, rating, standings, repositories,
 `tournament_embeds` and `tournament_logic`. It stays in `DISABLED_COGS`.
+
+Done: `cog.py`, `service.py`, `pairing_engine.py`, `rating.py`, `standings.py`, `repository.py`,
+`user_repository.py`, `embeds.py`, `logic.py`; tests in `tests/tournaments/` (`test_service.py`,
+`test_embeds.py`, `test_logic.py`). The extension is `features.tournaments.cog`, still in `DISABLED_COGS`;
+loading it by hand still registers its 15 commands. With this step `cogs/`, `services/`, `repositories/`
+and `utils/` became empty and were removed, together with their re-exporting `__init__.py` files. Side
+effect, verified: the pure algorithm modules (`pairing_engine`, `rating`, `standings`) now import without
+`config.config`, which the eager `services/__init__.py` used to drag in. Because the old folders were gone,
+this step also rewrote the docs, the `CLAUDE.md` layering and map, and the CI coverage paths
+(`--cov=core --cov=features --cov=database`), leaving step 9 the final review and the bump.
 
 ## Step 9 — Remove the old folders and update the docs
 
 **Status:** todo · `refactor` · PATCH for the whole phase
 
-- Delete the empty `cogs/`, `services/`, `repositories/` and `utils/`.
-- Update the CI `--cov` paths, plus the `CLAUDE.md` architecture map, layering and invariants (the
-  "inside `utils/`" config-import rule becomes a rule for `core/` and `features/`).
-- Update `docs/architecture.md`, the topic docs' paths, the "Line" column of `docs/commands.md`, and the
-  README repository structure.
-- CHANGELOG entry and version bump.
+Most of the planned work landed in steps 4–8, each keeping the docs truthful as it moved code (folders
+deleted, CI paths, `CLAUDE.md`, topic docs, README). What remains:
+
+- a final sweep of every doc for paths and descriptions that predate the restructure;
+- consolidate the Unreleased CHANGELOG entries into 4.0.3 and bump `VERSION`.
 
 ---
 

@@ -7,7 +7,7 @@ from database.models import CachedCard
 
 
 def run_with_db(scenario):
-    """Same pattern as test_artisan_service.py / test_tournament_service.py:
+    """Same pattern as test_artisan_service.py / tests/tournaments/test_service.py:
     init_db + logic + close_db in a single event loop."""
 
     async def _wrapper():

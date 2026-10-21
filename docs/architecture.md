@@ -2,17 +2,19 @@
 
 ## Overview
 
-ClepshydraBot uses a **three-tier** architecture with a clean separation of responsibilities:
+ClepshydraBot is organized **by feature**. Each package under `features/` holds one feature's cog, logic
+and data access: `features/onboarding/`, `features/deck_validation/`, `features/monitors/` and the disabled
+`features/tournaments/`. Inside a feature the code keeps three tiers:
 
-1. **Discord Layer (Cogs)** — user interface, slash commands, interactive components
-2. **Service Layer** — business logic, algorithms, orchestration
-3. **Repository Layer** — data access, CRUD, queries
+1. **Discord Layer (Cogs)** — user interface, slash commands, interactive components (`cog.py`, `*_cog.py`)
+2. **Service Layer** — business logic, algorithms, orchestration (`service.py` and the logic modules)
+3. **Repository Layer** — data access, CRUD, queries (`*repository.py`)
 
-On top of these sit the **Database Layer** (SQLAlchemy ORM), **`core/`** (cross-cutting: the log channel,
-error handling, `ServiceResult`, JSON state files, permissions, the repository base class),
-**`features/<name>/`** (one feature's cog, logic and data access together: `features/onboarding/`,
-`features/deck_validation/`, `features/monitors/`) and
-**`utils/`** (feature code that `docs/roadmap.md` phase 2 moves into `features/`).
+Below them sits the **Database Layer** (`database/`, SQLAlchemy ORM, one schema for every feature). Next to
+them, **`core/`** holds the cross-cutting code every feature may use: the log channel, error handling,
+`ServiceResult`, JSON state files, permissions and `BaseRepository`. `core/` never imports a feature, and
+features don't import each other, except the disabled tournament cog using `ArtisanService` from deck
+validation.
 
 ---
 
@@ -130,8 +132,8 @@ error handling, `ServiceResult`, JSON state files, permissions, the repository b
 
 | Pattern | Where | Description |
 |---|---|---|
-| **Repository** | `repositories/` | Hides data access behind dedicated interfaces |
-| **Service Layer** | `services/` | Encapsulates business logic in service classes |
+| **Repository** | `*repository.py` in each feature, base in `core/repository_base.py` | Hides data access behind dedicated interfaces |
+| **Service Layer** | `service.py` in each feature | Encapsulates business logic in service classes |
 | **Strategy** | `PairingEngine`, `StandingsCalculator` | Interchangeable, stateless algorithms |
 | **Observer** | Cogs' `on_member_join`, `on_message` | Listeners for Discord events |
 | **Dependency Injection** | Service constructors | Bot and session passed in through the constructor |
@@ -219,14 +221,14 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
   exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor
   (`pm2` in production, see `docs/infrastructure.md`) can detect the failure instead of a silent stop
 - **Extension loading**: `setup_hook()` loads the modules listed in `EXTENSIONS` in `main.py`, in order,
-  skipping those in `DISABLED_COGS`. The list is written by hand, not discovered from the `cogs/` folder;
+  skipping those in `DISABLED_COGS`. The list is written by hand, not discovered from a folder;
   `tests/core/test_extensions.py` fails if a module with a `setup()` coroutine is missing from it
 
 ---
 
 ## Testing
 
-- `tests/tournament/`: the tournament service layer — `PairingEngine`, `Rating`, `StandingsCalculator`, embed
+- `tests/tournaments/`: the tournament service layer — `PairingEngine`, `Rating`, `StandingsCalculator`, embed
   builders, utilities, and `TournamentService` end to end (registration, deck submission, start, pairing,
   results and corrections, next round, forced drop, standings, rating).
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the

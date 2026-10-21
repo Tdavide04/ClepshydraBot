@@ -146,7 +146,7 @@ first validation (or after an invalidation) and kept in memory until invalidated
 `ArtisanService.reload_banlist()` forces the refresh: `/banlist_aggiungi` and `/banlist_rimuovi` call it right
 after writing to the DB. Since the cache is shared at module level (instead of a per-instance attribute), the
 invalidation is immediately visible to **both** `ArtisanService` instances the bot creates
-(`tournament_system/cog.py`, when that cog is loaded, and `features/deck_validation/cog.py`) — not only the one the method is called
+(`features/tournaments/cog.py`, when that cog is loaded, and `features/deck_validation/cog.py`) — not only the one the method is called
 on.
 
 ---

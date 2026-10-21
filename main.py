@@ -16,8 +16,8 @@ from features.monitors.event_schedule import (
     periodic_event_schedule_check_loop,
 )
 
-# Every extension the bot has, in load order. Listed by hand rather than discovered from the cogs/ folder, so
-# that "which features exist" doesn't depend on the folder layout; tests/core/test_extensions.py fails if an
+# Every extension the bot has, in load order. Listed by hand rather than discovered from a folder, so that
+# "which features exist" doesn't depend on the folder layout; tests/core/test_extensions.py fails if an
 # extension module is missing from this list.
 EXTENSIONS = [
     "core.logger",
@@ -27,7 +27,7 @@ EXTENSIONS = [
     "features.deck_validation.spg_cog",
     "features.monitors.event_schedule_cog",
     "features.monitors.ban_announcement_cog",
-    "cogs.tournament_system",
+    "features.tournaments.cog",
 ]
 
 # Extensions kept in the repo but not loaded: their slash commands disappear from Discord at the next
@@ -35,7 +35,7 @@ EXTENSIONS = [
 DISABLED_COGS = {
     # Tournaments are hosted elsewhere since 4.0.0, the bot is a helper only
     # (docs/adr/0004-helper-only-tournaments-disabled.md).
-    "cogs.tournament_system",
+    "features.tournaments.cog",
 }
 
 

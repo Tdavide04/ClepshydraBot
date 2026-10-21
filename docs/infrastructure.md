@@ -222,7 +222,7 @@ so both were removed in October 2026: see `docs/adr/0005-unused-deploy-alternati
 
 `.github/workflows/ci.yml`, active on push/PR:
 - `pytest` on every push and PR — **blocking gate**, with a coverage report (`pytest-cov`,
-  `--cov-report=term-missing` on `core`, `services`, `utils`, `repositories`, `database`, `cogs`) since 3.6.7;
+  `--cov-report=term-missing` on `core`, `features`, `database`) since 3.6.7;
   no minimum threshold yet
 - `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in 1.7.1 (at the time partly by excluding `legacy/`, later

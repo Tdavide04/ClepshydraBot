@@ -10,12 +10,12 @@ from core.results import ResultKind
 from database.models import Tournament, TournamentPlayer, TournamentStatus
 from features.deck_validation.service import SCRYFALL_UNAVAILABLE_MESSAGE, ArtisanService
 from features.deck_validation.validators import parse_decklist, validate_counts
-from services.tournament_service import TournamentService
-from utils.tournament_embeds import (
+from features.tournaments.embeds import (
     build_pairings_embed,
     build_standings_embed,
     build_start_embed,
 )
+from features.tournaments.service import TournamentService
 
 
 class CreaTorneoModal(ReportingModal, title="Crea Nuovo Torneo"):

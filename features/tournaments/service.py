@@ -15,15 +15,15 @@ from database.models import (
     TournamentStatus,
     User,
 )
-from repositories.tournament_repository import (
+from features.tournaments.pairing_engine import PairingEngine
+from features.tournaments.rating import Rating, rate_1vs1, rate_draw
+from features.tournaments.repository import (
     MatchRepository,
     TournamentPlayerRepository,
     TournamentRepository,
 )
-from repositories.user_repository import UserRepository
-from services.pairing_engine import PairingEngine
-from services.rating import Rating, rate_1vs1, rate_draw
-from services.standings import StandingsCalculator, StandingsEntry
+from features.tournaments.standings import StandingsCalculator, StandingsEntry
+from features.tournaments.user_repository import UserRepository
 
 
 class TournamentService:
@@ -34,7 +34,7 @@ class TournamentService:
         # /iscriviti for the last seat both got through. Per-instance lock,
         # not module-level (asyncio.Lock binds to the event loop on first
         # contention, and tests use one loop per scenario): enough because the
-        # bot creates a single TournamentService (cogs/tournament_system/cog.py).
+        # bot creates a single TournamentService (features/tournaments/cog.py).
         self._registration_lock = asyncio.Lock()
 
     @asynccontextmanager

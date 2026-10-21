@@ -18,7 +18,7 @@ Command and parameter names are the real slash-command names, in Italian, as use
 
 ### Tournaments (disabled since 4.0.0)
 
-The commands in the tournament sections below are **not registered**: `cogs/tournament_system` is in
+The commands in the tournament sections below are **not registered**: `features.tournaments.cog` is in
 `DISABLED_COGS` (`docs/adr/0004-helper-only-tournaments-disabled.md`). They're kept here for when the cog is
 re-enabled.
 
@@ -84,27 +84,27 @@ re-enabled.
 
 ### File Locations
 
-The "Line" column points at each command's `async def`: recompute it whenever `cogs/` files shift.
+The "Line" column points at each command's `async def`: recompute it whenever a cog file shifts.
 
 | Command | File | Line |
 |---|---|---|
 | `/presentati` | `features/onboarding/cog.py` | 47 |
 | `/artisan_check_deck` | `features/deck_validation/cog.py` | 59 |
-| `/crea_torneo` | `cogs/tournament_system/cog.py` | 561 |
-| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 570 |
-| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 833 |
-| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 665 |
-| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 791 |
-| `/correggi_risultato` | `cogs/tournament_system/cog.py` | 725 |
-| `/iscriviti` | `cogs/tournament_system/cog.py` | 990 |
-| `/invia_deck` | `cogs/tournament_system/cog.py` | 1052 |
-| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 1084 |
-| `/left_torneo` | `cogs/tournament_system/cog.py` | 1128 |
-| `/risultato` | `cogs/tournament_system/cog.py` | 1172 |
-| `/classifica` | `cogs/tournament_system/cog.py` | 1246 |
-| `/turni` | `cogs/tournament_system/cog.py` | 1336 |
-| `/lista_tornei` | `cogs/tournament_system/cog.py` | 940 |
-| `/leaderboard` | `cogs/tournament_system/cog.py` | 1345 |
+| `/crea_torneo` | `features/tournaments/cog.py` | 561 |
+| `/avvia_torneo` | `features/tournaments/cog.py` | 570 |
+| `/torneo_next_turn` | `features/tournaments/cog.py` | 833 |
+| `/drop_giocatore` | `features/tournaments/cog.py` | 665 |
+| `/concludi_torneo` | `features/tournaments/cog.py` | 791 |
+| `/correggi_risultato` | `features/tournaments/cog.py` | 725 |
+| `/iscriviti` | `features/tournaments/cog.py` | 990 |
+| `/invia_deck` | `features/tournaments/cog.py` | 1052 |
+| `/iscrizioni_torneo` | `features/tournaments/cog.py` | 1084 |
+| `/left_torneo` | `features/tournaments/cog.py` | 1128 |
+| `/risultato` | `features/tournaments/cog.py` | 1172 |
+| `/classifica` | `features/tournaments/cog.py` | 1246 |
+| `/turni` | `features/tournaments/cog.py` | 1336 |
+| `/lista_tornei` | `features/tournaments/cog.py` | 940 |
+| `/leaderboard` | `features/tournaments/cog.py` | 1345 |
 | `/banlist` | `features/deck_validation/cog.py` | 63 |
 | `/banlist_aggiungi` | `features/deck_validation/cog.py` | 103 |
 | `/banlist_rimuovi` | `features/deck_validation/cog.py` | 126 |

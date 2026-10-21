@@ -91,7 +91,7 @@ and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" sect
 | Topic | Document |
 |---|---|
 | Deployment, environment variables, logging, dependencies, CI | `docs/infrastructure.md` |
-| Layered architecture (cogs/services/repositories/database) | `docs/architecture.md` |
+| Architecture (features, core, database) | `docs/architecture.md` |
 | Slash commands and permissions | `docs/commands.md` |
 | Database schema and migrations | `docs/database.md` |
 | Caching and external APIs (Scryfall, rarity overrides, Wizards monitors, banlist) | `docs/caching.md` |

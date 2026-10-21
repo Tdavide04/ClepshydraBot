@@ -44,6 +44,14 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   extension is `features.onboarding.cog` (the package no longer re-exports the cog). Moves and import
   rewrites only. Verified: pytest (295 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
   slash commands.
+- New `features/tournaments/` package for the disabled tournament system: the cog, `TournamentService`
+  (`service.py`), pairing, rating, standings, the tournament and user repositories (`repository.py`,
+  `user_repository.py`) and the embed and logic helpers (`embeds.py`, `logic.py`). Tests moved to
+  `tests/tournaments/`. `cogs/`, `services/`, `repositories/` and `utils/` are gone. The pure algorithm
+  modules no longer load `config.config` at import. CI coverage now runs on `core`, `features` and
+  `database`. Verified: pytest (292 passed: fewer import checks, since the re-exporting `__init__.py` files
+  are gone), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9 slash commands, and loading the
+  tournament cog by hand adds its 15.
 
 ### Added
 - `tests/core/test_extensions.py`: imports every application module and checks that every module with a

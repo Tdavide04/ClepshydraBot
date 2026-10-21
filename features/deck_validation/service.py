@@ -41,7 +41,7 @@ class ScryfallUnavailable(Exception):
 
 
 # Module-level banlist cache: the bot creates two separate ArtisanService
-# instances (tournament_system and deck_validation), which must see the same
+# instances (the tournament cog and the deck validation cog), which must see the same
 # banlist, explicit invalidations after add/remove included. A per-instance
 # self._banlist attribute (as before) left stale the instance not used by the
 # command that made the change.

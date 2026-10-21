@@ -1,16 +1,16 @@
 import asyncio
 
 # The test env vars (TEST_MODE, GUILD_ID_TEST, etc.) are set by
-# tests/tournament/conftest.py, which pytest loads before this module:
-# required because services/__init__.py eagerly imports TournamentService,
-# which needs a populated config.config.
+# tests/tournaments/conftest.py, which pytest loads before this module:
+# required because features/tournaments/service.py imports database, which
+# needs a populated config.config.
 import pytest
 
 import database.engine as db_engine
 from core.results import ResultKind
 from database import close_db, init_db
 from database.models import MatchResult, TournamentStatus
-from services.tournament_service import TournamentService
+from features.tournaments.service import TournamentService
 
 
 @pytest.fixture

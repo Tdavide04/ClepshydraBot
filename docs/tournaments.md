@@ -1,7 +1,7 @@
 # Swiss Tournament System
 
 > **Disabled since 4.0.0.** Tournaments are hosted on another platform, so `main.py` doesn't load
-> `cogs/tournament_system` (`DISABLED_COGS`) and none of the commands below is registered on Discord. The code,
+> `features/tournaments/cog.py` (`DISABLED_COGS`) and none of the commands below is registered on Discord. The code,
 > its tests and the DB tables stay; `/banlist` and the two admin banlist commands moved to the deck validation
 > cog. Re-enabling is described in `docs/adr/0004-helper-only-tournaments-disabled.md`.
 
@@ -15,19 +15,17 @@ supports registration, automatic pairing, result submission, standings with tieb
 ## Structure
 
 ```
-services/
-├── tournament_service.py   # Orchestrator: coordinates every operation
+features/tournaments/
+├── cog.py                  # 15 slash commands + modals + views (extension features.tournaments.cog)
+├── service.py              # TournamentService: orchestrator, coordinates every operation
 ├── pairing_engine.py       # Swiss pairing algorithm
 ├── standings.py            # Standings with tiebreakers
-└── rating.py               # Glicko-2 rating system
+├── rating.py               # Glicko-2 rating system
+├── repository.py           # TournamentRepository, TournamentPlayerRepository, MatchRepository
+├── user_repository.py      # UserRepository (ratings, leaderboard)
+├── embeds.py               # Embed builders (standings, pairings, start, top8)
+└── logic.py                # Utilities (OMW bar, rank label, columns)
                             # ServiceResult/ResultKind live in core/results.py
-
-cogs/tournament_system/
-└── cog.py                  # 15 slash commands + modals + views
-
-utils/
-├── tournament_logic.py     # Utilities (OMW bar, rank label, columns)
-└── tournament_embeds.py    # Embed builders (standings, pairings, start, top8)
 ```
 
 ---
@@ -68,7 +66,7 @@ RATING UPDATE
 
 ---
 
-## PairingEngine (`services/pairing_engine.py`)
+## PairingEngine (`features/tournaments/pairing_engine.py`)
 
 ### Swiss Algorithm
 
@@ -103,7 +101,7 @@ function generate_round(players, existing_matches, round_number):
 
 ---
 
-## StandingsCalculator (`services/standings.py`)
+## StandingsCalculator (`features/tournaments/standings.py`)
 
 ### Points
 
@@ -148,7 +146,7 @@ The OMW bar is shown in the standings as a visual indicator (10 cells, `omw_bar(
 
 ---
 
-## Glicko-2 Rating (`services/rating.py`)
+## Glicko-2 Rating (`features/tournaments/rating.py`)
 
 ### Parameters
 
@@ -180,7 +178,7 @@ interval).
 
 ---
 
-## TournamentService (`services/tournament_service.py`)
+## TournamentService (`features/tournaments/service.py`)
 
 Main orchestrator, coordinating every tournament operation. The methods the cog acts on return a
 `ServiceResult(ok, message, kind=None)` (`core/results.py`): `ok` tells success from failure, `message`
@@ -204,7 +202,7 @@ matched phrases such as `"non trovato" in msg`, and `/iscriviti` didn't check th
 | `get_leaderboard(limit)` | Top N by rating |
 | `_update_ratings(tournament_id)` | Glicko-2 on every match, including those against players later dropped |
 
-Covered by end-to-end tests in `tests/tournament/test_tournament_service.py` (registration, deck
+Covered by end-to-end tests in `tests/tournaments/test_service.py` (registration, deck
 submission/resubmission, start blocked by a missing deck, start, pairing, result submission and
 correction, round generation, forced drop, standings, rating update) on a temporary SQLite DB isolated per
 test — no mocks on the persistence layer.
@@ -213,7 +211,7 @@ test — no mocks on the persistence layer.
 
 ## Slash Commands
 
-Every command lives in `cogs/tournament_system/cog.py`:
+Every command lives in `features/tournaments/cog.py`:
 
 | Command | Access | Description |
 |---|---|---|
@@ -250,7 +248,7 @@ On submit:
 
 Can be used repeatedly while the tournament stays in `registration`: the latest valid submission wins.
 
-### RisultatoView (`cogs/tournament_system/cog.py`)
+### RisultatoView (`features/tournaments/cog.py`)
 
 A single select menu from the submitter's point of view ("Vittoria 2-0 / 2-1", "Pareggio", "Sconfitta
 1-2 / 0-2"), with confirm and cancel buttons. On confirm:
@@ -297,7 +295,7 @@ the service returned `"Risultato registrato!"`.
 
 ---
 
-## Embeds (`utils/tournament_embeds.py`)
+## Embeds (`features/tournaments/embeds.py`)
 
 | Function | Content |
 |---|---|
@@ -308,7 +306,7 @@ the service returned `"Risultato registrato!"`.
 
 ---
 
-## Utilities (`utils/tournament_logic.py`)
+## Utilities (`features/tournaments/logic.py`)
 
 | Function | Description |
 |---|---|

@@ -29,16 +29,15 @@ def _application_modules() -> list[str]:
 
 
 def _extension_modules() -> set[str]:
-    """Modules that define their own `setup` coroutine, plus the packages that
-    re-export it (load_extension("cogs.tournament_system") imports the package)."""
+    """Modules that define a module-level `setup` coroutine, the hook
+    load_extension() calls. Every extension is a plain module (`*cog.py` or a
+    `core/` module); no package re-exports a submodule's setup."""
     found = set()
     for name in _application_modules():
         setup = getattr(importlib.import_module(name), "setup", None)
         if inspect.iscoroutinefunction(setup):
             found.add(name)
-    # A package re-exporting its submodule's setup is the extension; the
-    # submodule itself is not loaded on its own.
-    return {name for name in found if name.rsplit(".", 1)[0] not in found}
+    return found
 
 
 @pytest.mark.parametrize("module", _application_modules())

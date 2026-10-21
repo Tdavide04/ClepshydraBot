@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from services.pairing_engine import PairingEngine
+from features.tournaments.pairing_engine import PairingEngine
 
 
 @dataclass

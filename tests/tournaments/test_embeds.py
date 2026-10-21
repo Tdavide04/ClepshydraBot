@@ -7,7 +7,7 @@ try:
 except ImportError:
     HAS_DISCORD = False
 
-from utils.tournament_embeds import (
+from features.tournaments.embeds import (
     EMBED_COLOR_PAIRINGS,
     EMBED_COLOR_STANDINGS,
     EMBED_COLOR_START,

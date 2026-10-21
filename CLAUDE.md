@@ -6,7 +6,7 @@ ClepshydraBot is a Discord helper bot (discord.py) for the "Clepshydra" MTG Aren
 - Artisan-format deck validation against Scryfall
 - monitors for Wizards' Arena Event Schedule and Banned and Restricted pages
 
-The Swiss tournament system (`cogs/tournament_system/`, `services/`) is **disabled** since 4.0.0: the cog is
+The Swiss tournament system (`features/tournaments/`) is **disabled** since 4.0.0: the cog is
 in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code, tests and DB tables stay
 (`docs/adr/0004-helper-only-tournaments-disabled.md`). Don't add tournament features unless it's re-enabled.
 
@@ -27,8 +27,8 @@ Decided in `docs/adr/0002-development-standard.md`. Every change follows this lo
    it. Use the terms defined in `CONTEXT.md`. Check `git log` on `main` and on open `feature/*` branches,
    since parallel work may already have touched the area. Done when you can name the files you will change
    and the behaviour you will change.
-2. **Red.** Write the test first for logic in `features/`, `services/`, `utils/`, `core/`, `repositories/`
-   or `database/`. A bug fix starts from a regression test that fails on the current code, and fails on an
+2. **Red.** Write the test first for logic in `features/` (everything but the cogs), `core/` or
+   `database/`. A bug fix starts from a regression test that fails on the current code, and fails on an
    assertion about behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
    reason you expect.
 3. **Green.** Write the smallest change that turns the test green. Done when `python -m pytest` is fully
@@ -126,8 +126,8 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per cl
 python main.py                                # needs .env (see .env.example)
 TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
 python -m pytest                              # CI runs `pytest tests/ -v` plus a coverage report
-python -m pytest --cov=core --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
-python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
+python -m pytest --cov=core --cov=features --cov=database --cov-report=term-missing
+python -m pytest tests/tournaments/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
 python -m ruff format .                       # CI runs `ruff format --check .`
 pre-commit run --all-files                    # what the CI lint job runs
@@ -137,15 +137,16 @@ Target Python is 3.12 (CI, `ruff.toml`, production venv).
 
 ## Architecture map
 
-Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `core/` (logging, error
-handling, `ServiceResult`, JSON state, permissions). A finished feature lives in its own `features/<name>/`
-package (cog, logic, data access together); `utils/` holds feature code still waiting to move
-(`docs/roadmap.md` phase 2). Each layer calls only
-the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
+Code is organized **by feature**: each `features/<name>/` package holds one feature's cog, logic and data
+access. Inside a feature the layering still holds: **cog → service → repository → `database/`**, each layer
+calls only the one below it, and repositories hold no business logic. `core/` is the cross-cutting code every
+feature may use (log channel, error handling, `ServiceResult`, JSON state, permissions, `BaseRepository`); it
+never imports a feature. A feature imports another feature only from a disabled one (the tournament cog uses
+`ArtisanService`). Overview: `docs/architecture.md`.
 
 | Area | Code | Topic doc |
 |---|---|---|
-| Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
+| Swiss tournaments (disabled) | `features/tournaments/` | `docs/tournaments.md` |
 | Artisan deck validation | `features/deck_validation/` | `docs/deck-validation.md` |
 | Banlist | `features/deck_validation/` (`banlist_repository.py`, `validators.py`, `cog.py`) | `docs/banlist-system.md` |
 | Scryfall card cache, SPG overrides | `features/deck_validation/card_cache.py`, `features/deck_validation/arena_overrides.py` | `docs/caching.md` |
@@ -153,12 +154,12 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Onboarding | `features/onboarding/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
 | Config, logging, deploy | `config/config.py`, `core/logger.py`, `main.py` | `docs/infrastructure.md` |
-| Slash command list | `cogs/` | `docs/commands.md` |
+| Slash command list | `features/*/cog.py`, `features/*/*_cog.py` | `docs/commands.md` |
 | Roadmap (project structure refactor) | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
 
-`features/deck_validation/` was `cogs/deck_validation/` until the phase 2 restructure and `cogs/tournament/`
-before 1.3.1; older CHANGELOG entries use those names.
+Before the 4.0.x restructure the code lived in `cogs/`, `services/`, `repositories/` and `utils/` (and
+`cogs/deck_validation/` was `cogs/tournament/` before 1.3.1): older CHANGELOG entries use those paths.
 
 ### Invariants
 
@@ -199,9 +200,8 @@ listed in the map.
 
 - **`pytest.ini` sets `pythonpath = .`**, so the bare `pytest tests/` command works the way CI runs it.
 - **Each `tests/*/conftest.py` seeds its own env vars**, duplicated on purpose. The seeding must run
-  before any application import in that file: `services/__init__.py`, `database.engine` and
-  `features.deck_validation.service` all load `config.config` at import time (the last one through
-  `database`).
+  before any application import in that file: `database.engine`, the cogs and the services load
+  `config.config` at import time (the services through `database`).
 - **There is no `pytest-asyncio`.** Each async scenario runs inside one `asyncio.run()` against a temp
   SQLite DB, because aiosqlite binds connections to the loop that created them.
 - **Mock only at the network edge**, for example by replacing `_post_with_retry`/`_get_with_retry` on the
@@ -213,7 +213,7 @@ listed in the map.
 ## Docs conventions
 
 - Refer to code by symbol name (`check_banlist()` in `validators.py`), not `file.py:line`. The one
-  exception is the "Line" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
+  exception is the "Line" column of `docs/commands.md`: recompute it whenever a cog file shifts.
 - Leave volatile counts (tests, commands) out of docs: they go stale with every change.
 - Write rationale and rejected alternatives as an ADR (`docs/adr/NNNN-title.md`), not in this file.
 

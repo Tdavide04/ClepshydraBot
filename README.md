@@ -51,7 +51,7 @@ Full details (parameters, behaviour, source location) in `docs/commands.md`.
 ┌─────────────────────┴───────────────────────────────────┐
 │                     Cogs (Discord layer)                 │
 │  features/: onboarding, deck_validation, monitors        │
-│  cogs/tournament_system/ (disabled)                      │
+│  features/tournaments (disabled)                         │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
@@ -96,29 +96,21 @@ ClepshydraBot/
 │   │   ├── card_cache.py
 │   │   ├── arena_overrides.py
 │   │   └── image.py         # Deck showcase image
-│   └── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
-│       ├── sitemap.py       # Shared sitemap fetch and newest-page selection
-│       ├── event_schedule.py
-│       ├── calendar_image.py  # Monthly event calendar images
-│       ├── ban_announcement.py
-│       ├── event_schedule_cog.py
-│       └── ban_announcement_cog.py
-├── cogs/
-│   └── tournament_system/   # Swiss tournaments (disabled, not loaded)
-├── services/                # Business logic
-│   ├── tournament_service.py
-│   ├── pairing_engine.py
-│   ├── standings.py
-│   └── rating.py            # Glicko-2
-├── repositories/            # Data access layer
-│   ├── user_repository.py
-│   └── tournament_repository.py
+│   ├── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
+│   │   ├── sitemap.py       # Shared sitemap fetch and newest-page selection
+│   │   ├── event_schedule.py
+│   │   ├── calendar_image.py  # Monthly event calendar images
+│   │   ├── ban_announcement.py
+│   │   ├── event_schedule_cog.py
+│   │   └── ban_announcement_cog.py
+│   └── tournaments/         # Swiss tournaments, Glicko-2 (disabled, not loaded)
+│       ├── cog.py, service.py
+│       ├── pairing_engine.py, standings.py, rating.py
+│       ├── repository.py, user_repository.py
+│       └── embeds.py, logic.py
 ├── database/                # SQLAlchemy ORM
 │   ├── engine.py
 │   └── models.py
-├── utils/                   # Tournament helpers, waiting to move
-│   ├── tournament_embeds.py
-│   └── tournament_logic.py
 ├── config/
 │   └── config.py
 ├── assets/backgrounds/      # MTG color-themed backgrounds

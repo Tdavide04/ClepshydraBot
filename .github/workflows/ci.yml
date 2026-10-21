@@ -18,7 +18,7 @@ jobs:
       # Coverage is a report only for now (since 3.6.7): no --cov-fail-under threshold yet.
       - run: >-
           pytest tests/ -v
-          --cov=core --cov=services --cov=utils --cov=repositories --cov=database --cov=cogs
+          --cov=core --cov=features --cov=database
           --cov-report=term-missing
 
   lint:

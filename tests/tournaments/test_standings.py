@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from services.standings import StandingsCalculator
+from features.tournaments.standings import StandingsCalculator
 
 
 @dataclass

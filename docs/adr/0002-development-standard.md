@@ -16,7 +16,8 @@ Discovery of 2026-10-20. The project already had good habits, but only by conven
 
 ## Decision
 
-1. **Test-first for logic** (`services/`, `utils/`, `repositories/`, `database/`): red → green → refactor.
+1. **Test-first for logic** (services, utilities, repositories, `database/`; since the 4.0.x restructure they
+   live in `features/`, `core/` and `database/`): red → green → refactor.
    Every bug fix starts from a regression test that fails on the current code. Cogs (Discord UI) are exempt:
    they stay thin, and the manual check in `TEST_MODE` is recorded in `CHANGELOG.md`.
 2. **Conventional Commits** with project scopes and an English subject (ADR-0003); the type decides the

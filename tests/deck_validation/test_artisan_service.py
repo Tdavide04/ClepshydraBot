@@ -16,7 +16,7 @@ from features.deck_validation.service import ArtisanService, ScryfallUnavailable
 
 def run_with_db(scenario):
     """Runs init_db + logic + close_db in a single event loop (same reason as
-    tests/tournament/test_tournament_service.py: aiosqlite binds connections
+    tests/tournaments/test_service.py: aiosqlite binds connections
     to the loop that created them)."""
 
     async def _wrapper():
@@ -190,11 +190,11 @@ class TestValidateDeck:
 
     def test_banlist_cache_shared_across_instances(self, isolated_db):
         """Regression for the 1.4.0 fix: the bot creates two separate
-        ArtisanService instances (tournament_system and deck_validation). An
+        ArtisanService instances (the tournament cog and the deck validation cog). An
         invalidation called on one must be visible from the other."""
 
         async def scenario():
-            registering_service = ArtisanService()  # e.g. tournament_system
+            registering_service = ArtisanService()  # e.g. the tournament cog
             checking_service = ArtisanService()  # e.g. deck_validation
 
             # no banned card yet: the deck passes the banlist check
