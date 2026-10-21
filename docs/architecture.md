@@ -2,14 +2,19 @@
 
 ## Overview
 
-ClepshydraBot uses a **three-tier** architecture with a clean separation of responsibilities:
+ClepshydraBot is organized **by feature**. Each package under `features/` holds one feature's cog, logic
+and data access: `features/onboarding/`, `features/deck_validation/`, `features/monitors/` and the disabled
+`features/tournaments/`. Inside a feature the code keeps three tiers:
 
-1. **Discord Layer (Cogs)** — user interface, slash commands, interactive components
-2. **Service Layer** — business logic, algorithms, orchestration
-3. **Repository Layer** — data access, CRUD, queries
+1. **Discord Layer (Cogs)** — user interface, slash commands, interactive components (`cog.py`, `*_cog.py`)
+2. **Service Layer** — business logic, algorithms, orchestration (`service.py` and the logic modules)
+3. **Repository Layer** — data access, CRUD, queries (`*repository.py`)
 
-On top of these sit the **Database Layer** (SQLAlchemy ORM) and the **Utilities Layer** (cross-cutting
-functions).
+Below them sits the **Database Layer** (`database/`, SQLAlchemy ORM, one schema for every feature). Next to
+them, **`core/`** holds the cross-cutting code every feature may use: the log channel, error handling,
+`ServiceResult`, JSON state files, permissions and `BaseRepository`. `core/` never imports a feature, and
+features don't import each other, except the disabled tournament cog using `ArtisanService` from deck
+validation.
 
 ---
 
@@ -127,8 +132,8 @@ functions).
 
 | Pattern | Where | Description |
 |---|---|---|
-| **Repository** | `repositories/` | Hides data access behind dedicated interfaces |
-| **Service Layer** | `services/` | Encapsulates business logic in service classes |
+| **Repository** | `*repository.py` in each feature, base in `core/repository_base.py` | Hides data access behind dedicated interfaces |
+| **Service Layer** | `service.py` in each feature | Encapsulates business logic in service classes |
 | **Strategy** | `PairingEngine`, `StandingsCalculator` | Interchangeable, stateless algorithms |
 | **Observer** | Cogs' `on_member_join`, `on_message` | Listeners for Discord events |
 | **Dependency Injection** | Service constructors | Bot and session passed in through the constructor |
@@ -197,10 +202,10 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 ## Error Handling
 
 - **Interaction catch-all** (since 3.5.6): an unhandled exception in a slash command, modal or view is caught
-  by `utils/interaction_errors.py` — the user gets an ephemeral message ("unexpected error, staff has been
+  by `core/interaction_errors.py` — the user gets an ephemeral message ("unexpected error, staff has been
   notified", via `followup` if the interaction had already answered with a `defer()`), the log channel gets
   an `ERROR` `INTERACTION_ERROR` with source, exception and traceback tail, the console the full traceback.
-  Three entry points, because discord.py routes errors differently: `cogs/error_handler.py` hooks
+  Three entry points, because discord.py routes errors differently: `core/error_handler.py` hooks
   `CommandTree.on_error` (slash commands; `CheckFailure`s such as those from `@is_admin()` are not logged,
   the check has already replied), and `ReportingModal`/`ReportingView` are the base class of every modal and
   view of the bot. Before 3.5.6 it didn't exist: an exception after a `defer()` left the user on
@@ -210,22 +215,29 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - **Scryfall outage ≠ illegal card**: `ScryfallUnavailable` leaves the deck unevaluated instead of marking
   cards illegal (see `docs/deck-validation.md`)
 - **Atomic writes**: the monitors' state files and the SPG override JSON are written to `.tmp` then
-  `os.replace()` (`save_json_state()` in `utils/sitemap_monitor.py`)
+  `os.replace()` (`save_json_state()` in `core/json_state.py`)
 - **Async lock**: `asyncio.Lock()` around concurrent card cache saves
 - **Bot startup**: `main.py` catches `discord.LoginFailure` (invalid/expired token) and any other startup
   exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor
   (`pm2` in production, see `docs/infrastructure.md`) can detect the failure instead of a silent stop
+- **Extension loading**: `setup_hook()` loads the modules listed in `EXTENSIONS` in `main.py`, in order,
+  skipping those in `DISABLED_COGS`. The list is written by hand, not discovered from a folder;
+  `tests/core/test_extensions.py` fails if a module with a `setup()` coroutine is missing from it
 
 ---
 
 ## Testing
 
-- `tests/tournament/`: the tournament service layer — `PairingEngine`, `Rating`, `StandingsCalculator`, embed
+- `tests/tournaments/`: the tournament service layer — `PairingEngine`, `Rating`, `StandingsCalculator`, embed
   builders, utilities, and `TournamentService` end to end (registration, deck submission, start, pairing,
   results and corrections, next round, forced drop, standings, rating).
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
   SQLite card cache, SPG overrides.
-- `tests/utils/`: the Wizards monitors, the shared sitemap logic, interaction error handling.
+- `tests/monitors/`: the Wizards monitors and the shared sitemap logic.
+- `tests/core/`: every application module imports (`main.py` included) and every extension is listed in
+  `EXTENSIONS`; interaction error handling, JSON state files, the timestamped console log.
+- `tests/onboarding/`: `PresentationService.publish()` outcomes (published, refused on validation, missing
+  channel), with plain fakes for the Discord guild, member and channel.
 - Integration tests don't mock the DB: they run against a temporary SQLite per test (`tmp_path` + monkeypatch
   on `database.engine.DB_PATH`), wrapping the whole `init_db → logic → close_db` cycle in a single event loop
   (required by aiosqlite, which binds connections to the loop that created them).

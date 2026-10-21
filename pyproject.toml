@@ -1,0 +1,19 @@
+# Tool configuration only: the bot is an application run as `python main.py`, not an installable package,
+# so there is no [project] table and no src/ layout. Dependencies stay pinned in requirements*.txt.
+
+[tool.ruff]
+target-version = "py312"
+# 110 matches the width the code and the docs were already written to, and gives the smallest
+# reformatting diff of the widths tried (88, 100, 110, 120).
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "ASYNC", "UP"]
+
+[tool.ruff.format]
+# Markdown code blocks are hand-aligned examples, not code to reformat.
+exclude = ["*.md"]
+
+[tool.pytest.ini_options]
+# The bare `pytest tests/` (CI) doesn't add the repo root to sys.path the way `python -m pytest` does.
+pythonpath = ["."]

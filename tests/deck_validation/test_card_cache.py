@@ -1,13 +1,13 @@
 import asyncio
 import json
 
-import utils.card_cache as card_cache
+import features.deck_validation.card_cache as card_cache
 from database import close_db, get_session, init_db
 from database.models import CachedCard
 
 
 def run_with_db(scenario):
-    """Same pattern as test_artisan_service.py / test_tournament_service.py:
+    """Same pattern as test_artisan_service.py / tests/tournaments/test_service.py:
     init_db + logic + close_db in a single event loop."""
 
     async def _wrapper():

@@ -1,4 +1,3 @@
-import os
 import sys
 
 import discord
@@ -6,17 +5,37 @@ from discord.ext import commands
 
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import close_db, init_db
-from utils.arena_event_schedule import get_latest_known_event_schedule, periodic_event_schedule_check_loop
-from utils.arena_overrides import periodic_spg_refresh_loop
-from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
-from utils.card_cache import periodic_save_loop, save_cache
+from features.deck_validation.arena_overrides import periodic_spg_refresh_loop
+from features.deck_validation.card_cache import periodic_save_loop, save_cache
+from features.monitors.ban_announcement import (
+    get_latest_known_ban_announcement,
+    periodic_ban_announcement_check_loop,
+)
+from features.monitors.event_schedule import (
+    get_latest_known_event_schedule,
+    periodic_event_schedule_check_loop,
+)
 
-# Extensions under cogs/ that are kept in the repo but not loaded: their slash commands disappear from Discord
-# at the next tree.sync(). Remove an entry to bring the feature back.
+# Every extension the bot has, in load order. Listed by hand rather than discovered from a folder, so that
+# "which features exist" doesn't depend on the folder layout; tests/core/test_extensions.py fails if an
+# extension module is missing from this list.
+EXTENSIONS = [
+    "core.logger",
+    "core.error_handler",
+    "features.onboarding.cog",
+    "features.deck_validation.cog",
+    "features.deck_validation.spg_cog",
+    "features.monitors.event_schedule_cog",
+    "features.monitors.ban_announcement_cog",
+    "features.tournaments.cog",
+]
+
+# Extensions kept in the repo but not loaded: their slash commands disappear from Discord at the next
+# tree.sync(). Remove an entry to bring the feature back.
 DISABLED_COGS = {
     # Tournaments are hosted elsewhere since 4.0.0, the bot is a helper only
     # (docs/adr/0004-helper-only-tournaments-disabled.md).
-    "tournament_system",
+    "features.tournaments.cog",
 }
 
 
@@ -30,16 +49,11 @@ class ClepshydraBotte(commands.Bot):
     async def setup_hook(self):
         await init_db()
 
-        for entry in os.listdir("./cogs"):
-            path = os.path.join("./cogs", entry)
-            if entry.removesuffix(".py") in DISABLED_COGS:
-                print(f"Cog cogs.{entry.removesuffix('.py')} disabled (DISABLED_COGS), not loaded")
+        for extension in EXTENSIONS:
+            if extension in DISABLED_COGS:
+                print(f"Extension {extension} disabled (DISABLED_COGS), not loaded")
                 continue
-            if entry.endswith(".py") and entry != "__init__.py":
-                await self.load_extension(f"cogs.{entry[:-3]}")
-            # Blocking os.path calls are fine here: startup only, before the bot serves interactions.
-            elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__init__.py")):  # noqa: ASYNC240
-                await self.load_extension(f"cogs.{entry}")
+            await self.load_extension(extension)
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
@@ -103,13 +117,18 @@ class ClepshydraBotte(commands.Bot):
         await super().close()
 
 
-bot = ClepshydraBotte()
+def main() -> None:
+    bot = ClepshydraBotte()
+    try:
+        bot.run(DISCORD_TOKEN)
+    except discord.LoginFailure:
+        print("FATAL: invalid or expired Discord token. The bot cannot start.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"FATAL: bot startup failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
-try:
-    bot.run(DISCORD_TOKEN)
-except discord.LoginFailure:
-    print("FATAL: invalid or expired Discord token. The bot cannot start.", file=sys.stderr)
-    sys.exit(1)
-except Exception as e:
-    print(f"FATAL: bot startup failed: {e}", file=sys.stderr)
-    sys.exit(1)
+
+# Guarded so tests can import the extension list without starting the bot; pm2 runs `python main.py`.
+if __name__ == "__main__":
+    main()

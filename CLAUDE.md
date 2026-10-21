@@ -6,7 +6,7 @@ ClepshydraBot is a Discord helper bot (discord.py) for the "Clepshydra" MTG Aren
 - Artisan-format deck validation against Scryfall
 - monitors for Wizards' Arena Event Schedule and Banned and Restricted pages
 
-The Swiss tournament system (`cogs/tournament_system/`, `services/`) is **disabled** since 4.0.0: the cog is
+The Swiss tournament system (`features/tournaments/`) is **disabled** since 4.0.0: the cog is
 in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code, tests and DB tables stay
 (`docs/adr/0004-helper-only-tournaments-disabled.md`). Don't add tournament features unless it's re-enabled.
 
@@ -24,12 +24,12 @@ in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code
 Decided in `docs/adr/0002-development-standard.md`. Every change follows this loop.
 
 1. **Orient.** Read the topic doc for the area (see the map below) and any `docs/adr/` entry that touches
-   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `feature/v2`, since parallel work may
-   already have touched the area. Done when you can name the files you will change and the behaviour you
-   will change.
-2. **Red.** Write the test first for logic in `services/`, `utils/`, `repositories/` or `database/`. A
-   bug fix starts from a regression test that fails on the current code, and fails on an assertion about
-   behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
+   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `main` and on open `feature/*` branches,
+   since parallel work may already have touched the area. Done when you can name the files you will change
+   and the behaviour you will change.
+2. **Red.** Write the test first for logic in `features/` (everything but the cogs), `core/` or
+   `database/`. A bug fix starts from a regression test that fails on the current code, and fails on an
+   assertion about behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
    reason you expect.
 3. **Green.** Write the smallest change that turns the test green. Done when `python -m pytest` is fully
    green.
@@ -53,15 +53,15 @@ in the CHANGELOG entry.
 ### Pragmatic rules
 
 - **DRY applies to knowledge, not just code.** Every fact has one owning doc, and this file points to it
-  rather than repeating it. Code example: `utils/sitemap_monitor.py`, extracted once two monitors had
+  rather than repeating it. Code example: `features/monitors/sitemap.py`, extracted once two monitors had
   duplicated it.
-- **No broken windows.** The lint set only grows. A rule family joins `ruff.toml` once the code is clean
+- **No broken windows.** The lint set only grows. A rule family joins `[tool.ruff.lint]` in `pyproject.toml` once the code is clean
   for it. Every `# noqa` names the rule and gives a reason.
 - **Tracer bullets.** Build a new feature as a thin end-to-end slice first: command → service →
   repository → test. Then widen it.
 - **Programming by coincidence is banned.** Verify external behaviour (Scryfall queries, Wizards HTML,
   Discord limits) live before relying on it, and record the evidence in the topic doc.
-- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`services/results.py`),
+- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`core/results.py`),
   and cogs branch on its fields, never on the message text. Add a `ResultKind` member only when `ok` alone
   can't tell the caller's cases apart.
 - **Fail loud.** On unexpected input, return `None`, raise, or log a `WARN` that asks for a manual check,
@@ -98,7 +98,8 @@ per clone (see Commands). CI runs the same pre-commit-stage hooks on every file.
 
 ### Branches and versions
 
-- Work on `feature/v2`. `main` only receives merges via PR from `feature/v2`.
+- Work on a `feature/<topic>` branch cut from `main` (for example `feature/event-calendar`). `main` only
+  receives merges via PR, and the branch is deleted after the merge.
 - `VERSION` is a hardcoded constant in `config/config.py`, shown in the `SYSTEM_STARTUP` log.
 
 ### Agent tooling
@@ -125,43 +126,51 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per cl
 python main.py                                # needs .env (see .env.example)
 TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
 python -m pytest                              # CI runs `pytest tests/ -v` plus a coverage report
-python -m pytest --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
-python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
+python -m pytest --cov=core --cov=features --cov=database --cov-report=term-missing
+python -m pytest tests/tournaments/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
 python -m ruff format .                       # CI runs `ruff format --check .`
 pre-commit run --all-files                    # what the CI lint job runs
 ```
 
-Target Python is 3.12 (CI, Docker, `ruff.toml`).
+Target Python is 3.12: `.python-version` (read by CI), ruff's `target-version` in `pyproject.toml`, the
+production venv.
 
 ## Architecture map
 
-Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `utils/`. Each layer calls only
-the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
+Code is organized **by feature**: each `features/<name>/` package holds one feature's cog, logic and data
+access. Inside a feature the layering still holds: **cog → service → repository → `database/`**, each layer
+calls only the one below it, and repositories hold no business logic. `core/` is the cross-cutting code every
+feature may use (log channel, error handling, `ServiceResult`, JSON state, permissions, `BaseRepository`); it
+never imports a feature. A feature imports another feature only from a disabled one (the tournament cog uses
+`ArtisanService`). Overview: `docs/architecture.md`.
 
 | Area | Code | Topic doc |
 |---|---|---|
-| Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
-| Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
-| Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
-| Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |
-| Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
+| Swiss tournaments (disabled) | `features/tournaments/` | `docs/tournaments.md` |
+| Artisan deck validation | `features/deck_validation/` | `docs/deck-validation.md` |
+| Banlist | `features/deck_validation/` (`banlist_service.py`, `banlist_repository.py`, `validators.py`) | `docs/banlist-system.md` |
+| Scryfall card cache, SPG overrides | `features/deck_validation/card_cache.py`, `features/deck_validation/arena_overrides.py` | `docs/caching.md` |
+| Wizards monitors (Event Schedule, Banned and Restricted, calendar image) | `features/monitors/` | `docs/caching.md` |
+| Onboarding | `features/onboarding/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
-| Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastructure.md` |
-| Slash command list | `cogs/` | `docs/commands.md` |
-| Tech-debt plan | | `docs/roadmap.md` |
+| Config, logging, deploy | `config/config.py`, `core/logger.py`, `main.py` | `docs/infrastructure.md` |
+| Slash command list | `features/*/cog.py`, `features/*/*_cog.py` | `docs/commands.md` |
+| Roadmap (project structure refactor) | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
 
-`cogs/deck_validation/` was named `cogs/tournament/` before 1.3.1, and older CHANGELOG entries still use
-that name.
+Before the 4.0.x restructure the code lived in `cogs/`, `services/`, `repositories/` and `utils/` (and
+`cogs/deck_validation/` was `cogs/tournament/` before 1.3.1): older CHANGELOG entries use those paths.
 
 ### Invariants
 
 Breaking one of these has already caused a production bug. Each one is explained in the topic doc
 listed in the map.
 
-- **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`utils/interaction_errors.py`).
-  Slash commands are covered by `bot.tree.on_error` (`cogs/error_handler.py`); modals and views are not.
+- **A new extension goes into `EXTENSIONS` in `main.py`.** Nothing discovers cogs from the folder; the
+  `tests/core/test_extensions.py` check fails until the module is listed.
+- **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`core/interaction_errors.py`).
+  Slash commands are covered by `bot.tree.on_error` (`core/error_handler.py`); modals and views are not.
 - **A Scryfall failure is not an "illegal card" verdict.** Any non-200 response after retries raises
   `ScryfallUnavailable`, and `validate_deck()` then sets `service_error` and marks no card. A 404 on
   `/cards/search` is a real answer ("no Arena prints"). Keep the two cases separate.
@@ -171,37 +180,43 @@ listed in the map.
   crashes on every restart.
 - **Schema changes go through `_SCHEMA_MIGRATIONS` in `database/engine.py`** as a `(table, column, ddl)`
   tuple. There is no Alembic.
-- **The banlist cache is module-level and shared by both `ArtisanService` instances.** Invalidate it with
-  `reload_banlist()` and never reload a single instance.
+- **The banlist cache is module-level and shared by both `ArtisanService` instances.** Change the banlist
+  only through `BanlistService`, which calls `invalidate_banlist_cache()` after every change; never cache
+  the banlist per instance.
 - **The Wizards monitors are notification-only.** They never write to `banned_cards`. They select pages
   by the newest sitemap `lastmod`, and a parser that cannot find the expected structure returns `None`,
   which logs a `WARN`.
 - **Anything posted to `COMUNICATION_CHANNEL_ID` is a dedicated community embed** with no staff detail.
   Note the spelling of the constant. `LOG_CHANNEL_ID` has no `_TEST` variant.
-- **Inside `utils/`, `config.config` is imported inside the function that uses it**, never at module
-  top, so these modules stay importable in tests without a `.env`. Examples: `utils/permissions.py` and
-  the two monitors.
-- **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB). `deploy/clepshydrabot.service` is an
-  unused alternative.
+- **A logic module that must import without a `.env` imports `config.config` inside the function that uses
+  it**, never at module top: `config.config` raises at import time when the variables are missing. The same
+  goes for `database`, because `database/engine.py` imports `config.config` at module top. Examples:
+  `core/permissions.py`, the two monitors, the card cache and the SPG overrides. Modules that import
+  `config.config` or `database` at top (the cogs, `PresentationService`, `ArtisanService`,
+  `TournamentService`) can't, so their test folder's `conftest.py` must seed the variables (see "Writing
+  tests").
+- **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
+  systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 
 ### Writing tests
 
-- **`pytest.ini` sets `pythonpath = .`**, so the bare `pytest tests/` command works the way CI runs it.
+- **`pyproject.toml` sets `pythonpath = ["."]`** (`[tool.pytest.ini_options]`), so the bare `pytest tests/`
+  command works the way CI runs it.
 - **Each `tests/*/conftest.py` seeds its own env vars**, duplicated on purpose. The seeding must run
-  before any application import in that file: `services/__init__.py`, `database.engine` and
-  `cogs.deck_validation.service` all load `config.config` at import time.
+  before any application import in that file: `database.engine`, the cogs and the services load
+  `config.config` at import time (the services through `database`).
 - **There is no `pytest-asyncio`.** Each async scenario runs inside one `asyncio.run()` against a temp
   SQLite DB, because aiosqlite binds connections to the loop that created them.
 - **Mock only at the network edge**, for example by replacing `_post_with_retry`/`_get_with_retry` on the
   `ArtisanService` instance. Keep the DB real.
 - **`tests/deck_validation/conftest.py` provides `isolated_db`, `isolated_card_cache` and
-  `isolated_banlist_cache`.** They reset `utils.card_cache`'s module globals (`_card_cache`, `_loaded`,
+  `isolated_banlist_cache`.** They reset `features.deck_validation.card_cache`'s module globals (`_card_cache`, `_loaded`,
   `_dirty_upserts`, `_dirty_deletes`). Use them in any test that touches the card cache.
 
 ## Docs conventions
 
 - Refer to code by symbol name (`check_banlist()` in `validators.py`), not `file.py:line`. The one
-  exception is the "Line" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
+  exception is the "Line" column of `docs/commands.md`: recompute it whenever a cog file shifts.
 - Leave volatile counts (tests, commands) out of docs: they go stale with every change.
 - Write rationale and rejected alternatives as an ADR (`docs/adr/NNNN-title.md`), not in this file.
 

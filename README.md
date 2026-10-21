@@ -50,7 +50,8 @@ Full details (parameters, behaviour, source location) in `docs/commands.md`.
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │                     Cogs (Discord layer)                 │
-│  presentation/  deck_validation/  tournament_system/     │
+│  features/: onboarding, deck_validation, monitors        │
+│  features/tournaments (disabled)                         │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
@@ -75,47 +76,48 @@ Full details (parameters, behaviour, source location) in `docs/commands.md`.
 
 ```
 ClepshydraBot/
-├── cogs/
-│   ├── presentation/        # User presentation wizard
-│   ├── deck_validation/     # Artisan deck validation
-│   ├── tournament_system/   # Swiss tournaments (disabled, not loaded)
-│   ├── logger.py            # Centralized logging
-│   ├── error_handler.py     # Global slash command error handler
-│   ├── spg_override_updater.py
-│   ├── arena_event_schedule_updater.py
-│   └── ban_announcement_updater.py
-├── services/                # Business logic
-│   ├── tournament_service.py
-│   ├── pairing_engine.py
-│   ├── standings.py
-│   ├── rating.py            # Glicko-2
-│   └── results.py           # ServiceResult (structured service outcome)
-├── repositories/            # Data access layer
-│   ├── base.py
-│   ├── user_repository.py
-│   ├── tournament_repository.py
-│   └── banlist_repository.py
+├── core/                    # Cross-cutting, used by every feature
+│   ├── logger.py            # Log channel (extension)
+│   ├── error_handler.py     # Global slash command error handler (extension)
+│   ├── interaction_errors.py  # ReportingModal / ReportingView
+│   ├── results.py           # ServiceResult (structured service outcome)
+│   ├── repository_base.py   # BaseRepository
+│   ├── json_state.py        # Atomic JSON state files
+│   ├── console.py           # Timestamped console log()
+│   └── permissions.py       # @is_admin() check
+├── features/
+│   ├── onboarding/          # /presentati wizard, welcome and presentation channel rules
+│   ├── deck_validation/     # Artisan deck validation, banlist, Scryfall cache, SPG overrides
+│   │   ├── cog.py           # /artisan_check_deck + banlist commands
+│   │   ├── spg_cog.py       # /forced_rarity_refresh, /invalidate_card_cache
+│   │   ├── service.py       # ArtisanService
+│   │   ├── validators.py, models.py, embeds.py
+│   │   ├── banlist_service.py, banlist_repository.py
+│   │   ├── card_cache.py
+│   │   ├── arena_overrides.py
+│   │   └── image.py         # Deck showcase image
+│   ├── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
+│   │   ├── sitemap.py       # Shared sitemap fetch and newest-page selection
+│   │   ├── event_schedule.py
+│   │   ├── calendar_image.py  # Monthly event calendar images
+│   │   ├── ban_announcement.py
+│   │   ├── event_schedule_cog.py
+│   │   └── ban_announcement_cog.py
+│   └── tournaments/         # Swiss tournaments, Glicko-2 (disabled, not loaded)
+│       ├── cog.py, service.py
+│       ├── pairing_engine.py, standings.py, rating.py
+│       ├── repository.py, user_repository.py
+│       └── embeds.py, logic.py
 ├── database/                # SQLAlchemy ORM
 │   ├── engine.py
 │   └── models.py
-├── utils/                   # Utilities
-│   ├── card_cache.py
-│   ├── arena_overrides.py
-│   ├── arena_event_schedule.py
-│   ├── event_calendar_image_generator.py
-│   ├── ban_announcement.py
-│   ├── sitemap_monitor.py
-│   ├── interaction_errors.py
-│   ├── console.py           # Timestamped console log()
-│   ├── permissions.py       # @is_admin() check
-│   ├── tournament_embeds.py
-│   ├── tournament_logic.py
-│   └── deck_image_generator.py
 ├── config/
 │   └── config.py
 ├── assets/backgrounds/      # MTG color-themed backgrounds
-├── data/                    # Runtime data (cache, db)
+├── data/                    # Runtime data (db, monitor state, SPG overrides), not in git
+├── seeds/                   # Tracked starting data: banlist.txt, arena_rarity.json
 ├── main.py
+├── pyproject.toml           # Tool config: ruff, pytest
 └── requirements.txt
 ```
 
@@ -135,19 +137,6 @@ python main.py
 - Python 3.12+
 - Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
 - Discord server with appropriate intents enabled (Member, Message Content)
-
-### Docker (alternative)
-
-```bash
-cp .env.example .env
-# Edit .env with your Discord token and channel IDs
-docker compose up -d --build
-docker compose logs -f bot
-```
-
-Data (SQLite DB, card cache) persists in a named Docker volume across restarts. See
-`docs/infrastructure.md` for details — production currently runs via `pm2`, not Docker, but the image is
-validated and ready to use.
 
 ## Development
 

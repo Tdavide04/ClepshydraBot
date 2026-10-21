@@ -1,0 +1,125 @@
+from datetime import datetime
+
+import discord
+from discord.ext import commands
+
+from core.interaction_errors import ReportingModal
+from core.permissions import is_admin
+from features.deck_validation.banlist_service import DB_UNAVAILABLE_MESSAGE, BanlistService
+from features.deck_validation.service import ArtisanService
+from features.deck_validation.validators import parse_decklist
+
+
+class ArtisanDeckCheckModal(ReportingModal, title="Controllo Mazzo Artisan"):
+    titolo = discord.ui.TextInput(
+        label="Nome del tuo mazzo",
+        placeholder="es. Mono Red Aggro",
+        required=True,
+        max_length=100,
+    )
+
+    deck_list = discord.ui.TextInput(
+        label="Incolla la tua lista (60 Main + 15 Side)",
+        style=discord.TextStyle.paragraph,
+        placeholder="4 Experimental Confectioner / 3 Honey Mammoth ...",
+        required=True,
+        min_length=10,
+        max_length=2000,
+    )
+
+    def __init__(self, service: ArtisanService):
+        super().__init__()
+        self.service = service
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Analisi del mazzo Artisan in corso...", ephemeral=True)
+
+        # No try/except here: an unexpected error reaches
+        # ReportingModal.on_error, which notifies the user AND staff (it used
+        # to be printed to the console only).
+        entries, total_cards, _ = parse_decklist(self.deck_list.value)
+        deck_name = self.titolo.value.strip() or "ARTISAN DECK"
+        await self.service.validate_and_publish(interaction, entries, deck_name, total_cards)
+
+
+class DeckValidationCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.service = ArtisanService(bot)
+        self.banlist = BanlistService()
+
+    async def _log(self, level, event, user=None, info=None):
+        logger = self.bot.get_cog("Logger")
+        if logger:
+            await logger.send_log(level=level, event=event, user=user, info=info)
+
+    @discord.app_commands.command(
+        name="artisan_check_deck", description="Analizza se il tuo deck e legale per Artisan Arena"
+    )
+    async def artisan_check_deck(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(ArtisanDeckCheckModal(self.service))
+
+    @discord.app_commands.command(name="banlist", description="Visualizza le carte bannate")
+    async def banlist_lista(
+        self,
+        interaction: discord.Interaction,
+    ):
+        await interaction.response.defer(ephemeral=False)
+
+        cards = await self.banlist.list_cards()
+        if cards is None:
+            return await interaction.followup.send(DB_UNAVAILABLE_MESSAGE, ephemeral=True)
+        if not cards:
+            return await interaction.followup.send("Nessuna carta bannata.", ephemeral=True)
+
+        embed = discord.Embed(
+            title=f"\U0001f6ab Banlist ({len(cards)} carte)",
+            color=discord.Color.red(),
+            timestamp=datetime.now(),
+        )
+        chunks = [cards[i : i + 30] for i in range(0, len(cards), 30)]
+        for i, chunk in enumerate(chunks):
+            name = "Carte" if len(chunks) == 1 else f"Carte (parte {i + 1})"
+            embed.add_field(
+                name=name,
+                value="\n".join(f"\u2022 {c}" for c in chunk),
+                inline=False,
+            )
+        embed.set_footer(text="Formato: Artisan")
+        await interaction.followup.send(embed=embed)
+
+    @discord.app_commands.command(
+        name="banlist_aggiungi", description="Aggiungi una carta alla banlist (admin)"
+    )
+    @is_admin()
+    @discord.app_commands.describe(carta="Nome della carta da bannare")
+    async def banlist_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        carta: str,
+    ):
+        await interaction.response.defer(ephemeral=True)
+        outcome = await self.banlist.add_card(carta)
+        if outcome.ok:
+            await self._log("INFO", "BANLIST_ADD", user=interaction.user, info=f"Added: {carta.strip()}")
+        await interaction.followup.send(outcome.message, ephemeral=True)
+
+    @discord.app_commands.command(
+        name="banlist_rimuovi", description="Rimuovi una carta dalla banlist (admin)"
+    )
+    @is_admin()
+    @discord.app_commands.describe(carta="Nome della carta da rimuovere")
+    async def banlist_rimuovi(
+        self,
+        interaction: discord.Interaction,
+        carta: str,
+    ):
+        await interaction.response.defer(ephemeral=True)
+        outcome = await self.banlist.remove_card(carta)
+        if outcome.ok:
+            await self._log("INFO", "BANLIST_REMOVE", user=interaction.user, info=f"Removed: {carta.strip()}")
+        await interaction.followup.send(outcome.message, ephemeral=True)
+
+
+async def setup(bot):
+    await bot.add_cog(DeckValidationCog(bot))

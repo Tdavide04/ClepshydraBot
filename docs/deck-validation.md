@@ -10,17 +10,18 @@ cards on MTG Arena). It combines a local banlist, the Scryfall API, SPG rarity o
 ## Structure
 
 ```
-cogs/deck_validation/
-├── __init__.py           # ArtisanDeckCheckModal + Tournament cog (/artisan_check_deck)
+features/deck_validation/
+├── cog.py                # ArtisanDeckCheckModal + DeckValidationCog (/artisan_check_deck, banlist commands)
+├── spg_cog.py            # SPGOverrideUpdater (/forced_rarity_refresh, /invalidate_card_cache)
 ├── models.py             # DeckEntry, ArtisanCard, DeckValidationResult
 ├── validators.py         # parse_decklist(), check_banlist(), validate_counts()
 ├── service.py            # ArtisanService.validate_deck()
-└── embeds.py             # Embed builder for validation results
-
-utils/
+├── embeds.py             # Embed builder for validation results
+├── banlist_service.py    # BanlistService: /banlist, /banlist_aggiungi, /banlist_rimuovi
+├── banlist_repository.py # BanlistRepository (banned_cards table)
 ├── card_cache.py         # Persistent Scryfall cache (SQLite)
 ├── arena_overrides.py    # SPG rarity overrides
-└── deck_image_generator.py  # Showcase image generation
+└── image.py              # DeckImageGenerator: showcase image generation
 ```
 
 ---
@@ -167,7 +168,7 @@ To force an immediate re-check of a single card (without waiting for the TTL), a
 `DeckValidationResult.is_valid` applies these limits itself. `validate_counts(main_count, side_count)` in
 `validators.py` returns the human-readable count errors, used by `/invia_deck` in the tournament cog.
 
-### 6. Image Generation (`utils/deck_image_generator.py`)
+### 6. Image Generation (`features/deck_validation/image.py`)
 
 `DeckImageGenerator.create_deck_showcase(session, mainboard, sideboard, player_name=None, deck_name="ARTISAN DECK") -> BytesIO`
 
@@ -221,7 +222,8 @@ class DeckValidationResult:
 See [caching.md](caching.md) for the details of the override system.
 
 Quick flow:
-1. `get_override_rarity(name)` checks `data/arena_rarity_data.json`
+1. `get_override_rarity(name)` checks `data/arena_rarity_data.json` (or the seed `seeds/arena_rarity.json`
+   until the first SPG scan writes it)
 2. If found as `"common"` or `"uncommon"` → card legal (skips the API)
 3. Covers the SPG (Special Guests) cards that are rare/mythic on Arena but common/uncommon on paper
 4. Refreshed automatically every week (`periodic_spg_refresh_loop`); can be forced right away with

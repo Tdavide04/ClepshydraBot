@@ -19,7 +19,7 @@ limits, it implements a three-level caching system. It also watches two kinds of
 ┌──────────────────────────────────────────────────────────────┐
 │  Level 1: Rarity overrides (arena_overrides.py)               │
 │  • In-memory cache (_override_cache)                          │
-│  • arena_rarity_data.json (persistent)                        │
+│  • arena_rarity_data.json (persistent, seed in seeds/)        │
 │  • Only for SPG / cards with an Arena-paper mismatch          │
 └────────────────────────┬─────────────────────────────────────┘
                          │
@@ -53,12 +53,11 @@ limits, it implements a three-level caching system. It also watches two kinds of
 
 ---
 
-## 1. Scryfall Card Cache (`utils/card_cache.py`)
+## 1. Scryfall Card Cache (`features/deck_validation/card_cache.py`)
 
 Until September 2026 the cache was persisted to `data/card_cache.json`, rewritten in full every 60 seconds if
 anything had changed — even for a single modified card out of thousands. The file was also tracked in git,
-growing with no cleanup on every commit (2.2MB, zero value as versioned history). Since the migration (Step 4
-of `docs/roadmap.md`), the cache lives in the SQLite table `cached_cards` (`database/models.py:CachedCard`),
+growing with no cleanup on every commit (2.2MB, zero value as versioned history). Since the migration (1.6.0), the cache lives in the SQLite table `cached_cards` (`database/models.py:CachedCard`),
 with incremental writes (UPSERT/DELETE on the changed entries only). `data/card_cache.json` is no longer
 tracked in git (it stays as an inert local file, useful only for the one-off migration described below) and
 the bot no longer writes it.
@@ -87,7 +86,7 @@ the bot no longer writes it.
 - `database`/`database.models` are imported **inside the functions** (not at module level) to avoid a
   circular import: `database/engine.py` calls `card_cache.load_cache()`, which in turn needs
   `database.get_session` — the same pattern `database/engine.py:_migrate_banlist()` already uses for
-  `repositories.banlist_repository`
+  `features.deck_validation.banlist_repository`
 
 ### Migration from JSON to SQLite
 
@@ -100,7 +99,7 @@ identical byte for byte, no duplicate rows on a second simulated "restart".
 ### TTL on `artisan_legal`
 
 The `artisan_legal` flag is no longer considered valid forever. Every time `_is_arena_artisan_legal()`
-(`cogs/deck_validation/service.py`) computes it, it calls `mark_artisan_legal()`, which also stores
+(`features/deck_validation/service.py`) computes it, it calls `mark_artisan_legal()`, which also stores
 `artisan_legal_checked_at` (ISO timestamp, UTC). On the next check, if the cached entry's
 `artisan_legal_checked_at` is older than `ARTISAN_LEGAL_TTL_DAYS` (30 days) or missing altogether (entry
 cached before the TTL existed), the flag counts as stale and the card is re-checked against Scryfall instead
@@ -135,7 +134,7 @@ on them today, and a blob avoids duplicating the variable shape of Scryfall data
 
 ---
 
-## 2. SPG Rarity Overrides (`utils/arena_overrides.py`)
+## 2. SPG Rarity Overrides (`features/deck_validation/arena_overrides.py`)
 
 ### Problem
 
@@ -194,6 +193,19 @@ A failed batch (Scryfall query without a valid answer) marks none of its cards a
 retried together on the next run, the same "never lose a card forever" principle already used for single
 failures before the redesign.
 
+### Runtime File and Seed
+
+`data/arena_rarity_data.json` is written only by the SPG scan (`update_spg_overrides()`), nobody edits it by
+hand, so it is ignored by git (since 4.0.2; it used to be tracked, and the bot's rewrites in production
+blocked `git pull`). The tracked starting copy is `seeds/arena_rarity.json`. `_load_override_data()` reads
+the runtime file when it exists and the seed otherwise, without copying it: a read never writes, and the
+first save after a scan creates the runtime file with the seed's content plus the new results. The scan runs
+at every start (`periodic_spg_refresh_loop`), so on a fresh clone the runtime file appears right away. The
+seed lives in `seeds/`, apart from `data/`, which holds only runtime state ignored by git.
+
+The seed is a snapshot: refresh it by copying the production runtime file over it when it falls far behind.
+A stale seed only costs the first scan a few extra cards.
+
 ### JSON Structure (`data/arena_rarity_data.json`)
 
 ```json
@@ -221,7 +233,7 @@ yet" and rescanned once in full.
 
 ---
 
-## 3. Arena Event Schedule Monitor (`utils/arena_event_schedule.py`)
+## 3. Arena Event Schedule Monitor (`features/monitors/event_schedule.py`)
 
 ### Problem
 
@@ -244,7 +256,7 @@ over. Only if the newest one is new or has a changed `lastmod` versus the saved 
 downloaded and parsed (fetch + HTML parsing, more expensive and fragile) — most checks do nothing beyond the
 sitemap GET, because the real content only changes every 6-9 weeks.
 
-The cadence (`_CHECK_INTERVAL_SECONDS` in `utils/sitemap_monitor.py`, shared by both monitors) is 2 hours.
+The cadence (`_CHECK_INTERVAL_SECONDS` in `features/monitors/sitemap.py`, shared by both monitors) is 2 hours.
 Until 3.5.3 it was 24 hours: Wizards serves the sitemap with a `Cache-Control: max-age` of about 1 hour and
 regenerates it *after* the article is published, so a page just out may not show up there for a while. On
 2026-10-12 the daily check ran before the October Banned and Restricted appeared in the sitemap, and the next
@@ -254,7 +266,7 @@ of one extra ~660 KB GET every 2 hours per monitor.
 | Function | Description |
 |---|---|
 | `check_event_schedule_updates(force=False)` | Finds the newest page in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, categories}]` |
-| `_pick_latest(entries)` | Local alias of `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (shared with the Ban Announcement monitor) — picks the page with the highest `lastmod` |
+| `_pick_latest(entries)` | Local alias of `pick_latest_by_lastmod()` in `features/monitors/sitemap.py` (shared with the Ban Announcement monitor) — picks the page with the highest `lastmod` |
 | `parse_full_event_calendar(html)` | Extracts `{category: [entries]}` from the "Full Event Calendar" section; `None` if the section isn't found (structural site drift) |
 | `periodic_event_schedule_check_loop(bot)` | Background task: calls `check_event_schedule_updates()` every 2 hours (first run right at startup), logs to Discord if the newest page is new/updated |
 | `parse_event_entry(text)` | Extracts start and end month/day from a text entry ("Month Day[-Month] Day: Event name"); `None` if the format isn't recognized |
@@ -270,7 +282,7 @@ Discord. Without this log, a run that finds no change (the most common outcome, 
 changes every 6-9 weeks) is indistinguishable in the console from a task that never started — the source of
 real confusion in production, where it looked like the check didn't run while it actually ran and correctly
 found nothing new. Every line starts with a timestamp (`[2026-10-12 15:20:04] [EVENT SCHEDULE] ...`, the same
-format as `discord.py`'s logs) via `log()` in `utils/console.py` (re-exported by `utils/sitemap_monitor.py`),
+format as `discord.py`'s logs) via `log()` in `core/console.py`,
 shared with the Ban Announcement monitor and the rest of the bot — without it, `pm2 logs` gave no way to tell
 *when* a check ran relative to a page appearing in the sitemap.
 
@@ -300,7 +312,7 @@ saved state: it is retried on the next run instead of being marked as "already s
 ```
 
 Tracks only the latest (newest) page actually processed, not the whole history — pure operational
-bookkeeping; unlike `arena_rarity_data.json` it holds no curated/editorial data, so it isn't tracked in git
+bookkeeping, so it isn't tracked in git
 (see `.gitignore`). Written atomically (`save_json_state()`: `.tmp` + `os.replace`).
 
 Admin command (`ADMIN_ROLE` role, default `Staff`) to force an immediate check (ignores the `lastmod`
@@ -314,7 +326,7 @@ WARN cases (unparseable page or no dates) stay in the log channel only. There us
 
 ---
 
-## 3b. Banned and Restricted Announcement Monitor (`utils/ban_announcement.py`)
+## 3b. Banned and Restricted Announcement Monitor (`features/monitors/ban_announcement.py`)
 
 ### Problem
 
@@ -344,7 +356,7 @@ decklists (too unstructured for reliable extraction, and out of scope anyway for
 | Function | Description |
 |---|---|
 | `check_ban_announcement_updates(force=False)` | Finds the newest announcement in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, changes, already_notified}]` — `already_notified` is `True` if that same URL's changes were already posted to the community channel |
-| `_pick_latest(entries)` | Same alias of `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) as the Event Schedule monitor |
+| `_pick_latest(entries)` | Same alias of `pick_latest_by_lastmod()` (`features/monitors/sitemap.py`) as the Event Schedule monitor |
 | `parse_ban_announcement(html)` | Extracts `{format: [change lines]}` from each section's summary; formats with `"No changes"` are left out; `{}` if the announcement is parsed but no format changed (a valid outcome), `None` if not even one structured summary is found (site drift) |
 | `periodic_ban_announcement_check_loop(bot)` | Background task: calls `check_ban_announcement_updates()` every 2 hours (first run right at startup), logs to Discord if the newest announcement is new |
 | `send_ban_announcement_log(logger, result, user, forced)` | Posts the result to Discord: one embed field per changed format (`Logger.send_log()`'s `fields`). If there are real changes and the announcement isn't `already_notified`, it also goes to `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) with a dedicated Italian embed (title with the announcement's date/time, body with just the link — no staff jargon) besides the log channel; WARN/no-change cases stay in the log channel only |
@@ -421,14 +433,14 @@ Alchemy printings are not allowed in Artisan: when evaluating the `prints_search
 ## 5. Banlist Cache
 
 The banlist (`BannedCard` in SQLite) is cached in memory in the module variable
-`_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, shared by every `ArtisanService`
+`_banlist_cache: set[str] | None` in `features/deck_validation/service.py`, shared by every `ArtisanService`
 instance.
 
 | Aspect | Detail |
 |---|---|
 | Loading | First validation after startup (or after an invalidation): `await BanlistRepository.get_all_for_format()`, then expanded with `_expand_double_faced()` (adds the front half alone of double-faced cards — see `docs/banlist-system.md` "Known Issues") |
 | Validity | Until the next explicit invalidation |
-| Invalidation | `ArtisanService.reload_banlist()` (wrapper over `invalidate_banlist_cache()`), called by `/banlist_aggiungi` and `/banlist_rimuovi` right after writing to the DB — the effect is visible from every instance, not only the one it is called on |
+| Invalidation | `invalidate_banlist_cache()`, called by `BanlistService` after every successful `/banlist_aggiungi` or `/banlist_rimuovi`; the next validation reloads it. The effect is visible from every instance |
 
 ---
 
@@ -440,4 +452,4 @@ instance.
 | Rarity overrides | `arena_rarity_data.json` | On update | Explicit (`invalidate_override_cache()`) |
 | Arena Event Schedule | `arena_event_schedule_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_event_schedule_check` (ignores `lastmod`) |
 | Banned and Restricted | `ban_announcement_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_ban_announcement_check` (ignores `lastmod`) |
-| Banlist | `_banlist_cache` (module) | Shared across instances | Explicit (`reload_banlist()` after add/remove) |
+| Banlist | `_banlist_cache` (module) | Shared across instances | Explicit (`BanlistService` after add/remove) |

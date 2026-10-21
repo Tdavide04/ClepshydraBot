@@ -4,13 +4,13 @@
 
 ## Context
 
-`send_event_schedule_log()` (`utils/arena_event_schedule.py`) has to make the "Full Event Calendar" section of
+`send_event_schedule_log()` (`features/monitors/event_schedule.py`) has to make the "Full Event Calendar" section of
 the Wizards pages readable on Discord: dozens of entries per category (Premier Draft, Quick Draft, Sealed,
 Metagame events...), many of which last weeks and overlap.
 
 ## Decision
 
-One image per month (`EventCalendarImageGenerator` in `utils/event_calendar_image_generator.py`), in two
+One image per month (`EventCalendarImageGenerator` in `features/monitors/calendar_image.py`), in two
 parts:
 
 1. **A Gantt with one row per category**, colored by *family* (Premier Draft / Quick Draft / Flashback /

@@ -14,6 +14,173 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## Unreleased
+
+Nothing changes for the running bot (`build`, no `VERSION` bump).
+
+### Changed
+- One `pyproject.toml` for the tool configuration: `[tool.ruff]` (was `ruff.toml`) and
+  `[tool.pytest.ini_options]` (was `pytest.ini`). No `[project]` table: the bot isn't an installable package,
+  and dependencies stay pinned in `requirements*.txt`.
+- Both CI jobs take the Python version from `.python-version` (`python-version-file`) instead of a hardcoded
+  `"3.12"`.
+
+Verified: ruff reads the same settings from `pyproject.toml` (identical enabled-rule list, line length,
+target version, Markdown excluded from the formatter); a bare `pytest tests/` without the repo root on
+`sys.path` passes with the new file and fails to collect without it; full suite, ruff, pre-commit.
+
+### Docs
+- `CLAUDE.md`, `docs/infrastructure.md`, ADR-0002, ADR-0003, `README.md` structure, `docs/roadmap.md`.
+
+## 4.0.4 (2026-10-21)
+
+### Fixed
+- `/banlist_aggiungi` on a card already banned crashed with `IntegrityError` (`card_name` is `UNIQUE`), and
+  staff got the generic error message; typed in a different case, the duplicate slipped past the constraint
+  and was stored. It now answers "Carta **...** è già nella banlist.", whatever the case. A blank name is
+  refused.
+- `/banlist_rimuovi` matched the stored name exactly, while `/banlist` shows names lowercased: removing a
+  card as listed failed with "non trovata". The match is now case-insensitive.
+
+### Refactored
+- The three banlist commands go through `BanlistService` (`features/deck_validation/banlist_service.py`),
+  which returns a `ServiceResult` the cog sends as is; the cog no longer opens DB sessions. It is the one
+  place that invalidates the shared banlist cache: `ArtisanService.reload_banlist()` is gone, and the next
+  validation reloads the banlist.
+
+Verified: new `tests/deck_validation/test_banlist_service.py` (the duplicate, blank-name and case cases fail
+on 4.0.3), the shared-cache regression test now going through `BanlistService`, full suite, ruff. Checked
+by hand under `TEST_MODE` on 2026-10-21: adding a card, adding it again in lowercase ("è già nella
+banlist", no error), `/banlist` listing it, removing it in lowercase.
+
+### Docs
+- `docs/banlist-system.md`, `docs/caching.md`, `docs/database.md`, `docs/deck-validation.md`,
+  `docs/commands.md` (lines), `README.md`, `CLAUDE.md` (map, banlist cache invariant), `docs/roadmap.md`.
+
+## 4.0.3 (2026-10-21)
+
+The code is organized by feature (`docs/roadmap.md`, phase 2). Nothing changes for members or staff: the same
+7 cogs and 9 slash commands load, with the same behaviour. Two unused deploy setups are gone, and the
+production VM now restarts the bot after a reboot.
+
+### Refactored
+- **Layout by feature.** `cogs/`, `services/`, `repositories/` and `utils/` are gone. Each feature is a
+  package under `features/`, holding its cog, logic and data access; cross-cutting code is in `core/`:
+
+  | Now | Was |
+  |---|---|
+  | `core/` | `utils/console.py`, `utils/permissions.py`, `utils/interaction_errors.py`, `services/results.py`, `repositories/base.py` (now `repository_base.py`), `cogs/logger.py`, `cogs/error_handler.py`, plus `json_state.py` split out of `utils/sitemap_monitor.py` |
+  | `features/onboarding/` | `cogs/presentation/` |
+  | `features/deck_validation/` | `cogs/deck_validation/` (`__init__.py` is now `cog.py`), `cogs/spg_override_updater.py` (`spg_cog.py`), `utils/deck_image_generator.py` (`image.py`), `utils/card_cache.py`, `utils/arena_overrides.py`, `repositories/banlist_repository.py` |
+  | `features/monitors/` | `utils/sitemap_monitor.py` (`sitemap.py`), `utils/arena_event_schedule.py` (`event_schedule.py`), `utils/ban_announcement.py`, `utils/event_calendar_image_generator.py` (`calendar_image.py`), `cogs/arena_event_schedule_updater.py` and `cogs/ban_announcement_updater.py` (`*_cog.py`) |
+  | `features/tournaments/` (disabled) | `cogs/tournament_system/cog.py`, `services/` (`tournament_service.py` is now `service.py`), `repositories/tournament_repository.py` (`repository.py`), `repositories/user_repository.py`, `utils/tournament_embeds.py` (`embeds.py`), `utils/tournament_logic.py` (`logic.py`) |
+
+  Moves and import rewrites only; class names are unchanged. Tests follow the same layout
+  (`tests/core/`, `tests/onboarding/`, `tests/deck_validation/`, `tests/monitors/`, `tests/tournaments/`).
+- **Explicit extension list.** `main.py` loads the extensions listed in `EXTENSIONS` instead of scanning the
+  `cogs/` folder. `DISABLED_COGS` holds full module paths (`"features.tournaments.cog"`). The bot starts
+  from `main()` behind `if __name__ == "__main__"`, so tests can import `main.py`; pm2 still runs
+  `python main.py`.
+- Side effects of the move: `sitemap.py` no longer re-exports `log`, the packages no longer re-export their
+  cogs from `__init__.py`, and the pure tournament algorithms (pairing, rating, standings) no longer load
+  `config.config` at import, which the eager `services/__init__.py` used to drag in.
+
+### Added
+- `tests/core/test_extensions.py`: imports every application module and fails if a module with a `setup()`
+  coroutine is missing from `EXTENSIONS`. Cogs have no tests, so this is what catches a broken import after
+  a move before production does.
+
+### Removed
+- The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and the systemd unit
+  `deploy/clepshydrabot.service`, with their sections in `README.md` and `docs/infrastructure.md`. Production
+  never used either: CI never built the image, and the unit pointed at a path and venv that don't exist.
+  `pm2` on the VM is the only deployment method. Rationale and the way back:
+  `docs/adr/0005-unused-deploy-alternatives-removed.md`.
+
+### Fixed (production VM, no code change)
+- The bot now restarts after a VM reboot. pm2 had no boot service (`pm2 startup` had never been run), so a
+  reboot would have left the bot down until someone started it by hand. On 2026-10-21 `pm2 startup systemd`
+  created `pm2-ubuntu.service` (enabled, runs `pm2 resurrect`) and `pm2 save` stored the current process
+  list (`ClepshydraBotte`, `venv/bin/python`). Verified with `systemctl is-enabled` and by reading the unit
+  and the saved list; not verified with an actual reboot.
+
+### Changed
+- CI coverage runs on `core`, `features` and `database`.
+
+### Docs
+- `CLAUDE.md`: layering by feature, architecture map, config-import invariant (which modules load
+  `config.config` at import time, and why), new-extension invariant, production invariant, test commands.
+- `docs/architecture.md` (overview, extension loading, tests), the topic docs' paths (`tournaments.md`,
+  `deck-validation.md`, `onboarding.md`, `caching.md`, `banlist-system.md`, `database.md`, `commands.md`),
+  `docs/infrastructure.md` (boot start, `pm2 save`, systemd and Docker sections removed),
+  `docs/technical-report.md`, ADR-0002, ADR-0003, ADR-0004, new ADR-0005, `README.md` structure and diagram,
+  `.gitignore` comments, `docs/roadmap.md`.
+
+Verified: pytest, ruff check, ruff format --check and pre-commit on every commit of the phase; a stubbed
+`setup_hook()` (no DB, no Discord sync) loads the same 7 cogs and 9 slash commands as 4.0.0, and loading
+the tournament cog by hand adds its 15; the `docs/commands.md` line numbers are unchanged. Started under
+`TEST_MODE` on 2026-10-21 (on 4.0.4): tournaments skipped, commands synced, both monitors "no change", the
+SPG scan read `seeds/arena_rarity.json` because no runtime file existed, no errors in the log.
+
+## 4.0.2 (2026-10-21)
+
+### Fixed
+- `data/arena_rarity_data.json` is no longer tracked by git. The weekly SPG scan rewrites it in production,
+  so every deploy found it modified and `git pull` refused to run (seen on the 4.0.0 deploy). Its tracked
+  content is now the seed `seeds/arena_rarity.json`: the bot reads the seed until the first scan writes the
+  runtime file, and a read never writes.
+
+### Changed
+- `cards.txt` moved to `seeds/banlist.txt`. It is only read to fill an empty `banned_cards` table, so nothing
+  changes for a database that already has a banlist (production). Both seeds sit in `seeds/` at the root, apart
+  from `data/`, which holds only runtime state ignored by git.
+- Removed `load_banlist()` and `BANLIST_PATH` from `cogs/deck_validation/validators.py`, unused since the
+  banlist moved to the DB.
+
+**Deploy:** the pull deletes the VM's `data/arena_rarity_data.json` along with its removal from git. Back it
+up before the pull and restore it before the restart (`docs/infrastructure.md`, "Updating production").
+
+Verified: new `TestOverrideSeed` tests (seed read without writing, runtime file wins over the seed, a scan
+never writes the seed, the tracked seed is valid), full suite, ruff; the suite no longer leaves a
+`data/arena_rarity_data.json` behind.
+
+### Docs
+- `docs/caching.md` (runtime file and seed), `docs/banlist-system.md` (seed path, DB authoritative, legacy
+  loader section removed), `docs/infrastructure.md` (new "Updating production" section with the one-off
+  backup), `docs/database.md`, `docs/deck-validation.md`, ADR-0003, `README.md` structure, `.gitignore`.
+
+## 4.0.1 (2026-10-21)
+
+### Fixed
+- `/presentati`, **Annulla** button: it crashed with `AttributeError` (`PreviewView` has no `message`) right
+  after replying, seen in production on 2026-10-20; since 4.0.0 the member also got the generic error
+  message. It now replaces the preview with "Presentazione annullata." and discards the member's in-memory
+  data, so the next `/presentati` starts from scratch.
+- `/presentati`, **Conferma** on an invalid presentation: the member got the list of fields to fix *and*
+  "✅ Benvenuto tra i Planeswalker!", with no role granted. Same when the presentation channel is missing:
+  nothing was posted, but the member was welcomed. `PresentationService.publish()` now returns a
+  `ServiceResult` and the view sends its message, so the welcome appears only after a real publication.
+- `/presentati`, unexpected errors on **Conferma**: the member saw the raw exception text (`❌ Errore: ...`)
+  and staff got no log. The view no longer catches them: `ReportingView` shows the generic message and logs
+  `INTERACTION_ERROR`.
+
+Verified: new `tests/onboarding/test_presentation_service.py` (published, refused on validation, missing
+channel; the last two fail on 4.0.0), full suite, ruff. Checked by hand under `TEST_MODE` on 2026-10-21
+(on 4.0.4): Annulla replaces the preview, an invalid birth year shows only the field list, a valid
+presentation is posted, swaps Viandante for Planeswalker and shows the welcome.
+
+### Docs
+- `docs/onboarding.md`: the confirm and cancel behaviour, the `ServiceResult` contract of `publish()`, and the
+  in-memory state lost on a restart. `docs/architecture.md`: the new test folder.
+- `docs/roadmap.md` replaced: the September–October technical-debt roadmap is complete, and the new one plans
+  the project structure refactor (code organized by feature under `features/` and `core/`, seeds in
+  `data/seeds/`). The old roadmap stays readable with `git show cd03992:docs/roadmap.md`.
+- Docs, docstrings and comments that cited old roadmap step numbers now cite the version that shipped the
+  change (ADR-0002, ADR-0003, `docs/caching.md`, `docs/database.md`, `docs/infrastructure.md`, CI workflow,
+  `services/results.py`, `utils/arena_overrides.py`, tournament and deck validation tests).
+- `CLAUDE.md`, `docs/roadmap.md`: work happens on `feature/<topic>` branches cut from `main`, merged by PR and
+  then deleted (`feature/v2` was merged and deleted at 4.0.0).
+
 ## 4.0.0 (2026-10-21)
 
 The bot becomes a helper only: tournaments are hosted on another platform (`docs/adr/0004-helper-only-tournaments-disabled.md`).

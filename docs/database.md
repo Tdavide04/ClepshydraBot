@@ -19,7 +19,7 @@ driver **aiosqlite**. SQLite was chosen because of the hardware constraints (1 G
 
 At startup, after `Base.metadata.create_all`, `init_db()` runs in order:
 
-1. **`_migrate_banlist()`** — imports `cards.txt` into `banned_cards` if the table is empty
+1. **`_migrate_banlist()`** — imports the banlist seed `seeds/banlist.txt` into `banned_cards` if the table is empty
 2. **`_migrate_schema()`** — adds the missing columns listed in `_SCHEMA_MIGRATIONS` (table, column, DDL):
    - `tournament_players.deck_name`
    - `matches.p1_game_wins`, `matches.p2_game_wins`
@@ -35,7 +35,7 @@ At startup, after `Base.metadata.create_all`, `init_db()` runs in order:
 
    To add a new migration, append a `(table, column, ddl)` tuple to `_SCHEMA_MIGRATIONS` in
    `database/engine.py` — `_migrate_schema()` needs no change.
-3. **`load_cache()`** (`utils/card_cache.py`) — loads the Scryfall card cache from the `cached_cards` table
+3. **`load_cache()`** (`features/deck_validation/card_cache.py`) — loads the Scryfall card cache from the `cached_cards` table
    into memory; if the table is empty and `data/card_cache.json` still exists, migrates it once. See
    `docs/caching.md` for details.
 
@@ -119,7 +119,7 @@ Relationships: `tournament` → Tournament, `player1/2` → TournamentPlayer
 ### Table: `cached_cards`
 
 Persistent cache of Scryfall cards (raw data + Artisan legality). Migrated from `data/card_cache.json` to
-SQLite in September 2026 (Step 4 of `docs/roadmap.md`) — see `docs/caching.md` for how it works
+SQLite in September 2026 (1.6.0) — see `docs/caching.md` for how it works
 (incremental load/save, TTL, legacy migration).
 
 | Column | Type | Constraints | Description |
@@ -127,7 +127,7 @@ SQLite in September 2026 (Step 4 of `docs/roadmap.md`) — see `docs/caching.md`
 | `card_name` | String(200) | PK | Card name, lowercase |
 | `data` | Text | NOT NULL | Full Scryfall dict, serialized as JSON (base data + `artisan_legal` + `artisan_legal_checked_at`) |
 
-No ORM relationship: managed directly by `utils/card_cache.py`, not by a dedicated repository (the cache's
+No ORM relationship: managed directly by `features/deck_validation/card_cache.py`, not by a dedicated repository (the cache's
 access pattern — an in-memory dict with dirty tracking — differs from the other CRUD-oriented repositories).
 
 ### Enums
@@ -148,7 +148,7 @@ class MatchResult(enum.StrEnum):
 
 ## Repository Pattern
 
-### BaseRepository (`repositories/base.py`)
+### BaseRepository (`core/repository_base.py`)
 
 Generic repository with basic CRUD:
 
@@ -160,7 +160,7 @@ Generic repository with basic CRUD:
 | `delete(instance)` | Delete + commit |
 | `count()` | Record count |
 
-### UserRepository (`repositories/user_repository.py`)
+### UserRepository (`features/tournaments/user_repository.py`)
 
 | Method | Description |
 |---|---|
@@ -168,7 +168,7 @@ Generic repository with basic CRUD:
 | `get_or_create(discord_id)` | Find or create |
 | `get_leaderboard(limit)` | Top N by rating, only users with at least one rated match |
 
-### TournamentRepository (`repositories/tournament_repository.py`)
+### TournamentRepository (`features/tournaments/repository.py`)
 
 | Method | Description |
 |---|---|
@@ -195,13 +195,14 @@ Generic repository with basic CRUD:
 | `get_existing_pairings(tournament_id)` | `(player1_id, player2_id)` pairs already played, byes excluded (anti-rematch) |
 | `get_current_round(tournament_id)` | Highest round number, 0 if none |
 
-### BanlistRepository (`repositories/banlist_repository.py`)
+### BanlistRepository (`features/deck_validation/banlist_repository.py`)
 
 | Method | Description |
 |---|---|
 | `get_all_for_format(format)` | Set of banned cards (lowercase) |
 | `add_card(card_name, format)` | Adds a card |
-| `remove_card(card_name)` | Removes by exact name |
+| `contains(card_name)` | Whether the card is banned, case-insensitive |
+| `remove_card(card_name)` | Removes a card, case-insensitive |
 | `count()` | Banlist size |
 | `import_from_file(path)` | Bulk import from txt (only if the table is empty) |
 
@@ -209,7 +210,7 @@ Generic repository with basic CRUD:
 
 ## Testing
 
-`tests/tournament/test_tournament_service.py` exercises the whole DB stack (engine, sessions, repositories,
+`tests/tournaments/test_service.py` exercises the whole DB stack (engine, sessions, repositories,
 migrations) against a temporary SQLite file, isolated per test:
 
 1. The `isolated_db` fixture (`tmp_path` + `monkeypatch`) points `database.engine.DB_PATH` to a temporary file

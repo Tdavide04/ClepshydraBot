@@ -1,6 +1,6 @@
 # ADR-0003 — Project language: English for developers, Italian for users
 
-**Status:** accepted (2026-10-20). Translation of the existing material is roadmap step 11.
+**Status:** accepted (2026-10-20). The existing material was translated in 3.6.5.
 
 ## Context
 
@@ -20,18 +20,18 @@ The community the bot serves is Italian, and so are its members and staff.
 - console output (`pm2 logs`) and the Discord log channel (`Logger.send_log()` `info`/`fields`)
 - `docs/` (file names included), `README.md`, `CLAUDE.md`, ADRs, `CONTEXT.md`
 - commit subjects and scopes, and new `CHANGELOG.md` entries
-- comments in supporting files (`.env.example`, `Dockerfile`, CI, `deploy/`, `ruff.toml`)
+- comments in supporting files (`.env.example`, CI, `pyproject.toml`)
 
 **Italian** covers everything a user sees as a reply to an action or in a public channel:
 - replies to every slash command, admin ones included
 - modals, views, and the messages services return to cogs
 - community-channel embeds (`community_title`/`community_info`)
-- slash command names and descriptions (renaming is roadmap step 18, to be decided separately)
+- slash command names and descriptions (renaming is in the `docs/roadmap.md` backlog, to be decided separately)
 
 **Unchanged:**
 - git history
 - past `CHANGELOG.md` entries (up to 3.6.4)
-- data files (`cards.txt`, `data/*.json`)
+- data files (the banlist and rarity seeds, now in `seeds/`, and `data/*.json`)
 - `COMUNICATION_CHANNEL_ID`: fixing the typo means renaming an env var, which is a separate fix
 
 Italian UI strings stay inline in the code. They are not extracted into a catalog.

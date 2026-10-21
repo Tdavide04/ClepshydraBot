@@ -3,12 +3,13 @@ import urllib.parse
 
 import pytest
 
-import cogs.deck_validation.service as service_module
-import utils.card_cache as card_cache
-from cogs.deck_validation.models import DeckEntry
-from cogs.deck_validation.service import ArtisanService, ScryfallUnavailable
+import features.deck_validation.card_cache as card_cache
+import features.deck_validation.service as service_module
 from database import close_db, get_session, init_db
-from repositories.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_service import BanlistService
+from features.deck_validation.models import DeckEntry
+from features.deck_validation.service import ArtisanService, ScryfallUnavailable
 
 # isolated_db, isolated_card_cache, isolated_banlist_cache are defined in
 # conftest.py (shared with test_card_cache.py).
@@ -16,7 +17,7 @@ from repositories.banlist_repository import BanlistRepository
 
 def run_with_db(scenario):
     """Runs init_db + logic + close_db in a single event loop (same reason as
-    tests/tournament/test_tournament_service.py: aiosqlite binds connections
+    tests/tournaments/test_service.py: aiosqlite binds connections
     to the loop that created them)."""
 
     async def _wrapper():
@@ -100,7 +101,7 @@ class TestValidateDeck:
         assert result.mainboard == []
 
     def test_banned_double_faced_card_matches_front_face_only(self, isolated_db):
-        """Regression: cards.txt/banned_cards stores double-faced cards with
+        """Regression: the banlist seed/banned_cards stores double-faced cards with
         the full name ("Front // Back"), but parse_decklist() truncates to the
         front face when reading the user's deck. Without expanding the banlist
         with the front half alone, check_banlist() never matched these cards,
@@ -134,7 +135,7 @@ class TestValidateDeck:
                 await session.close()
 
         raw = run_with_db(scenario)
-        # The real cards.txt is imported into the test DB anyway (_migrate_banlist
+        # The real banlist seed is imported into the test DB anyway (_migrate_banlist
         # runs on every init_db()), so raw also holds those ~219 cards: check
         # presence/absence, not equality of the whole set.
         assert "test front // test back" in raw
@@ -189,12 +190,13 @@ class TestValidateDeck:
         assert result.illegal_rarity_cards == ["Test Rare"]
 
     def test_banlist_cache_shared_across_instances(self, isolated_db):
-        """Regression for the Step 1 fix: the bot creates two separate
-        ArtisanService instances (tournament_system and deck_validation). An
-        invalidation called on one must be visible from the other."""
+        """Regression for the 1.4.0 fix: the bot creates two separate
+        ArtisanService instances (the tournament cog and the deck validation cog).
+        A banlist change must be visible from both, including the one that
+        already cached the banlist."""
 
         async def scenario():
-            registering_service = ArtisanService()  # e.g. tournament_system
+            registering_service = ArtisanService()  # e.g. the tournament cog
             checking_service = ArtisanService()  # e.g. deck_validation
 
             # no banned card yet: the deck passes the banlist check
@@ -209,16 +211,15 @@ class TestValidateDeck:
             first = await checking_service.validate_deck(entries, "Test Deck", 60)
             assert first.banned_cards == []
 
-            # an admin bans the card through the FIRST instance...
-            session = get_session()
-            try:
-                repo = BanlistRepository(session)
-                await repo.add_card("Later Banned")
-            finally:
-                await session.close()
-            await registering_service.reload_banlist()
+            # staff ban the card (BanlistService invalidates the shared cache)...
+            outcome = await BanlistService().add_card("Later Banned")
+            assert outcome.ok
 
-            # ...and the SECOND instance (never touched directly) must see it right away
+            # ...and both instances must see it right away, the one that had
+            # already cached the banlist included
+            assert (await registering_service.validate_deck(entries, "Test Deck", 60)).banned_cards == [
+                "Later Banned"
+            ]
             return await checking_service.validate_deck(entries, "Test Deck", 60)
 
         result = run_with_db(scenario)
@@ -228,7 +229,7 @@ class TestValidateDeck:
 
 class TestArtisanLegalTTL:
     def test_stale_cache_entry_is_rechecked(self, isolated_db):
-        """Regression for Step 3: an entry cached as legal but stale (or with
+        """Regression for the 1.5.0 fix: an entry cached as legal but stale (or with
         no timestamp, 'legacy' data) must be re-checked against Scryfall
         instead of being considered valid forever."""
 

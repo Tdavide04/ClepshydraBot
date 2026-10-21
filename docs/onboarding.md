@@ -12,9 +12,8 @@ Field labels and menu options below are quoted as users see them in Discord, in 
 ## Module Structure
 
 ```
-cogs/presentation/
-├── __init__.py          # Exports PresentationCog
-├── cog.py               # /presentati command + on_member_join and on_message listeners
+features/onboarding/
+├── cog.py               # PresentationCog (extension features.onboarding.cog): /presentati command + on_member_join and on_message listeners
 ├── models.py            # PresentationData (dataclass) + PRESENTATION_DATA_STORE
 ├── modals.py            # BasicPresentationModal + OptionalPresentationModal
 ├── views.py             # Select menus + PreferencesView + PreviewView
@@ -79,6 +78,16 @@ Modal "Dettagli Opzionali" with 4 fields:
 
 `PreviewView` shows the presentation embed as it will be published, with confirm and cancel buttons.
 
+- **Conferma** calls `PresentationService.publish()` and sends the member the `message` of the
+  `ServiceResult` it returns. The buttons stay usable after a refusal (`ok=False`) and lock after a
+  publication. An unexpected exception isn't caught here: it reaches `ReportingView.on_error`, which shows
+  the generic error message and logs `INTERACTION_ERROR` for staff.
+- **Annulla** replaces the preview with "Presentazione annullata." (no embed, no buttons) and discards the
+  member's data from `PRESENTATION_DATA_STORE`, so the next `/presentati` starts from scratch.
+
+The data between steps lives only in `PRESENTATION_DATA_STORE`, an in-memory dict: a bot restart in the
+middle of a presentation loses it, and the member has to run `/presentati` again.
+
 ---
 
 ## Validation (`validators.py`)
@@ -102,15 +111,17 @@ An empty selection is valid for colors, guilds and formats.
 
 ## Publication (`service.py`)
 
-`PresentationService.publish()`:
-1. Validates the data (`valida_presentazione()`): on invalid fields it replies to the user with the list and
-   logs WARN `PRESENTATION_VALIDATION_FAILED`, without publishing
+`PresentationService.publish()` returns a `ServiceResult` (`core/results.py`) and never replies to the
+member itself: the caller sends `message`. `ok=False` means nothing was posted and no role changed.
+1. Validates the data (`valida_presentazione()`): on invalid fields it logs WARN
+   `PRESENTATION_VALIDATION_FAILED` and returns `ok=False` with the list of fields to fix
 2. Converts `PresentationData` into an embed via `build_published_embed()`
-3. Sends the embed to the `PRESENTATION_CHANNEL_ID` channel (ERROR `PRESENTATION_CHANNEL_MISSING` if the
-   channel isn't found)
+3. Sends the embed to the `PRESENTATION_CHANNEL_ID` channel. If the channel isn't found it logs ERROR
+   `PRESENTATION_CHANNEL_MISSING` and returns `ok=False` with a message saying staff were notified
 4. Removes the `INITIAL_ROLE` role (`Viandante`) and assigns the `FINAL_ROLE` role (`Planeswalker`)
 5. Logs INFO `PRESENTATION_COMPLETED` with a link to the published message
 6. Removes the user's data from the temporary `PRESENTATION_DATA_STORE`
+7. Returns `ok=True` with "✅ Benvenuto tra i Planeswalker!"
 
 ---
 

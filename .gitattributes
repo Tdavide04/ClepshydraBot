@@ -1,5 +1,5 @@
 # Same line endings on every machine: LF in the repo and in the working tree.
-# Production (Oracle VM), CI and Docker are Linux; without this, core.autocrlf
+# Production (Oracle VM) and CI are Linux; without this, core.autocrlf
 # on Windows produced CRLF/LF noise in git status and in diffs.
 * text=auto eol=lf
 

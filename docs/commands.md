@@ -18,7 +18,7 @@ Command and parameter names are the real slash-command names, in Italian, as use
 
 ### Tournaments (disabled since 4.0.0)
 
-The commands in the tournament sections below are **not registered**: `cogs/tournament_system` is in
+The commands in the tournament sections below are **not registered**: `features.tournaments.cog` is in
 `DISABLED_COGS` (`docs/adr/0004-helper-only-tournaments-disabled.md`). They're kept here for when the cog is
 re-enabled.
 
@@ -84,34 +84,34 @@ re-enabled.
 
 ### File Locations
 
-The "Line" column points at each command's `async def`: recompute it whenever `cogs/` files shift.
+The "Line" column points at each command's `async def`: recompute it whenever a cog file shifts.
 
 | Command | File | Line |
 |---|---|---|
-| `/presentati` | `cogs/presentation/cog.py` | 47 |
-| `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 59 |
-| `/crea_torneo` | `cogs/tournament_system/cog.py` | 561 |
-| `/avvia_torneo` | `cogs/tournament_system/cog.py` | 570 |
-| `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 833 |
-| `/drop_giocatore` | `cogs/tournament_system/cog.py` | 665 |
-| `/concludi_torneo` | `cogs/tournament_system/cog.py` | 791 |
-| `/correggi_risultato` | `cogs/tournament_system/cog.py` | 725 |
-| `/iscriviti` | `cogs/tournament_system/cog.py` | 990 |
-| `/invia_deck` | `cogs/tournament_system/cog.py` | 1052 |
-| `/iscrizioni_torneo` | `cogs/tournament_system/cog.py` | 1084 |
-| `/left_torneo` | `cogs/tournament_system/cog.py` | 1128 |
-| `/risultato` | `cogs/tournament_system/cog.py` | 1172 |
-| `/classifica` | `cogs/tournament_system/cog.py` | 1246 |
-| `/turni` | `cogs/tournament_system/cog.py` | 1336 |
-| `/lista_tornei` | `cogs/tournament_system/cog.py` | 940 |
-| `/leaderboard` | `cogs/tournament_system/cog.py` | 1345 |
-| `/banlist` | `cogs/deck_validation/__init__.py` | 63 |
-| `/banlist_aggiungi` | `cogs/deck_validation/__init__.py` | 103 |
-| `/banlist_rimuovi` | `cogs/deck_validation/__init__.py` | 126 |
-| `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 27 |
-| `/forced_event_schedule_check` | `cogs/arena_event_schedule_updater.py` | 26 |
-| `/forced_ban_announcement_check` | `cogs/ban_announcement_updater.py` | 26 |
-| `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 87 |
+| `/presentati` | `features/onboarding/cog.py` | 47 |
+| `/artisan_check_deck` | `features/deck_validation/cog.py` | 59 |
+| `/crea_torneo` | `features/tournaments/cog.py` | 561 |
+| `/avvia_torneo` | `features/tournaments/cog.py` | 570 |
+| `/torneo_next_turn` | `features/tournaments/cog.py` | 833 |
+| `/drop_giocatore` | `features/tournaments/cog.py` | 665 |
+| `/concludi_torneo` | `features/tournaments/cog.py` | 791 |
+| `/correggi_risultato` | `features/tournaments/cog.py` | 725 |
+| `/iscriviti` | `features/tournaments/cog.py` | 990 |
+| `/invia_deck` | `features/tournaments/cog.py` | 1052 |
+| `/iscrizioni_torneo` | `features/tournaments/cog.py` | 1084 |
+| `/left_torneo` | `features/tournaments/cog.py` | 1128 |
+| `/risultato` | `features/tournaments/cog.py` | 1172 |
+| `/classifica` | `features/tournaments/cog.py` | 1246 |
+| `/turni` | `features/tournaments/cog.py` | 1336 |
+| `/lista_tornei` | `features/tournaments/cog.py` | 940 |
+| `/leaderboard` | `features/tournaments/cog.py` | 1345 |
+| `/banlist` | `features/deck_validation/cog.py` | 63 |
+| `/banlist_aggiungi` | `features/deck_validation/cog.py` | 96 |
+| `/banlist_rimuovi` | `features/deck_validation/cog.py` | 112 |
+| `/forced_rarity_refresh` | `features/deck_validation/spg_cog.py` | 27 |
+| `/forced_event_schedule_check` | `features/monitors/event_schedule_cog.py` | 26 |
+| `/forced_ban_announcement_check` | `features/monitors/ban_announcement_cog.py` | 26 |
+| `/invalidate_card_cache` | `features/deck_validation/spg_cog.py` | 87 |
 
 ---
 
@@ -129,6 +129,6 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 
 ### Permissions
 
-`is_admin()` check (`utils/permissions.py`):
+`is_admin()` check (`core/permissions.py`):
 - Checks that the user has the `ADMIN_ROLE` role (default: `Staff`)
 - Used as a decorator on admin commands: `@is_admin()`

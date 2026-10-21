@@ -20,7 +20,7 @@ this document doesn't repeat them.
 | Public IP | 80.225.91.142 |
 | SSH username | ubuntu |
 | Access | SSH with a private key |
-| Process manager | `pm2` — restarts the bot automatically on crash |
+| Process manager | `pm2` — restarts the bot on crash, and at VM boot through the `pm2-ubuntu` service |
 
 ## 2. Hardware Specifications
 
@@ -91,7 +91,7 @@ and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" sect
 | Topic | Document |
 |---|---|
 | Deployment, environment variables, logging, dependencies, CI | `docs/infrastructure.md` |
-| Layered architecture (cogs/services/repositories/database) | `docs/architecture.md` |
+| Architecture (features, core, database) | `docs/architecture.md` |
 | Slash commands and permissions | `docs/commands.md` |
 | Database schema and migrations | `docs/database.md` |
 | Caching and external APIs (Scryfall, rarity overrides, Wizards monitors, banlist) | `docs/caching.md` |
@@ -99,6 +99,6 @@ and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" sect
 | Banlist system | `docs/banlist-system.md` |
 | Onboarding (presentations) | `docs/onboarding.md` |
 | Swiss tournament system (disabled) | `docs/tournaments.md` |
-| Technical debt and improvement plan | `docs/roadmap.md` |
+| Roadmap (project structure refactor) | `docs/roadmap.md` |
 | Decisions and rationale | `docs/adr/` |
 | Guide for Claude Code | `CLAUDE.md` |

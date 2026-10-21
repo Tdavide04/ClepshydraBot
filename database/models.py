@@ -122,7 +122,7 @@ class BannedCard(Base):
 class CachedCard(Base):
     __tablename__ = "cached_cards"
 
-    # card_name is already lowercased by the caller (utils/card_cache.py), the
+    # card_name is already lowercased by the caller (features/deck_validation/card_cache.py), the
     # same key format the in-memory dict and the legacy JSON have always used.
     card_name = Column(String(200), primary_key=True)
     # Raw Scryfall data (variable shape: card_faces for double-faced cards, etc.)
