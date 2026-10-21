@@ -107,7 +107,8 @@ Small behaviour fixes, done first so they don't get lost inside a large diff.
   got "Benvenuto tra i Planeswalker!" anyway. `publish()` now returns a `ServiceResult` (tested in
   `tests/onboarding/`).
 
-Verification: service tests, plus the two buttons by hand under `TEST_MODE=True`. Docs: `docs/onboarding.md`.
+Verification: service tests, plus the two buttons by hand under `TEST_MODE=True` (done 2026-10-21, all
+three cases as expected). Docs: `docs/onboarding.md`.
 
 ## Step 2 — Seeds in `seeds/`, runtime state out of git
 

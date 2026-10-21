@@ -49,8 +49,9 @@ target version, Markdown excluded from the formatter); a bare `pytest tests/` wi
   validation reloads the banlist.
 
 Verified: new `tests/deck_validation/test_banlist_service.py` (the duplicate, blank-name and case cases fail
-on 4.0.3), the shared-cache regression test now going through `BanlistService`, full suite, ruff. Not
-verified live: the three commands on Discord (a `TEST_MODE` run).
+on 4.0.3), the shared-cache regression test now going through `BanlistService`, full suite, ruff. Checked
+by hand under `TEST_MODE` on 2026-10-21: adding a card, adding it again in lowercase ("è già nella
+banlist", no error), `/banlist` listing it, removing it in lowercase.
 
 ### Docs
 - `docs/banlist-system.md`, `docs/caching.md`, `docs/database.md`, `docs/deck-validation.md`,
@@ -117,8 +118,9 @@ production VM now restarts the bot after a reboot.
 
 Verified: pytest, ruff check, ruff format --check and pre-commit on every commit of the phase; a stubbed
 `setup_hook()` (no DB, no Discord sync) loads the same 7 cogs and 9 slash commands as 4.0.0, and loading
-the tournament cog by hand adds its 15; the `docs/commands.md` line numbers are unchanged. Not verified
-live: a start on Discord (next deploy, or a `TEST_MODE` run).
+the tournament cog by hand adds its 15; the `docs/commands.md` line numbers are unchanged. Started under
+`TEST_MODE` on 2026-10-21 (on 4.0.4): tournaments skipped, commands synced, both monitors "no change", the
+SPG scan read `seeds/arena_rarity.json` because no runtime file existed, no errors in the log.
 
 ## 4.0.2 (2026-10-21)
 
@@ -163,8 +165,9 @@ never writes the seed, the tracked seed is valid), full suite, ruff; the suite n
   `INTERACTION_ERROR`.
 
 Verified: new `tests/onboarding/test_presentation_service.py` (published, refused on validation, missing
-channel; the last two fail on 4.0.0), full suite, ruff. Not verified live: the two buttons on Discord (a
-`TEST_MODE` run).
+channel; the last two fail on 4.0.0), full suite, ruff. Checked by hand under `TEST_MODE` on 2026-10-21
+(on 4.0.4): Annulla replaces the preview, an invalid birth year shows only the field list, a valid
+presentation is posted, swaps Viandante for Planeswalker and shows the welcome.
 
 ### Docs
 - `docs/onboarding.md`: the confirm and cancel behaviour, the `ServiceResult` contract of `publish()`, and the
