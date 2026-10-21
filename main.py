@@ -22,7 +22,7 @@ from features.monitors.event_schedule import (
 EXTENSIONS = [
     "core.logger",
     "core.error_handler",
-    "cogs.presentation",
+    "features.onboarding.cog",
     "features.deck_validation.cog",
     "features.deck_validation.spg_cog",
     "features.monitors.event_schedule_cog",

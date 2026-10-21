@@ -3,9 +3,9 @@ import re
 import discord
 from discord.ext import commands
 
-from cogs.presentation.modals import BasicPresentationModal
-from cogs.presentation.views import PreferencesView
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
+from features.onboarding.modals import BasicPresentationModal
+from features.onboarding.views import PreferencesView
 
 
 class PresentationCog(commands.Cog):

@@ -1,6 +1,6 @@
 import os
 
-# cogs/presentation/service.py imports config.config at module top, which
+# features/onboarding/service.py imports config.config at module top, which
 # fails without these values. Duplicated on purpose, like the other
 # conftest.py files in this repo, so tests/onboarding/ stays runnable in
 # isolation. Must stay before any application import.

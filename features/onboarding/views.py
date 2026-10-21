@@ -1,10 +1,10 @@
 import discord
 
-from cogs.presentation.embeds import build_preview_embed
-from cogs.presentation.modals import OptionalPresentationModal
-from cogs.presentation.models import PresentationData, discard_presentation_data
-from cogs.presentation.service import PresentationService
 from core.interaction_errors import ReportingView
+from features.onboarding.embeds import build_preview_embed
+from features.onboarding.modals import OptionalPresentationModal
+from features.onboarding.models import PresentationData, discard_presentation_data
+from features.onboarding.service import PresentationService
 
 COLORI_OPTIONS = [
     discord.SelectOption(label="Bianco", value="bianco", emoji="⬜"),

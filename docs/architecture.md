@@ -10,8 +10,8 @@ ClepshydraBot uses a **three-tier** architecture with a clean separation of resp
 
 On top of these sit the **Database Layer** (SQLAlchemy ORM), **`core/`** (cross-cutting: the log channel,
 error handling, `ServiceResult`, JSON state files, permissions, the repository base class),
-**`features/<name>/`** (one feature's cog, logic and data access together: `features/monitors/`,
-`features/deck_validation/`) and
+**`features/<name>/`** (one feature's cog, logic and data access together: `features/onboarding/`,
+`features/deck_validation/`, `features/monitors/`) and
 **`utils/`** (feature code that `docs/roadmap.md` phase 2 moves into `features/`).
 
 ---

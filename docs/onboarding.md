@@ -12,9 +12,8 @@ Field labels and menu options below are quoted as users see them in Discord, in 
 ## Module Structure
 
 ```
-cogs/presentation/
-├── __init__.py          # Exports PresentationCog
-├── cog.py               # /presentati command + on_member_join and on_message listeners
+features/onboarding/
+├── cog.py               # PresentationCog (extension features.onboarding.cog): /presentati command + on_member_join and on_message listeners
 ├── models.py            # PresentationData (dataclass) + PRESENTATION_DATA_STORE
 ├── modals.py            # BasicPresentationModal + OptionalPresentationModal
 ├── views.py             # Select menus + PreferencesView + PreviewView

@@ -2,9 +2,9 @@ import asyncio
 from dataclasses import replace
 from types import SimpleNamespace
 
-from cogs.presentation.models import PRESENTATION_DATA_STORE, PresentationData
-from cogs.presentation.service import PresentationService
 from config.config import PRESENTATION_CHANNEL_ID
+from features.onboarding.models import PRESENTATION_DATA_STORE, PresentationData
+from features.onboarding.service import PresentationService
 
 
 def run(coro):

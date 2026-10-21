@@ -50,7 +50,8 @@ Full details (parameters, behaviour, source location) in `docs/commands.md`.
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │                     Cogs (Discord layer)                 │
-│  presentation/  deck_validation/  tournament_system/     │
+│  features/: onboarding, deck_validation, monitors        │
+│  cogs/tournament_system/ (disabled)                      │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
@@ -85,6 +86,7 @@ ClepshydraBot/
 │   ├── console.py           # Timestamped console log()
 │   └── permissions.py       # @is_admin() check
 ├── features/
+│   ├── onboarding/          # /presentati wizard, welcome and presentation channel rules
 │   ├── deck_validation/     # Artisan deck validation, banlist, Scryfall cache, SPG overrides
 │   │   ├── cog.py           # /artisan_check_deck + banlist commands
 │   │   ├── spg_cog.py       # /forced_rarity_refresh, /invalidate_card_cache
@@ -102,7 +104,6 @@ ClepshydraBot/
 │       ├── event_schedule_cog.py
 │       └── ban_announcement_cog.py
 ├── cogs/
-│   ├── presentation/        # User presentation wizard
 │   └── tournament_system/   # Swiss tournaments (disabled, not loaded)
 ├── services/                # Business logic
 │   ├── tournament_service.py

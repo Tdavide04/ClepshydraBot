@@ -207,9 +207,13 @@ load `config.config` at import time, and why (option A, decided 2026-10-21).
 
 ## Step 7 — `features/onboarding/`
 
-**Status:** todo · `refactor(onboarding)`
+**Status:** done (2026-10-21) · `refactor(onboarding)` · bump with step 9
 
 `cogs/presentation/` renamed to match its topic doc (`docs/onboarding.md`) and its commit scope.
+
+Done. The package no longer re-exports the cog from `__init__.py`: the extension is
+`features.onboarding.cog`, like `features.deck_validation.cog`. Class names (`PresentationCog`,
+`PresentationService`...) and the CONTEXT.md term "presentation" are unchanged.
 
 ## Step 8 — `features/tournaments/`
 

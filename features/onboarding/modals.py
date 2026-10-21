@@ -2,11 +2,11 @@ from collections.abc import Callable
 
 import discord
 
-from cogs.presentation.models import (
+from core.interaction_errors import ReportingModal
+from features.onboarding.models import (
     PresentationData,
     get_or_create_presentation_data,
 )
-from core.interaction_errors import ReportingModal
 
 
 class BasicPresentationModal(ReportingModal, title="Presentazione Clepshydra"):

@@ -88,7 +88,7 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 
 | Command | File | Line |
 |---|---|---|
-| `/presentati` | `cogs/presentation/cog.py` | 47 |
+| `/presentati` | `features/onboarding/cog.py` | 47 |
 | `/artisan_check_deck` | `features/deck_validation/cog.py` | 59 |
 | `/crea_torneo` | `cogs/tournament_system/cog.py` | 561 |
 | `/avvia_torneo` | `cogs/tournament_system/cog.py` | 570 |

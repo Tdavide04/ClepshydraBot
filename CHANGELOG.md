@@ -40,6 +40,10 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   no longer re-exported by `repositories/__init__.py`). Moves and import rewrites only. `CLAUDE.md` now
   states exactly which modules load `config.config` at import time. Verified: pytest (295 passed), ruff; a
   stubbed `setup_hook()` loads the same 7 cogs and 9 slash commands.
+- `cogs/presentation/` is now `features/onboarding/`, named after its topic doc and commit scope; the
+  extension is `features.onboarding.cog` (the package no longer re-exports the cog). Moves and import
+  rewrites only. Verified: pytest (295 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
+  slash commands.
 
 ### Added
 - `tests/core/test_extensions.py`: imports every application module and checks that every module with a

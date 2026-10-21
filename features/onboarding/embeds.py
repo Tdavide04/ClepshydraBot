@@ -2,7 +2,7 @@ from datetime import datetime
 
 import discord
 
-from cogs.presentation.models import PresentationData
+from features.onboarding.models import PresentationData
 
 
 def build_preview_embed(member: discord.Member, data: PresentationData) -> discord.Embed:

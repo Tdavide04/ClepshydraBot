@@ -30,7 +30,7 @@ def _application_modules() -> list[str]:
 
 def _extension_modules() -> set[str]:
     """Modules that define their own `setup` coroutine, plus the packages that
-    re-export it (load_extension("cogs.presentation") imports the package)."""
+    re-export it (load_extension("cogs.tournament_system") imports the package)."""
     found = set()
     for name in _application_modules():
         setup = getattr(importlib.import_module(name), "setup", None)

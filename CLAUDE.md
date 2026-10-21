@@ -150,7 +150,7 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Banlist | `features/deck_validation/` (`banlist_repository.py`, `validators.py`, `cog.py`) | `docs/banlist-system.md` |
 | Scryfall card cache, SPG overrides | `features/deck_validation/card_cache.py`, `features/deck_validation/arena_overrides.py` | `docs/caching.md` |
 | Wizards monitors (Event Schedule, Banned and Restricted, calendar image) | `features/monitors/` | `docs/caching.md` |
-| Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
+| Onboarding | `features/onboarding/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
 | Config, logging, deploy | `config/config.py`, `core/logger.py`, `main.py` | `docs/infrastructure.md` |
 | Slash command list | `cogs/` | `docs/commands.md` |
@@ -189,8 +189,9 @@ listed in the map.
   it**, never at module top: `config.config` raises at import time when the variables are missing. The same
   goes for `database`, because `database/engine.py` imports `config.config` at module top. Examples:
   `core/permissions.py`, the two monitors, the card cache and the SPG overrides. Modules that import
-  `database` at top (`ArtisanService`, `TournamentService`, the cogs) load `config.config` through it, so
-  their test folder's `conftest.py` must seed the variables (see "Writing tests").
+  `config.config` or `database` at top (the cogs, `PresentationService`, `ArtisanService`,
+  `TournamentService`) can't, so their test folder's `conftest.py` must seed the variables (see "Writing
+  tests").
 - **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
   systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 
