@@ -20,7 +20,7 @@ class ServiceResult:
     fragile: RisultatoView looked for "Registrato" capitalized while
     submit_result() returned "Risultato registrato!", so every result was
     logged as WARN; /iscriviti didn't check at all and announced refused
-    registrations as confirmed (roadmap step 17).
+    registrations as confirmed (fixed in 3.6.7).
     """
 
     ok: bool

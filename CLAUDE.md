@@ -24,9 +24,9 @@ in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code
 Decided in `docs/adr/0002-development-standard.md`. Every change follows this loop.
 
 1. **Orient.** Read the topic doc for the area (see the map below) and any `docs/adr/` entry that touches
-   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `feature/v2`, since parallel work may
-   already have touched the area. Done when you can name the files you will change and the behaviour you
-   will change.
+   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `main` and on open `feature/*` branches,
+   since parallel work may already have touched the area. Done when you can name the files you will change
+   and the behaviour you will change.
 2. **Red.** Write the test first for logic in `services/`, `utils/`, `repositories/` or `database/`. A
    bug fix starts from a regression test that fails on the current code, and fails on an assertion about
    behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
@@ -98,7 +98,8 @@ per clone (see Commands). CI runs the same pre-commit-stage hooks on every file.
 
 ### Branches and versions
 
-- Work on `feature/v2`. `main` only receives merges via PR from `feature/v2`.
+- Work on a `feature/<topic>` branch cut from `main` (for example `feature/event-calendar`). `main` only
+  receives merges via PR, and the branch is deleted after the merge.
 - `VERSION` is a hardcoded constant in `config/config.py`, shown in the `SYSTEM_STARTUP` log.
 
 ### Agent tooling
@@ -149,7 +150,7 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Schema and migrations | `database/` | `docs/database.md` |
 | Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastructure.md` |
 | Slash command list | `cogs/` | `docs/commands.md` |
-| Tech-debt plan | | `docs/roadmap.md` |
+| Roadmap (project structure refactor) | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
 
 `cogs/deck_validation/` was named `cogs/tournament/` before 1.3.1, and older CHANGELOG entries still use

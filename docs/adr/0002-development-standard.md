@@ -1,6 +1,6 @@
 # ADR-0002 — Development standard: test-first, Conventional Commits, automated gates
 
-**Status:** accepted (2026-10-20). Automated gates in place since steps 12-13 of `docs/roadmap.md`.
+**Status:** accepted (2026-10-20). Automated gates in place since 3.6.6 (`ruff format` and `pre-commit`).
 
 ## Context
 
@@ -36,6 +36,7 @@ Discovery of 2026-10-20. The project already had good habits, but only by conven
 
 ## Consequences
 
-- A one-off reformatting commit is needed (step 12), which pollutes `git blame`: it goes into
+- A one-off reformatting commit is needed (done in 3.6.6), which pollutes `git blame`: it goes into
   `.git-blame-ignore-revs`.
-- The "cog ↔ service string matching" debt becomes an explicit step (step 17) instead of staying a note.
+- The "cog ↔ service string matching" debt becomes an explicit roadmap step (done in
+  3.6.7) instead of staying a note.

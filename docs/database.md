@@ -119,7 +119,7 @@ Relationships: `tournament` → Tournament, `player1/2` → TournamentPlayer
 ### Table: `cached_cards`
 
 Persistent cache of Scryfall cards (raw data + Artisan legality). Migrated from `data/card_cache.json` to
-SQLite in September 2026 (Step 4 of `docs/roadmap.md`) — see `docs/caching.md` for how it works
+SQLite in September 2026 (1.6.0) — see `docs/caching.md` for how it works
 (incremental load/save, TTL, legacy migration).
 
 | Column | Type | Constraints | Description |

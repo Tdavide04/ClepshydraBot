@@ -57,8 +57,7 @@ limits, it implements a three-level caching system. It also watches two kinds of
 
 Until September 2026 the cache was persisted to `data/card_cache.json`, rewritten in full every 60 seconds if
 anything had changed — even for a single modified card out of thousands. The file was also tracked in git,
-growing with no cleanup on every commit (2.2MB, zero value as versioned history). Since the migration (Step 4
-of `docs/roadmap.md`), the cache lives in the SQLite table `cached_cards` (`database/models.py:CachedCard`),
+growing with no cleanup on every commit (2.2MB, zero value as versioned history). Since the migration (1.6.0), the cache lives in the SQLite table `cached_cards` (`database/models.py:CachedCard`),
 with incremental writes (UPSERT/DELETE on the changed entries only). `data/card_cache.json` is no longer
 tracked in git (it stays as an inert local file, useful only for the one-off migration described below) and
 the bot no longer writes it.

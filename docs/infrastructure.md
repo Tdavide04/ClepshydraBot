@@ -226,14 +226,14 @@ stays the method actually used in production until a migration is decided.
 
 `.github/workflows/ci.yml`, active on push/PR:
 - `pytest` on every push and PR — **blocking gate**, with a coverage report (`pytest-cov`,
-  `--cov-report=term-missing` on `services`, `utils`, `repositories`, `database`, `cogs`) since roadmap step
-  15; no minimum threshold yet
+  `--cov-report=term-missing` on `services`, `utils`, `repositories`, `database`, `cogs`) since 3.6.7;
+  no minimum threshold yet
 - `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
-  (~54 issues) was cleared in Step 8 of `docs/roadmap.md` (at the time partly by excluding `legacy/`, later
+  (~54 issues) was cleared in 1.7.1 (at the time partly by excluding `legacy/`, later
   removed from the repository — see `CHANGELOG.md`)
-- `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since roadmap step 12. The
+- `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since 3.6.6. The
   one-off reformatting commit is listed in `.git-blame-ignore-revs`
-- since roadmap step 13 the lint job runs `pre-commit run --all-files --show-diff-on-failure`
+- since 3.6.6 the lint job runs `pre-commit run --all-files --show-diff-on-failure`
   (`.pre-commit-config.yaml`): ruff check and ruff format (`ruff-pre-commit` at the same version as the
   `ruff` pin in `requirements-dev.txt`), plus YAML, end-of-file, trailing-whitespace, large-file and
   private-key checks. It installs only the `pre-commit` version pinned in `requirements-dev.txt`. The

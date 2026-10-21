@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      # Coverage is a report only for now (roadmap step 15): no --cov-fail-under threshold yet.
+      # Coverage is a report only for now (since 3.6.7): no --cov-fail-under threshold yet.
       - run: >-
           pytest tests/ -v
           --cov=services --cov=utils --cov=repositories --cov=database --cov=cogs

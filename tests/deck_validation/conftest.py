@@ -63,7 +63,7 @@ def isolated_card_cache(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_banlist_cache():
-    """_banlist_cache is shared at module level (the Step 1 fix): without an
+    """_banlist_cache is shared at module level (the 1.4.0 fix): without an
     explicit reset, the value loaded by one test would 'survive' into the
     next test's temporary DB."""
     invalidate_banlist_cache()

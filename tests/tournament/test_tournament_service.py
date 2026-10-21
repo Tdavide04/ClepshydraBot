@@ -52,7 +52,7 @@ class TestRegistration:
         run_with_db(scenario)
 
     def test_registration_to_a_full_tournament_is_a_failed_result(self, isolated_db):
-        """Regression (roadmap step 17): /iscriviti never looked at the outcome, so a registration refused
+        """Regression (3.6.7): /iscriviti never looked at the outcome, so a registration refused
         because the tournament was full was announced publicly as confirmed. The refusal must be readable
         from a field, not only from the message text."""
 
@@ -163,7 +163,7 @@ class TestDeckSubmission:
         run_with_db(scenario)
 
     def test_submit_deck_to_an_unknown_tournament_is_a_failed_result(self, isolated_db):
-        """Regression (roadmap step 17): /invia_deck matched only "Non sei iscritto"/"non accetta piu", so the
+        """Regression (3.6.7): /invia_deck matched only "Non sei iscritto"/"non accetta piu", so the
         service's "Torneo non trovato." was treated as a recorded deck."""
 
         async def scenario():

@@ -99,6 +99,6 @@ and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" sect
 | Banlist system | `docs/banlist-system.md` |
 | Onboarding (presentations) | `docs/onboarding.md` |
 | Swiss tournament system (disabled) | `docs/tournaments.md` |
-| Technical debt and improvement plan | `docs/roadmap.md` |
+| Roadmap (project structure refactor) | `docs/roadmap.md` |
 | Decisions and rationale | `docs/adr/` |
 | Guide for Claude Code | `CLAUDE.md` |

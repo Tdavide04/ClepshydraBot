@@ -189,7 +189,7 @@ class TestValidateDeck:
         assert result.illegal_rarity_cards == ["Test Rare"]
 
     def test_banlist_cache_shared_across_instances(self, isolated_db):
-        """Regression for the Step 1 fix: the bot creates two separate
+        """Regression for the 1.4.0 fix: the bot creates two separate
         ArtisanService instances (tournament_system and deck_validation). An
         invalidation called on one must be visible from the other."""
 
@@ -228,7 +228,7 @@ class TestValidateDeck:
 
 class TestArtisanLegalTTL:
     def test_stale_cache_entry_is_rechecked(self, isolated_db):
-        """Regression for Step 3: an entry cached as legal but stale (or with
+        """Regression for the 1.5.0 fix: an entry cached as legal but stale (or with
         no timestamp, 'legacy' data) must be re-checked against Scryfall
         instead of being considered valid forever."""
 

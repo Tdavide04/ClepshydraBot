@@ -162,7 +162,7 @@ class TestUpdateSpgOverridesIncremental:
 
 class TestOverrideFileSurvivesFailedWrite:
     def test_a_write_interrupted_midway_leaves_the_previous_file_intact(self, monkeypatch):
-        """Regression (roadmap step 19): the override JSON was written in place with open(..., "w"), so a
+        """Regression (3.6.6): the override JSON was written in place with open(..., "w"), so a
         failure mid-write (full disk, crash) left a truncated file that broke json.load on the next start.
         The file is curated data tracked in git, so it must survive a failed save untouched."""
         previous = {"overrides": {"Old Card": "common"}, "checked_cards": {"SPG": ["Old Card"]}}

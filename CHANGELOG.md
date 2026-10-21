@@ -14,6 +14,18 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## Unreleased
+
+### Docs
+- `docs/roadmap.md` replaced: the September–October technical-debt roadmap is complete, and the new one plans
+  the project structure refactor (code organized by feature under `features/` and `core/`, seeds in
+  `data/seeds/`). The old roadmap stays readable with `git show cd03992:docs/roadmap.md`.
+- Docs, docstrings and comments that cited old roadmap step numbers now cite the version that shipped the
+  change (ADR-0002, ADR-0003, `docs/caching.md`, `docs/database.md`, `docs/infrastructure.md`, CI workflow,
+  `services/results.py`, `utils/arena_overrides.py`, tournament and deck validation tests).
+- `CLAUDE.md`, `docs/roadmap.md`: work happens on `feature/<topic>` branches cut from `main`, merged by PR and
+  then deleted (`feature/v2` was merged and deleted at 4.0.0).
+
 ## 4.0.0 (2026-10-21)
 
 The bot becomes a helper only: tournaments are hosted on another platform (`docs/adr/0004-helper-only-tournaments-disabled.md`).
