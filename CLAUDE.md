@@ -133,7 +133,7 @@ python -m ruff format .                       # CI runs `ruff format --check .`
 pre-commit run --all-files                    # what the CI lint job runs
 ```
 
-Target Python is 3.12 (CI, Docker, `ruff.toml`).
+Target Python is 3.12 (CI, `ruff.toml`, production venv).
 
 ## Architecture map
 

@@ -61,7 +61,7 @@ Checked before choosing it:
 
 - Every runtime path (`data/...`, `assets/...`) is relative to the working directory, not to `__file__`,
   so moving a module doesn't move the files it reads.
-- `main.py` stays the entry point, so the pm2 process and the Dockerfile (`COPY . .`) don't change.
+- `main.py` stays the entry point, so the pm2 process doesn't change.
 - The only cross-feature import is the tournament cog using `ArtisanService` from deck validation. It stays,
   as a dependency of a disabled feature on an active one, never the reverse.
 
@@ -127,10 +127,19 @@ by hand (confirmed by the user, 2026-10-21), so it was runtime state that happen
   old path.
 - Changed from the plan: the folder is `seeds/` at the root, not `data/seeds/`. `data/` is excluded from
   the Docker image (`.dockerignore`) and mounted as a volume, so a seed under it would never reach the
-  container. `cards.txt` worked in Docker only because it was at the root.
+  container. `cards.txt` worked in Docker only because it was at the root. Docker was removed right after
+  (step 2a); `seeds/` stays, to keep tracked data apart from `data/`.
 
 Deploy caveat: the pull that removes the runtime file from git also deletes it on the VM, so the 4.0.2
 deploy backs it up before the pull and restores it before the restart (`docs/infrastructure.md`).
+
+## Step 2a — Remove the unused Docker setup
+
+**Status:** done (2026-10-21) · `build` · no bump
+
+Added during this phase, after step 2 showed Docker still shaping decisions. Production runs under `pm2` and
+CI never built the image, so `Dockerfile`, `docker-compose.yml` and `.dockerignore` are gone, with their
+docs. Rationale and the way back: `docs/adr/0005-docker-setup-removed.md`.
 
 ---
 
@@ -215,9 +224,9 @@ methods returning `ServiceResult`, test first, and keep the `reload_banlist()` i
   is tidiness only: the bot runs as `python main.py`, so the `src/` layout that PyPA recommends for
   distributed packages brings nothing here.
 - Point both CI jobs at `.python-version` (`python-version-file`) instead of hardcoding `3.12` twice, so the
-  version has one owner besides the Dockerfile base image and ruff's `target-version`.
+  version has one owner besides ruff's `target-version`.
 - `requirements*.txt` stay: for a deployed application with pinned versions they are the right tool, and
-  pip, the Dockerfile and CI already read them.
+  pip and CI already read them.
 
 ---
 

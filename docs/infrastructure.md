@@ -155,7 +155,7 @@ are pinned with `==` to the versions running in production, read with `pip freez
 the VM; `requirements.txt` is the source of truth for the exact versions. Transitive dependencies (yarl,
 multidict, greenlet...) are not pinned: they follow the direct pins' own requirements, so a fresh install can
 get a newer patch of them than production has. `requirements-dev.txt` pins `pytest`, `ruff` and `pre-commit`
-too. The target Python version is 3.12 (`.python-version`, CI, Docker image `python:3.12-slim`).
+too. The target Python version is 3.12 (`.python-version`, CI, `ruff.toml`).
 
 To upgrade a dependency: change one pin, `pip install -r requirements-dev.txt`, run the tests, then deploy
 and update the VM's venv with the same `pip install -r requirements.txt`.
@@ -222,26 +222,11 @@ Discord log channel is unreachable.
 
 ## Infrastructure Roadmap
 
-### Sprint 7 — Docker (done)
+### Sprint 7 — Docker (removed)
 
-Multi-stage `Dockerfile`: a `builder` stage installs the dependencies into an isolated venv (`/opt/venv`), the
-final stage copies only the prebuilt venv + the application code and runs as a non-root user (`clepshydra`,
-uid 1000). `.dockerignore` excludes `.git`, `data/` (never baked into the image — it only holds runtime/cache
-data, recreated from the volume on every start), `.env` (never in the image, injected at runtime), tests/docs.
-
-`docker-compose.yml`:
-- `restart: unless-stopped`
-- `env_file: .env` (read from the host at startup, not copied into the image)
-- named Docker volume `clepshydra-data` mounted on `/app/data` — persists across container restarts
-
-```bash
-docker compose up -d --build   # build + start
-docker compose logs -f bot     # live logs
-docker compose down            # stop (the data volume stays)
-```
-
-This is an **additional** deployment option, it doesn't replace `pm2` ("Deployment" section above), which
-stays the method actually used in production until a migration is decided.
+A Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) existed from September 2026 as an
+extra deploy option. Production never used it and CI never built it, so it was removed in October 2026:
+see `docs/adr/0005-docker-setup-removed.md`. `pm2` ("Deployment" above) is the only deployment method.
 
 ### Sprint 8 — CI/CD (done)
 
@@ -261,5 +246,4 @@ stays the method actually used in production until a migration is decided.
   commit-message hook (`conventional-pre-commit`) runs locally only, at `commit-msg`
 
 Still to do:
-- Docker `build` check in CI (verify the image builds on every push, without deploying)
 - Automatic deployment to OCI via SSH/deploy key

@@ -200,9 +200,8 @@ hand, so it is ignored by git (since 4.0.2; it used to be tracked, and the bot's
 blocked `git pull`). The tracked starting copy is `seeds/arena_rarity.json`. `_load_override_data()` reads
 the runtime file when it exists and the seed otherwise, without copying it: a read never writes, and the
 first save after a scan creates the runtime file with the seed's content plus the new results. The scan runs
-at every start (`periodic_spg_refresh_loop`), so on a fresh clone or a new Docker volume the runtime file
-appears right away. The seed lives in `seeds/`, not `data/`, because `data/` is excluded from the Docker
-image and mounted as a volume.
+at every start (`periodic_spg_refresh_loop`), so on a fresh clone the runtime file appears right away. The
+seed lives in `seeds/`, apart from `data/`, which holds only runtime state ignored by git.
 
 The seed is a snapshot: refresh it by copying the production runtime file over it when it falls far behind.
 A stale seed only costs the first scan a few extra cards.

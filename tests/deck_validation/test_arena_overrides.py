@@ -200,7 +200,7 @@ def _write_seed(data: dict) -> None:
 
 class TestOverrideSeed:
     """The runtime file is ignored by git (the SPG scan rewrites it in
-    production); a fresh clone or Docker volume gets it from the tracked seed."""
+    production); a fresh clone gets it from the tracked seed."""
 
     def test_missing_runtime_file_reads_the_seed_without_writing(self):
         _write_seed({"overrides": {"Card A": "common"}, "checked_cards": {}})

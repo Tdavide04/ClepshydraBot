@@ -14,6 +14,14 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## Unreleased
+
+### Removed
+- The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and its sections in `README.md` and
+  `docs/infrastructure.md`. Production never used it and CI never built it; `pm2` on the VM is the only
+  deployment method. Rationale and the way back: `docs/adr/0005-docker-setup-removed.md`. Nothing changes
+  for the running bot.
+
 ## 4.0.2 (2026-10-21)
 
 ### Fixed
@@ -24,9 +32,8 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 
 ### Changed
 - `cards.txt` moved to `seeds/banlist.txt`. It is only read to fill an empty `banned_cards` table, so nothing
-  changes for a database that already has a banlist (production). The seeds sit at the root, not in `data/`,
-  because `data/` is excluded from the Docker image and mounted as a volume: a Docker container now gets the
-  rarity overrides too, which it never did.
+  changes for a database that already has a banlist (production). Both seeds sit in `seeds/` at the root, apart
+  from `data/`, which holds only runtime state ignored by git.
 - Removed `load_banlist()` and `BANLIST_PATH` from `cogs/deck_validation/validators.py`, unused since the
   banlist moved to the DB.
 

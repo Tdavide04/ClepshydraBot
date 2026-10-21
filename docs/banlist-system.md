@@ -54,7 +54,7 @@ Text file with the starting banlist, one card per line (it was `cards.txt` at th
 4.0.2). It is read only to fill an empty `banned_cards` table, so it matters only on a fresh database:
 **the banlist in the DB is authoritative**, and staff change it with `/banlist_aggiungi` and
 `/banlist_rimuovi`. The seed is never updated by those commands, so it can be older than the real banlist.
-It sits in `seeds/`, not `data/`, because `data/` is excluded from the Docker image and mounted as a volume.
+It sits in `seeds/`, apart from `data/`, which holds only runtime state ignored by git.
 It includes:
 - Cards with the `A-` prefix (Alchemy versions on Arena)
 - Double-faced cards (`Name // Name`)

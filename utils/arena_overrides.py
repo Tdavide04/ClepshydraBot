@@ -76,9 +76,9 @@ def _load_override_data() -> dict:
     if _override_cache is not None:
         return _override_cache
 
-    # The runtime file is ignored by git. On a fresh clone or Docker volume it
-    # doesn't exist yet: read the tracked seed instead, without copying it, so
-    # a read never writes. The first save (the SPG scan) creates the runtime file.
+    # The runtime file is ignored by git. On a fresh clone it doesn't exist
+    # yet: read the tracked seed instead, without copying it, so a read never
+    # writes. The first save (the SPG scan) creates the runtime file.
     path = next((p for p in (DATA_PATH, SEED_PATH) if os.path.exists(p)), None)
     if path is None:
         _override_cache = {
