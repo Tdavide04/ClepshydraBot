@@ -82,7 +82,7 @@ Status of each step: `todo` → `in progress` → `done`.
 
 ## Step 0 — Replace the old roadmap
 
-**Status:** done (2026-10-21) · `docs` · no bump (listed under Unreleased, ships with step 1)
+**Status:** done (2026-10-21) · `docs` · shipped in 4.0.1
 
 The ADRs and topic docs cite old step numbers ("roadmap step 11", "Step 4 of `docs/roadmap.md`"). Rewrite
 each citation to the CHANGELOG version that shipped it, so no doc points to a step that no longer exists.
@@ -94,7 +94,7 @@ Small behaviour fixes, done first so they don't get lost inside a large diff.
 
 ## Step 1 — `/presentati`: the Annulla button and raw error text
 
-**Status:** todo · `fix(onboarding)` · PATCH
+**Status:** done (2026-10-21, 4.0.1) · `fix(onboarding)` · PATCH
 
 - `PreviewView` never sets `self.message`, so **Annulla** raises `AttributeError` after it has already
   replied. Seen in production on 2026-10-20. Since 4.0.0 `ReportingView` catches it, and the user gets
@@ -102,7 +102,11 @@ Small behaviour fixes, done first so they don't get lost inside a large diff.
 - `_on_confirm` catches every exception and shows the user the raw text (`❌ Errore: {e}`), bypassing
   `ReportingView`: staff get no log and the user sees internal details.
 
-Verification: by hand under `TEST_MODE=True` (cogs are exempt from tests). Docs: `docs/onboarding.md`.
+- Found while fixing it: on an invalid presentation, or with the presentation channel missing, the member
+  got "Benvenuto tra i Planeswalker!" anyway. `publish()` now returns a `ServiceResult` (tested in
+  `tests/onboarding/`).
+
+Verification: service tests, plus the two buttons by hand under `TEST_MODE=True`. Docs: `docs/onboarding.md`.
 
 ## Step 2 — Seeds in `data/seeds/`, runtime state out of git
 
@@ -225,7 +229,7 @@ methods returning `ServiceResult`, test first, and keep the `reload_banlist()` i
 - **English slash command names** (ADR-0003). To be decided in a dedicated session.
 - **Event calendar image redesign**, on `feature/event-calendar` after this roadmap.
 - **Onboarding state is in memory** (`PRESENTATION_DATA_STORE`): a restart mid-presentation loses it.
-  Acceptable for now. Document it in `docs/onboarding.md` during step 1.
+  Acceptable for now, documented in `docs/onboarding.md`.
 - **Coverage threshold in CI.** None yet; reconsider once the cogs are thinner.
 
 # Decisions (2026-10-21)

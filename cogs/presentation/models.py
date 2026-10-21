@@ -13,6 +13,10 @@ def store_presentation_data(user_id: int, data: "PresentationData") -> None:
     PRESENTATION_DATA_STORE[user_id] = data
 
 
+def discard_presentation_data(user_id: int) -> None:
+    PRESENTATION_DATA_STORE.pop(user_id, None)
+
+
 async def get_or_create_presentation_data(user_id: int) -> "PresentationData":
     if user_id not in PRESENTATION_DATA_STORE:
         PRESENTATION_DATA_STORE[user_id] = PresentationData(

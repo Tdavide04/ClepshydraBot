@@ -226,6 +226,8 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
   SQLite card cache, SPG overrides.
 - `tests/utils/`: the Wizards monitors, the shared sitemap logic, interaction error handling.
+- `tests/onboarding/`: `PresentationService.publish()` outcomes (published, refused on validation, missing
+  channel), with plain fakes for the Discord guild, member and channel.
 - Integration tests don't mock the DB: they run against a temporary SQLite per test (`tmp_path` + monkeypatch
   on `database.engine.DB_PATH`), wrapping the whole `init_db → logic → close_db` cycle in a single event loop
   (required by aiosqlite, which binds connections to the loop that created them).

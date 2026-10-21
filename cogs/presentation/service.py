@@ -4,6 +4,7 @@ from cogs.presentation.embeds import build_published_embed
 from cogs.presentation.models import PRESENTATION_DATA_STORE, PresentationData
 from cogs.presentation.validators import valida_presentazione
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
+from services.results import ServiceResult
 
 
 class PresentationService:
@@ -16,7 +17,10 @@ class PresentationService:
             self.logger = self.bot.get_cog("Logger")
         return self.logger
 
-    async def publish(self, interaction: discord.Interaction, data: PresentationData):
+    async def publish(self, interaction: discord.Interaction, data: PresentationData) -> ServiceResult:
+        """Validates, posts the presentation and promotes the member. The caller
+        sends `message` to the member: ok=False means nothing was posted and no
+        role changed."""
         member = interaction.user
 
         if isinstance(member, discord.Member):
@@ -48,8 +52,7 @@ class PresentationService:
             if errors:
                 msg += "⚠️ **Campi con valori non validi:**\n" + "\n".join(f"• {c}" for c in errors) + "\n\n"
 
-            await interaction.followup.send(msg, ephemeral=True)
-            return
+            return ServiceResult(False, msg)
 
         guild = member.guild
 
@@ -63,7 +66,10 @@ class PresentationService:
                     user=member,
                     info=f"Presentation channel with ID {PRESENTATION_CHANNEL_ID} not found.",
                 )
-            return
+            return ServiceResult(
+                False,
+                "❌ Non riesco a pubblicare la presentazione in questo momento. Lo staff è stato avvisato.",
+            )
 
         embed = build_published_embed(member, data)
 
@@ -76,6 +82,8 @@ class PresentationService:
             if presentation_msg:
                 info += f"\n**Link:** [Presentation]({presentation_msg.jump_url})"
             await logger.send_log(level="INFO", event="PRESENTATION_COMPLETED", user=member, info=info)
+
+        return ServiceResult(True, "✅ Benvenuto tra i Planeswalker!")
 
     async def _assign_initial_role(self, member):
         initial_role = discord.utils.get(member.guild.roles, name=INITIAL_ROLE)

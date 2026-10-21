@@ -2,7 +2,7 @@ import discord
 
 from cogs.presentation.embeds import build_preview_embed
 from cogs.presentation.modals import OptionalPresentationModal
-from cogs.presentation.models import PresentationData
+from cogs.presentation.models import PresentationData, discard_presentation_data
 from cogs.presentation.service import PresentationService
 from utils.interaction_errors import ReportingView
 
@@ -279,14 +279,18 @@ class PreviewView(ReportingView):
             service = getattr(interaction.client, "presentation_service", None) or PresentationService(
                 interaction.client
             )
-            await service.publish(interaction, self.data)
-            self.completed = True
-            await interaction.followup.send("✅ Benvenuto tra i Planeswalker!", ephemeral=True)
-        except Exception as e:
+            outcome = await service.publish(interaction, self.data)
+            self.completed = outcome.ok
+        finally:
+            # An unexpected error goes to ReportingView.on_error (generic message
+            # to the member, staff log); the buttons must not stay locked.
             self.processing = False
-            await interaction.followup.send(f"❌ Errore: {str(e)}", ephemeral=True)
+
+        await interaction.followup.send(outcome.message, ephemeral=True)
 
     async def _on_cancel(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Presentazione annullata.", ephemeral=True)
-        if self.message:
-            await self.message.delete()
+        discard_presentation_data(self.data.user_id)
+        self.stop()
+        # The preview is the message this button belongs to, so it is edited
+        # through this interaction: the view keeps no reference to it.
+        await interaction.response.edit_message(content="Presentazione annullata.", embed=None, view=None)

@@ -14,9 +14,28 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
+## 4.0.1 (2026-10-21)
+
+### Fixed
+- `/presentati`, **Annulla** button: it crashed with `AttributeError` (`PreviewView` has no `message`) right
+  after replying, seen in production on 2026-10-20; since 4.0.0 the member also got the generic error
+  message. It now replaces the preview with "Presentazione annullata." and discards the member's in-memory
+  data, so the next `/presentati` starts from scratch.
+- `/presentati`, **Conferma** on an invalid presentation: the member got the list of fields to fix *and*
+  "✅ Benvenuto tra i Planeswalker!", with no role granted. Same when the presentation channel is missing:
+  nothing was posted, but the member was welcomed. `PresentationService.publish()` now returns a
+  `ServiceResult` and the view sends its message, so the welcome appears only after a real publication.
+- `/presentati`, unexpected errors on **Conferma**: the member saw the raw exception text (`❌ Errore: ...`)
+  and staff got no log. The view no longer catches them: `ReportingView` shows the generic message and logs
+  `INTERACTION_ERROR`.
+
+Verified: new `tests/onboarding/test_presentation_service.py` (published, refused on validation, missing
+channel; the last two fail on 4.0.0), full suite, ruff. Not verified live: the two buttons on Discord (a
+`TEST_MODE` run).
 
 ### Docs
+- `docs/onboarding.md`: the confirm and cancel behaviour, the `ServiceResult` contract of `publish()`, and the
+  in-memory state lost on a restart. `docs/architecture.md`: the new test folder.
 - `docs/roadmap.md` replaced: the September–October technical-debt roadmap is complete, and the new one plans
   the project structure refactor (code organized by feature under `features/` and `core/`, seeds in
   `data/seeds/`). The old roadmap stays readable with `git show cd03992:docs/roadmap.md`.
