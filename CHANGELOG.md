@@ -14,15 +14,29 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
+## 4.1.2 (2026-10-21)
 
-Nothing changes for the running bot (`docs`, no `VERSION` bump).
+### Fixed
+- A date that can't exist on the Wizards page ("November 25-31", a day 0, "November 20-10") no longer loses the
+  whole calendar update. `build_month_calendar()` didn't check the days of an entry (its docstring said they were
+  clipped, but only the middle segments were): the day reached the 4.1.0 image, where `date(year, month, day)`
+  raised `ValueError`. The periodic check caught it and only wrote to the console, and since the state is saved
+  before the image is drawn, the update was never retried or posted. Now such an entry is left out with a console
+  `WARN` that quotes it (`[EVENT SCHEDULE] WARN entry with an impossible date left out: ...`) and the rest of the
+  calendar is posted. Before 4.1.0 the same input didn't raise: the bar was just drawn out of place.
+  A "February 29" in a non-leap year counts as impossible.
 
 ### Docs
 - Backlog decisions of 2026-10-21 recorded in `docs/roadmap.md`: the slash command names stay Italian (note in
   ADR-0003, item removed from the backlog); the coverage threshold in CI, the `DB_PATH` read at import, the
   `database/` import into a feature and the in-memory onboarding state each get the reason they are not done
   now and the condition to revisit them.
+- `docs/caching.md`: the `build_month_calendar()` row and the failure handling section; the docstring of
+  `build_month_calendar()` no longer promises a clipping that didn't exist.
+
+Verified: regression tests in `tests/monitors/test_event_schedule.py` (red before the fix: the bad entries were
+kept and no `WARN` was logged), full suite, `ruff check`, `ruff format --check`. The bad entries are dropped
+without touching the valid ones in the same category.
 
 ## 4.1.1 (2026-10-21)
 
