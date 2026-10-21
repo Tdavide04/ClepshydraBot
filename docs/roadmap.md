@@ -151,7 +151,7 @@ One point: commits 3–9, one CHANGELOG entry and one bump in step 9.
 
 ## Step 3 — Safety net and an explicit extension list
 
-**Status:** todo · `test` + `refactor`
+**Status:** done (2026-10-21) · `refactor` · bump with step 9
 
 Cogs have no tests, so a broken import after a move would show up only at startup in production. Before
 moving anything:
@@ -160,6 +160,11 @@ moving anything:
 - replace the `os.listdir("./cogs")` scan in `setup_hook` with an explicit `EXTENSIONS` list, keeping
   `DISABLED_COGS`. The scan depends on the folder layout this phase changes, and an explicit list makes
   "which features are on" readable in one place.
+
+Done as `tests/core/test_extensions.py`. `main.py` had to stop starting the bot at import time to be
+importable (`main()` behind `if __name__ == "__main__"`; pm2 runs `python main.py`, so nothing changes in
+production). `DISABLED_COGS` now holds full module paths (`"cogs.tournament_system"`). A stubbed
+`setup_hook()` run loads the same 7 cogs and 9 slash commands as 4.0.0.
 
 ## Step 4 — `core/`
 

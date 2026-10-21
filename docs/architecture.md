@@ -215,6 +215,9 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - **Bot startup**: `main.py` catches `discord.LoginFailure` (invalid/expired token) and any other startup
   exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor
   (`pm2` in production, see `docs/infrastructure.md`) can detect the failure instead of a silent stop
+- **Extension loading**: `setup_hook()` loads the modules listed in `EXTENSIONS` in `main.py`, in order,
+  skipping those in `DISABLED_COGS`. The list is written by hand, not discovered from the `cogs/` folder;
+  `tests/core/test_extensions.py` fails if a module with a `setup()` coroutine is missing from it
 
 ---
 
@@ -226,6 +229,8 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
   SQLite card cache, SPG overrides.
 - `tests/utils/`: the Wizards monitors, the shared sitemap logic, interaction error handling.
+- `tests/core/`: every application module imports (`main.py` included), and every extension is listed in
+  `EXTENSIONS`.
 - `tests/onboarding/`: `PresentationService.publish()` outcomes (published, refused on validation, missing
   channel), with plain fakes for the Discord guild, member and channel.
 - Integration tests don't mock the DB: they run against a temporary SQLite per test (`tmp_path` + monkeypatch

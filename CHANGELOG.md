@@ -16,6 +16,20 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 
 ## Unreleased
 
+### Refactored
+- `main.py` loads the extensions from an explicit `EXTENSIONS` list instead of scanning the `cogs/` folder,
+  so the coming move to `features/` and `core/` (`docs/roadmap.md`, phase 2) doesn't change what loads.
+  `DISABLED_COGS` now holds full module paths (`"cogs.tournament_system"`). The bot starts from `main()`
+  behind `if __name__ == "__main__"`, so tests can import `main.py`. Released with the phase 2 bump.
+
+### Added
+- `tests/core/test_extensions.py`: imports every application module and checks that every module with a
+  `setup()` coroutine is listed in `EXTENSIONS`. Cogs have no tests, so this is what catches a broken import
+  after a move before production does.
+
+Verified: pytest (290 passed), ruff; a stubbed `setup_hook()` run (no DB, no Discord sync) loads the same
+7 cogs and 9 slash commands as 4.0.0 and skips `cogs.tournament_system`.
+
 ### Removed
 - The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and the systemd unit
   `deploy/clepshydrabot.service`, with their sections in `README.md` and `docs/infrastructure.md`. Production

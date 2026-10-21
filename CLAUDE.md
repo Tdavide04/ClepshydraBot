@@ -161,6 +161,8 @@ that name.
 Breaking one of these has already caused a production bug. Each one is explained in the topic doc
 listed in the map.
 
+- **A new extension goes into `EXTENSIONS` in `main.py`.** Nothing discovers cogs from the folder; the
+  `tests/core/test_extensions.py` check fails until the module is listed.
 - **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`utils/interaction_errors.py`).
   Slash commands are covered by `bot.tree.on_error` (`cogs/error_handler.py`); modals and views are not.
 - **A Scryfall failure is not an "illegal card" verdict.** Any non-200 response after retries raises
