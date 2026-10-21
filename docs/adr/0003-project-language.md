@@ -26,7 +26,8 @@ The community the bot serves is Italian, and so are its members and staff.
 - replies to every slash command, admin ones included
 - modals, views, and the messages services return to cogs
 - community-channel embeds (`community_title`/`community_info`)
-- slash command names and descriptions (renaming is in the `docs/roadmap.md` backlog, to be decided separately)
+- slash command names and descriptions. Decided on 2026-10-21 that the names stay Italian: members know
+  them, and renaming them would break that habit with no benefit for the people who use the bot.
 
 **Unchanged:**
 - git history

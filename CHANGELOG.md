@@ -27,6 +27,10 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   A "February 29" in a non-leap year counts as impossible.
 
 ### Docs
+- Backlog decisions of 2026-10-21 recorded in `docs/roadmap.md`: the slash command names stay Italian (note in
+  ADR-0003, item removed from the backlog); the coverage threshold in CI, the `DB_PATH` read at import, the
+  `database/` import into a feature and the in-memory onboarding state each get the reason they are not done
+  now and the condition to revisit them.
 - `docs/caching.md`: the `build_month_calendar()` row and the failure handling section; the docstring of
   `build_month_calendar()` no longer promises a clipping that didn't exist.
 

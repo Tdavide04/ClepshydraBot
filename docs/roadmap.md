@@ -289,17 +289,22 @@ table); the entry waits under Unreleased.
 
 # Backlog (not scheduled)
 
-- **English slash command names** (ADR-0003). To be decided in a dedicated session.
-- **Onboarding state is in memory** (`PRESENTATION_DATA_STORE`): a restart mid-presentation loses it.
-  Acceptable for now, documented in `docs/onboarding.md`.
-- **Coverage threshold in CI.** None yet; reconsider once the cogs are thinner.
+- **Onboarding state is in memory** (`PRESENTATION_DATA_STORE`): a restart mid-presentation loses it, and
+  the member runs `/presentati` again. Kept as it is (decided 2026-10-21); documented in
+  `docs/onboarding.md`. Deploy outside peak hours.
+- **Coverage threshold in CI.** None: the report is informational. Not now (decided 2026-10-21): the total
+  mixes tested logic with the cogs, which are exempt from tests, and with the disabled tournaments,
+  so any number would be arbitrary. If wanted, a floor on the logic packages only, as its own point, once the
+  cogs are thinner.
 - **`database/engine.py` reads `DB_PATH` at import time** (option B, 2026-10-21): reading it inside the
   function that creates the engine would make `ArtisanService` and the cogs importable without a `.env`.
-  Small behaviour change, test first.
+  Not now (decided 2026-10-21): no benefit today, since each `conftest.py` seeds the variables on purpose.
+  Do it, test first, if a module or a test needs to import it without a `.env`.
 - **`database/` imports up into a feature**: `init_db()` lazily imports `load_cache()` and
   `BanlistRepository` from `features/deck_validation/` to load the card cache and seed the banlist. It
   already did before the move (into `utils/` and `repositories/`); the move only made it visible. A startup
-  hook owned by the feature would invert it.
+  hook owned by the feature would invert it. Not now (decided 2026-10-21): it works and has caused no bug;
+  do it only when `init_db()` is touched for another reason.
 
 # Decisions (2026-10-21)
 
@@ -307,3 +312,4 @@ table); the entry waits under Unreleased.
 - Folder names: `features/` and `core/`, with `presentation` renamed to `onboarding`.
 - Versions: steps 1 and 2 as 4.0.1 and 4.0.2, the whole of phase 2 as one PATCH (4.0.3), step 10 as 4.0.4.
 - This work stays on its own branch, `feature/project-structure`, separate from `feature/event-calendar`.
+- Slash command names stay Italian (ADR-0003): the English-names item left the backlog.
