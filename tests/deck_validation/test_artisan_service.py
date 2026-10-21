@@ -3,12 +3,12 @@ import urllib.parse
 
 import pytest
 
-import cogs.deck_validation.service as service_module
-import utils.card_cache as card_cache
-from cogs.deck_validation.models import DeckEntry
-from cogs.deck_validation.service import ArtisanService, ScryfallUnavailable
+import features.deck_validation.card_cache as card_cache
+import features.deck_validation.service as service_module
 from database import close_db, get_session, init_db
-from repositories.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.models import DeckEntry
+from features.deck_validation.service import ArtisanService, ScryfallUnavailable
 
 # isolated_db, isolated_card_cache, isolated_banlist_cache are defined in
 # conftest.py (shared with test_card_cache.py).

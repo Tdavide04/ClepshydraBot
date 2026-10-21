@@ -136,7 +136,7 @@ async def _scryfall_get(
 ) -> dict | None:
     """
     GET to Scryfall with exponential backoff on 429.
-    Same rate-limit policy as cogs/deck_validation/service.py.
+    Same rate-limit policy as features/deck_validation/service.py.
     """
 
     for attempt in range(retries):

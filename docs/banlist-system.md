@@ -27,7 +27,7 @@ Alchemy, etc.) is this community's homebrew Artisan, so updating the banlist alw
                        ▼
 ┌─────────────────────────────────────────────────────────┐
 │             BanlistRepository                           │
-│  repositories/banlist_repository.py                     │
+│  features/deck_validation/banlist_repository.py         │
 │  • CRUD on the banned_cards table                       │
 │  • get_all_for_format() → set[str]                     │
 │  • add_card() / remove_card()                           │
@@ -80,7 +80,7 @@ class BannedCard(Base):
     created_at  = Column(DateTime, default=datetime.now)
 ```
 
-### 4. Repository — `repositories/banlist_repository.py`
+### 4. Repository — `features/deck_validation/banlist_repository.py`
 
 | Method | Role |
 |---|---|
@@ -90,17 +90,17 @@ class BannedCard(Base):
 | `count()` | Total number of banned cards |
 | `import_from_file(path)` | Bulk import from a text file (only if the table is empty) |
 
-### 5. Deck Validation — `ArtisanService.validate_deck()` in `cogs/deck_validation/service.py`
+### 5. Deck Validation — `ArtisanService.validate_deck()` in `features/deck_validation/service.py`
 
 `ArtisanService.validate_deck()`:
 1. On the first call, loads the banlist into the module cache `_banlist_cache` via `_load_banlist()` →
    `BanlistRepository.get_all_for_format()`, then expands double-faced cards with `_expand_double_faced()`
    (adds the front half alone next to the full name — see "Known Issues" item 1)
-2. Calls `check_banlist(entries, _banlist_cache)` (from `cogs/deck_validation/validators.py`)
+2. Calls `check_banlist(entries, _banlist_cache)` (from `features/deck_validation/validators.py`)
 3. If it finds banned cards, returns `DeckValidationResult(banned_cards=[...])` right away → deck **invalid**
 4. If no card is banned, goes on with the rarity validation (Scryfall API)
 
-### 6. Banlist Check — `check_banlist()` in `cogs/deck_validation/validators.py`
+### 6. Banlist Check — `check_banlist()` in `features/deck_validation/validators.py`
 
 ```python
 def check_banlist(entries: list[DeckEntry], banlist: set[str]) -> list[str]:
@@ -119,7 +119,7 @@ Logic:
 - On a match, adds it to the result list (no duplicates)
 - If the resulting list isn't empty → deck invalid
 
-### 7. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/deck_validation/__init__.py`
+### 7. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `features/deck_validation/cog.py`
 
 Next to `/artisan_check_deck`, in `DeckValidationCog`, since 4.0.0; until then they lived in the tournament cog
 and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
@@ -130,7 +130,7 @@ and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
 | `/banlist_aggiungi <carta>` | Adds a card to the DB | `@is_admin()` (`Staff` role) |
 | `/banlist_rimuovi <carta>` | Removes a card from the DB | `@is_admin()` |
 
-### 8. Result Embed — `cogs/deck_validation/embeds.py`
+### 8. Result Embed — `features/deck_validation/embeds.py`
 
 If the deck has banned cards, the embed shows:
 - **Carte Bannate**: the list (max 10)
@@ -140,13 +140,13 @@ If the deck has banned cards, the embed shows:
 ### 9. Caching
 
 The banlist is cached in memory in the module variable `_banlist_cache: set[str] | None` in
-`cogs/deck_validation/service.py`, shared by every `ArtisanService` instance. It is loaded from the DB on the
+`features/deck_validation/service.py`, shared by every `ArtisanService` instance. It is loaded from the DB on the
 first validation (or after an invalidation) and kept in memory until invalidated.
 
 `ArtisanService.reload_banlist()` forces the refresh: `/banlist_aggiungi` and `/banlist_rimuovi` call it right
 after writing to the DB. Since the cache is shared at module level (instead of a per-instance attribute), the
 invalidation is immediately visible to **both** `ArtisanService` instances the bot creates
-(`tournament_system/cog.py`, when that cog is loaded, and `cogs/deck_validation/__init__.py`) — not only the one the method is called
+(`tournament_system/cog.py`, when that cog is loaded, and `features/deck_validation/cog.py`) — not only the one the method is called
 on.
 
 ---
@@ -183,9 +183,9 @@ The banlist system **calls no external API**. It only uses:
 - A purely textual comparison (`name.lower() in banlist`)
 
 The Scryfall APIs are used in the next phase (Artisan rarity validation), not for the banlist. That phase —
-SPG rarity overrides (`utils/arena_overrides.py`, `data/arena_rarity_data.json`, seeded from
+SPG rarity overrides (`features/deck_validation/arena_overrides.py`, `data/arena_rarity_data.json`, seeded from
 `seeds/arena_rarity.json`), the Scryfall card cache
-(`utils/card_cache.py`, `cached_cards` table, TTL on `artisan_legal`) and the Arena legality check — is
+(`features/deck_validation/card_cache.py`, `cached_cards` table, TTL on `artisan_legal`) and the Arena legality check — is
 documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and overrides).
 
 ---
@@ -195,7 +195,7 @@ documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and
 1. **Double-faced cards** — fixed. The seed and `banned_cards` store the full name
    (`A-Blessed Hippogriff // A-Tyr's Blessing`), but `parse_decklist()` always truncates to the front face
    when reading the user's deck (mimicking MTG Arena's export format), so the comparison **always** failed
-   for these cards. `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) now expands the
+   for these cards. `ArtisanService._load_banlist()` (`features/deck_validation/service.py`) now expands the
    banlist with `_expand_double_faced()` — for every entry containing ` // `, it also adds the front half
    alone to the set used by `check_banlist()`. Applied **only** to the validation cache, not to
    `BanlistRepository.get_all_for_format()`: that method also feeds `/banlist` (a public command), which
@@ -203,9 +203,9 @@ documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and
 
 2. **Live updates** — fixed. `self._banlist` in `ArtisanService` wasn't invalidated after add/remove via
    slash command. `/banlist_aggiungi` and `/banlist_rimuovi` now call `ArtisanService.reload_banlist()` right
-   after writing to the DB (see `cogs/deck_validation/__init__.py`). The cache is module-level
+   after writing to the DB (see `features/deck_validation/cog.py`). The cache is module-level
    (`_banlist_cache`), so the invalidation also covers the second `ArtisanService` instance used by
-   `cogs/deck_validation/__init__.py` — a first attempt with a per-instance cache would have left that second
+   `features/deck_validation/cog.py` — a first attempt with a per-instance cache would have left that second
    instance stale.
 
 3. **Case sensitivity**: everything is lowercased, so there is no issue.

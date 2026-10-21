@@ -3,8 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.permissions import is_admin
-from utils.arena_overrides import invalidate_override_cache, update_spg_overrides
-from utils.card_cache import invalidate_card
+from features.deck_validation.arena_overrides import invalidate_override_cache, update_spg_overrides
+from features.deck_validation.card_cache import invalidate_card
 
 # ==========================================
 # COG

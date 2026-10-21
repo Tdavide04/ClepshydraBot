@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-import utils.arena_overrides as arena_overrides
+import features.deck_validation.arena_overrides as arena_overrides
 
 SEARCH_URL = "https://api.scryfall.com/cards/search?q=set%3Aspg&unique=prints"
 # Captured before the autouse fixture points SEED_PATH at a temp dir.

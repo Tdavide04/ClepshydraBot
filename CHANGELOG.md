@@ -34,6 +34,12 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   `ban_announcement_cog.py` (`cogs/*_updater.py`). Tests moved to `tests/monitors/`. Moves and import
   rewrites only. Verified: pytest (294 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
   slash commands.
+- New `features/deck_validation/` package: the former `cogs/deck_validation/` (its `__init__.py` is now
+  `cog.py`), `spg_cog.py` (`cogs/spg_override_updater.py`), `image.py` (`utils/deck_image_generator.py`),
+  `card_cache.py`, `arena_overrides.py` (from `utils/`) and `banlist_repository.py` (from `repositories/`,
+  no longer re-exported by `repositories/__init__.py`). Moves and import rewrites only. `CLAUDE.md` now
+  states exactly which modules load `config.config` at import time. Verified: pytest (295 passed), ruff; a
+  stubbed `setup_hook()` loads the same 7 cogs and 9 slash commands.
 
 ### Added
 - `tests/core/test_extensions.py`: imports every application module and checks that every module with a

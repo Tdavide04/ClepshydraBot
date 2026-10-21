@@ -2,7 +2,7 @@ from datetime import datetime
 
 import discord
 
-from cogs.deck_validation.models import DeckValidationResult
+from features.deck_validation.models import DeckValidationResult
 
 
 def build_result_embed(result: DeckValidationResult, member: discord.Member) -> discord.Embed:

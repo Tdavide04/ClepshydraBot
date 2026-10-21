@@ -53,7 +53,7 @@ limits, it implements a three-level caching system. It also watches two kinds of
 
 ---
 
-## 1. Scryfall Card Cache (`utils/card_cache.py`)
+## 1. Scryfall Card Cache (`features/deck_validation/card_cache.py`)
 
 Until September 2026 the cache was persisted to `data/card_cache.json`, rewritten in full every 60 seconds if
 anything had changed — even for a single modified card out of thousands. The file was also tracked in git,
@@ -99,7 +99,7 @@ identical byte for byte, no duplicate rows on a second simulated "restart".
 ### TTL on `artisan_legal`
 
 The `artisan_legal` flag is no longer considered valid forever. Every time `_is_arena_artisan_legal()`
-(`cogs/deck_validation/service.py`) computes it, it calls `mark_artisan_legal()`, which also stores
+(`features/deck_validation/service.py`) computes it, it calls `mark_artisan_legal()`, which also stores
 `artisan_legal_checked_at` (ISO timestamp, UTC). On the next check, if the cached entry's
 `artisan_legal_checked_at` is older than `ARTISAN_LEGAL_TTL_DAYS` (30 days) or missing altogether (entry
 cached before the TTL existed), the flag counts as stale and the card is re-checked against Scryfall instead
@@ -134,7 +134,7 @@ on them today, and a blob avoids duplicating the variable shape of Scryfall data
 
 ---
 
-## 2. SPG Rarity Overrides (`utils/arena_overrides.py`)
+## 2. SPG Rarity Overrides (`features/deck_validation/arena_overrides.py`)
 
 ### Problem
 
@@ -433,7 +433,7 @@ Alchemy printings are not allowed in Artisan: when evaluating the `prints_search
 ## 5. Banlist Cache
 
 The banlist (`BannedCard` in SQLite) is cached in memory in the module variable
-`_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, shared by every `ArtisanService`
+`_banlist_cache: set[str] | None` in `features/deck_validation/service.py`, shared by every `ArtisanService`
 instance.
 
 | Aspect | Detail |

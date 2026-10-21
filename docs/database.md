@@ -35,7 +35,7 @@ At startup, after `Base.metadata.create_all`, `init_db()` runs in order:
 
    To add a new migration, append a `(table, column, ddl)` tuple to `_SCHEMA_MIGRATIONS` in
    `database/engine.py` — `_migrate_schema()` needs no change.
-3. **`load_cache()`** (`utils/card_cache.py`) — loads the Scryfall card cache from the `cached_cards` table
+3. **`load_cache()`** (`features/deck_validation/card_cache.py`) — loads the Scryfall card cache from the `cached_cards` table
    into memory; if the table is empty and `data/card_cache.json` still exists, migrates it once. See
    `docs/caching.md` for details.
 
@@ -127,7 +127,7 @@ SQLite in September 2026 (1.6.0) — see `docs/caching.md` for how it works
 | `card_name` | String(200) | PK | Card name, lowercase |
 | `data` | Text | NOT NULL | Full Scryfall dict, serialized as JSON (base data + `artisan_legal` + `artisan_legal_checked_at`) |
 
-No ORM relationship: managed directly by `utils/card_cache.py`, not by a dedicated repository (the cache's
+No ORM relationship: managed directly by `features/deck_validation/card_cache.py`, not by a dedicated repository (the cache's
 access pattern — an in-memory dict with dirty tracking — differs from the other CRUD-oriented repositories).
 
 ### Enums
@@ -195,7 +195,7 @@ Generic repository with basic CRUD:
 | `get_existing_pairings(tournament_id)` | `(player1_id, player2_id)` pairs already played, byes excluded (anti-rematch) |
 | `get_current_round(tournament_id)` | Highest round number, 0 if none |
 
-### BanlistRepository (`repositories/banlist_repository.py`)
+### BanlistRepository (`features/deck_validation/banlist_repository.py`)
 
 | Method | Description |
 |---|---|

@@ -5,18 +5,18 @@ from io import BytesIO
 import aiohttp
 import discord
 
-from cogs.deck_validation.models import ArtisanCard, DeckEntry, DeckValidationResult
-from cogs.deck_validation.validators import check_banlist
 from database import get_session
-from repositories.banlist_repository import BanlistRepository
-from utils.arena_overrides import get_override_rarity
-from utils.card_cache import (
+from features.deck_validation.arena_overrides import get_override_rarity
+from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.card_cache import (
     get_cached_card,
     is_artisan_legal_stale,
     mark_artisan_legal,
     set_cached_card,
 )
-from utils.deck_image_generator import DeckImageGenerator
+from features.deck_validation.image import DeckImageGenerator
+from features.deck_validation.models import ArtisanCard, DeckEntry, DeckValidationResult
+from features.deck_validation.validators import check_banlist
 
 _COLLECTION_URL = "https://api.scryfall.com/cards/collection"
 
@@ -105,7 +105,7 @@ class ArtisanService:
 
         Called by /banlist_aggiungi and /banlist_rimuovi: since the cache is
         shared at module level, the effect is immediately visible to the
-        other ArtisanService instance too (cogs/deck_validation).
+        other ArtisanService instance too (features/deck_validation/cog.py).
         """
         invalidate_banlist_cache()
         return await self._load_banlist()
@@ -262,8 +262,8 @@ class ArtisanService:
             )
 
     async def _publish_result(self, interaction, result: DeckValidationResult, deck_image, logger, member):
-        from cogs.deck_validation.embeds import build_result_embed
         from config.config import LOG_CHANNEL_ID, PUBLIC_DECK_CHANNEL_ID
+        from features.deck_validation.embeds import build_result_embed
 
         embed = build_result_embed(result, member)
 

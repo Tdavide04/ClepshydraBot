@@ -1,7 +1,7 @@
 import asyncio
 import json
 
-import utils.card_cache as card_cache
+import features.deck_validation.card_cache as card_cache
 from database import close_db, get_session, init_db
 from database.models import CachedCard
 

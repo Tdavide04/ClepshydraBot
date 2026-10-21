@@ -89,7 +89,7 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 | Command | File | Line |
 |---|---|---|
 | `/presentati` | `cogs/presentation/cog.py` | 47 |
-| `/artisan_check_deck` | `cogs/deck_validation/__init__.py` | 59 |
+| `/artisan_check_deck` | `features/deck_validation/cog.py` | 59 |
 | `/crea_torneo` | `cogs/tournament_system/cog.py` | 561 |
 | `/avvia_torneo` | `cogs/tournament_system/cog.py` | 570 |
 | `/torneo_next_turn` | `cogs/tournament_system/cog.py` | 833 |
@@ -105,13 +105,13 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 | `/turni` | `cogs/tournament_system/cog.py` | 1336 |
 | `/lista_tornei` | `cogs/tournament_system/cog.py` | 940 |
 | `/leaderboard` | `cogs/tournament_system/cog.py` | 1345 |
-| `/banlist` | `cogs/deck_validation/__init__.py` | 63 |
-| `/banlist_aggiungi` | `cogs/deck_validation/__init__.py` | 103 |
-| `/banlist_rimuovi` | `cogs/deck_validation/__init__.py` | 126 |
-| `/forced_rarity_refresh` | `cogs/spg_override_updater.py` | 27 |
+| `/banlist` | `features/deck_validation/cog.py` | 63 |
+| `/banlist_aggiungi` | `features/deck_validation/cog.py` | 103 |
+| `/banlist_rimuovi` | `features/deck_validation/cog.py` | 126 |
+| `/forced_rarity_refresh` | `features/deck_validation/spg_cog.py` | 27 |
 | `/forced_event_schedule_check` | `features/monitors/event_schedule_cog.py` | 26 |
 | `/forced_ban_announcement_check` | `features/monitors/ban_announcement_cog.py` | 26 |
-| `/invalidate_card_cache` | `cogs/spg_override_updater.py` | 87 |
+| `/invalidate_card_cache` | `features/deck_validation/spg_cog.py` | 87 |
 
 ---
 

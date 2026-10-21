@@ -1,13 +1,13 @@
 import os
 
 # services/__init__.py eagerly imports TournamentService, which in turn needs
-# a populated config.config (GUILD_ID, channels, etc.). cogs/deck_validation
+# a populated config.config (GUILD_ID, channels, etc.). features/deck_validation
 # imports database (-> database.engine -> config.config) too, so any test in
 # this folder drags in the same Discord configuration. pytest loads
 # conftest.py before every test module in the folder, so these values are
-# guaranteed to be in sys.environ before any `import cogs.deck_validation...`
+# guaranteed to be in sys.environ before any `import features.deck_validation...`
 # can fail. They must stay BEFORE every application import below
-# (database.engine, utils.card_cache, cogs.deck_validation...), otherwise
+# (database.engine, features.deck_validation...), otherwise
 # those imports fail themselves the moment this conftest.py is loaded.
 # Same content as tests/tournament/conftest.py: duplicated on purpose so this
 # folder stays runnable in isolation (`pytest tests/deck_validation -v`), not
@@ -25,8 +25,8 @@ os.environ.setdefault("FINAL_ROLE", "Planeswalker")
 import pytest  # noqa: E402
 
 import database.engine as db_engine  # noqa: E402
-import utils.card_cache as card_cache  # noqa: E402
-from cogs.deck_validation.service import invalidate_banlist_cache  # noqa: E402
+import features.deck_validation.card_cache as card_cache  # noqa: E402
+from features.deck_validation.service import invalidate_banlist_cache  # noqa: E402
 
 # Fixtures shared by test_artisan_service.py and test_card_cache.py: they live
 # here in conftest.py, not duplicated in each file, because pytest makes them
@@ -45,7 +45,7 @@ def isolated_db(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_card_cache(tmp_path, monkeypatch):
-    """Resets utils.card_cache's module state before every test.
+    """Resets features.deck_validation.card_cache's module state before every test.
 
     CACHE_PATH points to a nonexistent file so load_cache() (called by
     init_db() inside isolated_db/run_with_db) doesn't try to migrate the

@@ -146,9 +146,9 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Area | Code | Topic doc |
 |---|---|---|
 | Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
-| Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
-| Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
-| Scryfall card cache, SPG overrides | `utils/card_cache.py`, `utils/arena_overrides.py` | `docs/caching.md` |
+| Artisan deck validation | `features/deck_validation/` | `docs/deck-validation.md` |
+| Banlist | `features/deck_validation/` (`banlist_repository.py`, `validators.py`, `cog.py`) | `docs/banlist-system.md` |
+| Scryfall card cache, SPG overrides | `features/deck_validation/card_cache.py`, `features/deck_validation/arena_overrides.py` | `docs/caching.md` |
 | Wizards monitors (Event Schedule, Banned and Restricted, calendar image) | `features/monitors/` | `docs/caching.md` |
 | Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
@@ -157,8 +157,8 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Roadmap (project structure refactor) | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
 
-`cogs/deck_validation/` was named `cogs/tournament/` before 1.3.1, and older CHANGELOG entries still use
-that name.
+`features/deck_validation/` was `cogs/deck_validation/` until the phase 2 restructure and `cogs/tournament/`
+before 1.3.1; older CHANGELOG entries use those names.
 
 ### Invariants
 
@@ -185,9 +185,12 @@ listed in the map.
   which logs a `WARN`.
 - **Anything posted to `COMUNICATION_CHANNEL_ID` is a dedicated community embed** with no staff detail.
   Note the spelling of the constant. `LOG_CHANNEL_ID` has no `_TEST` variant.
-- **Inside `utils/`, `core/` and `features/monitors/` (except the `core/logger.py` extension),
-  `config.config` is imported inside the function that uses it**, never at module top, so these modules stay
-  importable in tests without a `.env`. Examples: `core/permissions.py` and the two monitors.
+- **A logic module that must import without a `.env` imports `config.config` inside the function that uses
+  it**, never at module top: `config.config` raises at import time when the variables are missing. The same
+  goes for `database`, because `database/engine.py` imports `config.config` at module top. Examples:
+  `core/permissions.py`, the two monitors, the card cache and the SPG overrides. Modules that import
+  `database` at top (`ArtisanService`, `TournamentService`, the cogs) load `config.config` through it, so
+  their test folder's `conftest.py` must seed the variables (see "Writing tests").
 - **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
   systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 
@@ -196,13 +199,14 @@ listed in the map.
 - **`pytest.ini` sets `pythonpath = .`**, so the bare `pytest tests/` command works the way CI runs it.
 - **Each `tests/*/conftest.py` seeds its own env vars**, duplicated on purpose. The seeding must run
   before any application import in that file: `services/__init__.py`, `database.engine` and
-  `cogs.deck_validation.service` all load `config.config` at import time.
+  `features.deck_validation.service` all load `config.config` at import time (the last one through
+  `database`).
 - **There is no `pytest-asyncio`.** Each async scenario runs inside one `asyncio.run()` against a temp
   SQLite DB, because aiosqlite binds connections to the loop that created them.
 - **Mock only at the network edge**, for example by replacing `_post_with_retry`/`_get_with_retry` on the
   `ArtisanService` instance. Keep the DB real.
 - **`tests/deck_validation/conftest.py` provides `isolated_db`, `isolated_card_cache` and
-  `isolated_banlist_cache`.** They reset `utils.card_cache`'s module globals (`_card_cache`, `_loaded`,
+  `isolated_banlist_cache`.** They reset `features.deck_validation.card_cache`'s module globals (`_card_cache`, `_loaded`,
   `_dirty_upserts`, `_dirty_deletes`). Use them in any test that touches the card cache.
 
 ## Docs conventions

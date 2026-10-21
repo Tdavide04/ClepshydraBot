@@ -85,6 +85,15 @@ ClepshydraBot/
 │   ├── console.py           # Timestamped console log()
 │   └── permissions.py       # @is_admin() check
 ├── features/
+│   ├── deck_validation/     # Artisan deck validation, banlist, Scryfall cache, SPG overrides
+│   │   ├── cog.py           # /artisan_check_deck + banlist commands
+│   │   ├── spg_cog.py       # /forced_rarity_refresh, /invalidate_card_cache
+│   │   ├── service.py       # ArtisanService
+│   │   ├── validators.py, models.py, embeds.py
+│   │   ├── banlist_repository.py
+│   │   ├── card_cache.py
+│   │   ├── arena_overrides.py
+│   │   └── image.py         # Deck showcase image
 │   └── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
 │       ├── sitemap.py       # Shared sitemap fetch and newest-page selection
 │       ├── event_schedule.py
@@ -94,9 +103,7 @@ ClepshydraBot/
 │       └── ban_announcement_cog.py
 ├── cogs/
 │   ├── presentation/        # User presentation wizard
-│   ├── deck_validation/     # Artisan deck validation
-│   ├── tournament_system/   # Swiss tournaments (disabled, not loaded)
-│   └── spg_override_updater.py
+│   └── tournament_system/   # Swiss tournaments (disabled, not loaded)
 ├── services/                # Business logic
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
@@ -104,17 +111,13 @@ ClepshydraBot/
 │   └── rating.py            # Glicko-2
 ├── repositories/            # Data access layer
 │   ├── user_repository.py
-│   ├── tournament_repository.py
-│   └── banlist_repository.py
+│   └── tournament_repository.py
 ├── database/                # SQLAlchemy ORM
 │   ├── engine.py
 │   └── models.py
-├── utils/                   # Utilities
-│   ├── card_cache.py
-│   ├── arena_overrides.py
+├── utils/                   # Tournament helpers, waiting to move
 │   ├── tournament_embeds.py
-│   ├── tournament_logic.py
-│   └── deck_image_generator.py
+│   └── tournament_logic.py
 ├── config/
 │   └── config.py
 ├── assets/backgrounds/      # MTG color-themed backgrounds

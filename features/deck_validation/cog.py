@@ -3,12 +3,12 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 
-from cogs.deck_validation.service import ArtisanService
-from cogs.deck_validation.validators import parse_decklist
 from core.interaction_errors import ReportingModal
 from core.permissions import is_admin
 from database import get_session
-from repositories.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.service import ArtisanService
+from features.deck_validation.validators import parse_decklist
 
 
 class ArtisanDeckCheckModal(ReportingModal, title="Controllo Mazzo Artisan"):

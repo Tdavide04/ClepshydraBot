@@ -47,7 +47,7 @@ async def init_db():
     await _migrate_banlist()
     await _migrate_schema()
 
-    from utils.card_cache import load_cache
+    from features.deck_validation.card_cache import load_cache
 
     await load_cache()
 
@@ -57,7 +57,7 @@ async def _migrate_banlist():
     if not os.path.exists(BANLIST_FILE):  # noqa: ASYNC240
         return
 
-    from repositories.banlist_repository import BanlistRepository
+    from features.deck_validation.banlist_repository import BanlistRepository
 
     session = get_session()
     if session is None:

@@ -5,6 +5,8 @@ from discord.ext import commands
 
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
 from database import close_db, init_db
+from features.deck_validation.arena_overrides import periodic_spg_refresh_loop
+from features.deck_validation.card_cache import periodic_save_loop, save_cache
 from features.monitors.ban_announcement import (
     get_latest_known_ban_announcement,
     periodic_ban_announcement_check_loop,
@@ -13,8 +15,6 @@ from features.monitors.event_schedule import (
     get_latest_known_event_schedule,
     periodic_event_schedule_check_loop,
 )
-from utils.arena_overrides import periodic_spg_refresh_loop
-from utils.card_cache import periodic_save_loop, save_cache
 
 # Every extension the bot has, in load order. Listed by hand rather than discovered from the cogs/ folder, so
 # that "which features exist" doesn't depend on the folder layout; tests/core/test_extensions.py fails if an
@@ -23,8 +23,8 @@ EXTENSIONS = [
     "core.logger",
     "core.error_handler",
     "cogs.presentation",
-    "cogs.deck_validation",
-    "cogs.spg_override_updater",
+    "features.deck_validation.cog",
+    "features.deck_validation.spg_cog",
     "features.monitors.event_schedule_cog",
     "features.monitors.ban_announcement_cog",
     "cogs.tournament_system",

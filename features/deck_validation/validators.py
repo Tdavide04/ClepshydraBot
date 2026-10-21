@@ -1,6 +1,6 @@
 import re
 
-from cogs.deck_validation.models import DeckEntry
+from features.deck_validation.models import DeckEntry
 
 
 def parse_decklist(raw: str) -> tuple[list[DeckEntry], int, str]:

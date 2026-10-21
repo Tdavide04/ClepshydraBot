@@ -193,10 +193,17 @@ included) are unchanged, so `get_cog()` lookups and the log channel are unaffect
 
 ## Step 6 — `features/deck_validation/`
 
-**Status:** todo · `refactor(deck)`
+**Status:** done (2026-10-21) · `refactor(deck)` · bump with step 9
 
 The current `cogs/deck_validation/` package plus the deck image generator, the card cache, the SPG overrides,
 the banlist repository and `spg_override_updater` (`/forced_rarity_refresh`, `/invalidate_card_cache`).
+
+Done: `cog.py` (was `cogs/deck_validation/__init__.py`), `spg_cog.py` (`cogs/spg_override_updater.py`),
+`image.py` (`utils/deck_image_generator.py`), plus `service.py`, `validators.py`, `models.py`, `embeds.py`,
+`card_cache.py`, `arena_overrides.py` and `banlist_repository.py`. The extensions are
+`features.deck_validation.cog` and `features.deck_validation.spg_cog`. `repositories/__init__.py` no longer
+re-exports `BanlistRepository`. The config-import invariant in `CLAUDE.md` now says exactly which modules
+load `config.config` at import time, and why (option A, decided 2026-10-21).
 
 ## Step 7 — `features/onboarding/`
 
@@ -254,6 +261,13 @@ methods returning `ServiceResult`, test first, and keep the `reload_banlist()` i
 - **Onboarding state is in memory** (`PRESENTATION_DATA_STORE`): a restart mid-presentation loses it.
   Acceptable for now, documented in `docs/onboarding.md`.
 - **Coverage threshold in CI.** None yet; reconsider once the cogs are thinner.
+- **`database/engine.py` reads `DB_PATH` at import time** (option B, 2026-10-21): reading it inside the
+  function that creates the engine would make `ArtisanService` and the cogs importable without a `.env`.
+  Small behaviour change, test first.
+- **`database/` imports up into a feature**: `init_db()` lazily imports `load_cache()` and
+  `BanlistRepository` from `features/deck_validation/` to load the card cache and seed the banlist. It
+  already did before the move (into `utils/` and `repositories/`); the move only made it visible. A startup
+  hook owned by the feature would invert it.
 
 # Decisions (2026-10-21)
 
