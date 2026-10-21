@@ -144,7 +144,8 @@ are pinned with `==` to the versions running in production, read with `pip freez
 the VM; `requirements.txt` is the source of truth for the exact versions. Transitive dependencies (yarl,
 multidict, greenlet...) are not pinned: they follow the direct pins' own requirements, so a fresh install can
 get a newer patch of them than production has. `requirements-dev.txt` pins `pytest`, `ruff` and `pre-commit`
-too. The target Python version is 3.12 (`.python-version`, CI, `ruff.toml`).
+too. The target Python version is 3.12: `.python-version`, which both CI jobs read (`python-version-file`), and
+ruff's `target-version` in `pyproject.toml`.
 
 To upgrade a dependency: change one pin, `pip install -r requirements-dev.txt`, run the tests, then deploy
 and update the VM's venv with the same `pip install -r requirements.txt`.
@@ -163,8 +164,8 @@ Installation (development, adds `pytest` and `ruff`):
 pip install -r requirements-dev.txt
 ```
 
-`pytest.ini` (`pythonpath = .`) explicitly adds the repo root to `sys.path`: without it, the bare
-`pytest tests/` invocation (used by CI, unlike `python -m pytest`, which adds the cwd automatically) fails
+`pyproject.toml` (`[tool.pytest.ini_options]`, `pythonpath = ["."]`) explicitly adds the repo root to
+`sys.path`: without it, the bare `pytest tests/` invocation (used by CI, unlike `python -m pytest`, which adds the cwd automatically) fails
 with `ModuleNotFoundError` on the top-level packages (`core`, `features`, `database`), because there is no
 chain of `tests/__init__.py` up to the root.
 
@@ -224,7 +225,7 @@ so both were removed in October 2026: see `docs/adr/0005-unused-deploy-alternati
 - `pytest` on every push and PR — **blocking gate**, with a coverage report (`pytest-cov`,
   `--cov-report=term-missing` on `core`, `features`, `database`) since 3.6.7;
   no minimum threshold yet
-- `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
+- `ruff` lint (`[tool.ruff]` in `pyproject.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in 1.7.1 (at the time partly by excluding `legacy/`, later
   removed from the repository — see `CHANGELOG.md`)
 - `ruff format --check .` (line length 110, Markdown excluded) — **blocking gate** since 3.6.6. The

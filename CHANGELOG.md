@@ -14,6 +14,24 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## Unreleased
+
+Nothing changes for the running bot (`build`, no `VERSION` bump).
+
+### Changed
+- One `pyproject.toml` for the tool configuration: `[tool.ruff]` (was `ruff.toml`) and
+  `[tool.pytest.ini_options]` (was `pytest.ini`). No `[project]` table: the bot isn't an installable package,
+  and dependencies stay pinned in `requirements*.txt`.
+- Both CI jobs take the Python version from `.python-version` (`python-version-file`) instead of a hardcoded
+  `"3.12"`.
+
+Verified: ruff reads the same settings from `pyproject.toml` (identical enabled-rule list, line length,
+target version, Markdown excluded from the formatter); a bare `pytest tests/` without the repo root on
+`sys.path` passes with the new file and fails to collect without it; full suite, ruff, pre-commit.
+
+### Docs
+- `CLAUDE.md`, `docs/infrastructure.md`, ADR-0002, ADR-0003, `README.md` structure, `docs/roadmap.md`.
+
 ## 4.0.4 (2026-10-21)
 
 ### Fixed

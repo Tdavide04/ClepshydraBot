@@ -23,8 +23,8 @@ Discovery of 2026-10-20. The project already had good habits, but only by conven
 2. **Conventional Commits** with project scopes and an English subject (ADR-0003); the type decides the
    version bump (see `CLAUDE.md` → "Conventional Commits").
 3. **Automated gates**: the `pre-commit` framework (ruff check, ruff format, commit message check) and the same
-   checks in CI. The lint set only grows: a new rule family joins `ruff.toml` only once the code is already
-   clean for it.
+   checks in CI. The lint set only grows: a new rule family joins the ruff config (`pyproject.toml`; `ruff.toml`
+   until 4.0.4) only once the code is already clean for it.
 4. **A lean `CLAUDE.md`**: it holds rules, commands, a map and invariants. Historical rationale goes into ADRs
    in `docs/adr/` or into the topic documents in `docs/`.
 

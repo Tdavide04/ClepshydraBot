@@ -117,6 +117,7 @@ ClepshydraBot/
 ├── data/                    # Runtime data (db, monitor state, SPG overrides), not in git
 ├── seeds/                   # Tracked starting data: banlist.txt, arena_rarity.json
 ├── main.py
+├── pyproject.toml           # Tool config: ruff, pytest
 └── requirements.txt
 ```
 

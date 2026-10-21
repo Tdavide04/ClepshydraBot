@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       - run: pip install -r requirements-dev.txt
       # Coverage is a report only for now (since 3.6.7): no --cov-fail-under threshold yet.
       - run: >-
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       # Same pre-commit version as requirements-dev.txt, without installing the bot's dependencies.
       # The hooks (ruff check, ruff format, whitespace, YAML, private keys) come from .pre-commit-config.yaml;
       # a hook that fixes a file fails the job and prints the diff.

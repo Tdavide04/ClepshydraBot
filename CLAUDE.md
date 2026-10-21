@@ -55,7 +55,7 @@ in the CHANGELOG entry.
 - **DRY applies to knowledge, not just code.** Every fact has one owning doc, and this file points to it
   rather than repeating it. Code example: `features/monitors/sitemap.py`, extracted once two monitors had
   duplicated it.
-- **No broken windows.** The lint set only grows. A rule family joins `ruff.toml` once the code is clean
+- **No broken windows.** The lint set only grows. A rule family joins `[tool.ruff.lint]` in `pyproject.toml` once the code is clean
   for it. Every `# noqa` names the rule and gives a reason.
 - **Tracer bullets.** Build a new feature as a thin end-to-end slice first: command → service →
   repository → test. Then widen it.
@@ -133,7 +133,8 @@ python -m ruff format .                       # CI runs `ruff format --check .`
 pre-commit run --all-files                    # what the CI lint job runs
 ```
 
-Target Python is 3.12 (CI, `ruff.toml`, production venv).
+Target Python is 3.12: `.python-version` (read by CI), ruff's `target-version` in `pyproject.toml`, the
+production venv.
 
 ## Architecture map
 
@@ -199,7 +200,8 @@ listed in the map.
 
 ### Writing tests
 
-- **`pytest.ini` sets `pythonpath = .`**, so the bare `pytest tests/` command works the way CI runs it.
+- **`pyproject.toml` sets `pythonpath = ["."]`** (`[tool.pytest.ini_options]`), so the bare `pytest tests/`
+  command works the way CI runs it.
 - **Each `tests/*/conftest.py` seeds its own env vars**, duplicated on purpose. The seeding must run
   before any application import in that file: `database.engine`, the cogs and the services load
   `config.config` at import time (the services through `database`).

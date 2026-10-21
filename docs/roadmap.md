@@ -265,7 +265,7 @@ reloads it. Hence `fix`, not `refactor`.
 
 ## Step 11 — Root configuration (optional)
 
-**Status:** todo · `build` + `ci` · no bump
+**Status:** done (2026-10-21) · `build` · no bump (Unreleased)
 
 - Move the `ruff.toml` and `pytest.ini` settings, plus the coverage config, into one `pyproject.toml`. This
   is tidiness only: the bot runs as `python main.py`, so the `src/` layout that PyPA recommends for
@@ -274,6 +274,15 @@ reloads it. Hence `fix`, not `refactor`.
   version has one owner besides ruff's `target-version`.
 - `requirements*.txt` stay: for a deployed application with pinned versions they are the right tool, and
   pip and CI already read them.
+
+Done: `pyproject.toml` holds `[tool.ruff]` and `[tool.pytest.ini_options]` (no `[project]` table, since the
+bot isn't an installable package); `ruff.toml` and `pytest.ini` are gone. Verified that ruff reads the same
+settings (identical enabled-rule list, line length 110, target 3.12, Markdown still excluded from the
+formatter) and that a bare `pytest tests/` without the repo root on `sys.path` passes with the new file and
+fails to collect without it. Both CI jobs read `.python-version` (`python-version-file`, an input of
+`actions/setup-python@v5`, checked in its `action.yml`). The coverage config stays on the CI command line.
+No bump: `build` and `ci` changes that leave the running bot unchanged don't move `VERSION` (`CLAUDE.md`
+table); the entry waits under Unreleased.
 
 ---
 
