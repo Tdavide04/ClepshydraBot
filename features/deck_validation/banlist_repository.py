@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from core.repository_base import BaseRepository
 from database.models import BannedCard
@@ -16,9 +16,16 @@ class BanlistRepository(BaseRepository[BannedCard]):
         card = BannedCard(card_name=card_name.strip(), format=format)
         return await self.add(card)
 
+    async def contains(self, card_name: str) -> bool:
+        """Case-insensitive, like the deck check, which compares lowercased names."""
+        result = await self.session.execute(
+            select(BannedCard.id).where(func.lower(BannedCard.card_name) == card_name.strip().lower())
+        )
+        return result.first() is not None
+
     async def remove_card(self, card_name: str) -> bool:
         result = await self.session.execute(
-            delete(BannedCard).where(BannedCard.card_name == card_name.strip())
+            delete(BannedCard).where(func.lower(BannedCard.card_name) == card_name.strip().lower())
         )
         await self.session.commit()
         return result.rowcount > 0

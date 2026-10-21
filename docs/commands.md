@@ -106,8 +106,8 @@ The "Line" column points at each command's `async def`: recompute it whenever a 
 | `/lista_tornei` | `features/tournaments/cog.py` | 940 |
 | `/leaderboard` | `features/tournaments/cog.py` | 1345 |
 | `/banlist` | `features/deck_validation/cog.py` | 63 |
-| `/banlist_aggiungi` | `features/deck_validation/cog.py` | 103 |
-| `/banlist_rimuovi` | `features/deck_validation/cog.py` | 126 |
+| `/banlist_aggiungi` | `features/deck_validation/cog.py` | 96 |
+| `/banlist_rimuovi` | `features/deck_validation/cog.py` | 112 |
 | `/forced_rarity_refresh` | `features/deck_validation/spg_cog.py` | 27 |
 | `/forced_event_schedule_check` | `features/monitors/event_schedule_cog.py` | 26 |
 | `/forced_ban_announcement_check` | `features/monitors/ban_announcement_cog.py` | 26 |

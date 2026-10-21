@@ -251,10 +251,17 @@ Done: the sweep fixed the `.gitignore` comments, a `docs/caching.md` module path
 
 ## Step 10 — Banlist commands through a service
 
-**Status:** todo · `refactor(banlist)` · PATCH
+**Status:** done (2026-10-21, 4.0.4) · `fix(banlist)` · PATCH
 
 `/banlist`, `/banlist_aggiungi` and `/banlist_rimuovi` open a DB session in the cog. Move that into service
 methods returning `ServiceResult`, test first, and keep the `reload_banlist()` invalidation in one place.
+
+Done as `BanlistService` (`features/deck_validation/banlist_service.py`). The behaviour was moved first,
+unchanged, and the new tests then failed on two bugs found while reading the cog, which this step fixes:
+a duplicate raised `IntegrityError` (`card_name` is `UNIQUE`) and staff got the generic error, and removal
+matched the stored name exactly while `/banlist` shows names lowercased. Blank names are refused too.
+`ArtisanService.reload_banlist()` is gone: `BanlistService` invalidates the cache and the next validation
+reloads it. Hence `fix`, not `refactor`.
 
 ## Step 11 — Root configuration (optional)
 

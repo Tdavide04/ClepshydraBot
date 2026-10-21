@@ -14,6 +14,30 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## 4.0.4 (2026-10-21)
+
+### Fixed
+- `/banlist_aggiungi` on a card already banned crashed with `IntegrityError` (`card_name` is `UNIQUE`), and
+  staff got the generic error message; typed in a different case, the duplicate slipped past the constraint
+  and was stored. It now answers "Carta **...** è già nella banlist.", whatever the case. A blank name is
+  refused.
+- `/banlist_rimuovi` matched the stored name exactly, while `/banlist` shows names lowercased: removing a
+  card as listed failed with "non trovata". The match is now case-insensitive.
+
+### Refactored
+- The three banlist commands go through `BanlistService` (`features/deck_validation/banlist_service.py`),
+  which returns a `ServiceResult` the cog sends as is; the cog no longer opens DB sessions. It is the one
+  place that invalidates the shared banlist cache: `ArtisanService.reload_banlist()` is gone, and the next
+  validation reloads the banlist.
+
+Verified: new `tests/deck_validation/test_banlist_service.py` (the duplicate, blank-name and case cases fail
+on 4.0.3), the shared-cache regression test now going through `BanlistService`, full suite, ruff. Not
+verified live: the three commands on Discord (a `TEST_MODE` run).
+
+### Docs
+- `docs/banlist-system.md`, `docs/caching.md`, `docs/database.md`, `docs/deck-validation.md`,
+  `docs/commands.md` (lines), `README.md`, `CLAUDE.md` (map, banlist cache invariant), `docs/roadmap.md`.
+
 ## 4.0.3 (2026-10-21)
 
 The code is organized by feature (`docs/roadmap.md`, phase 2). Nothing changes for members or staff: the same

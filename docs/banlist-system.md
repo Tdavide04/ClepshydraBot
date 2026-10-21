@@ -86,7 +86,8 @@ class BannedCard(Base):
 |---|---|
 | `get_all_for_format(format="Artisan")` | Returns a `set[str]` with every (lowercase) banned card name for the format |
 | `add_card(card_name, format="Artisan")` | Adds a card to the banlist |
-| `remove_card(card_name)` | Removes a card by exact name, returns `True/False` |
+| `contains(card_name)` | Whether the card is banned, case-insensitive |
+| `remove_card(card_name)` | Removes a card, case-insensitive, returns `True/False` |
 | `count()` | Total number of banned cards |
 | `import_from_file(path)` | Bulk import from a text file (only if the table is empty) |
 
@@ -127,8 +128,15 @@ and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
 | Command | Description | Permissions |
 |---|---|---|
 | `/banlist` | Shows every banned card in a paginated embed (30 per field) | Public |
-| `/banlist_aggiungi <carta>` | Adds a card to the DB | `@is_admin()` (`Staff` role) |
-| `/banlist_rimuovi <carta>` | Removes a card from the DB | `@is_admin()` |
+| `/banlist_aggiungi <carta>` | Adds a card to the DB; refuses a blank name and a card already banned (any case) | `@is_admin()` (`Staff` role) |
+| `/banlist_rimuovi <carta>` | Removes a card from the DB, matching the name in any case | `@is_admin()` |
+
+The cog only builds the embed and logs `BANLIST_ADD`/`BANLIST_REMOVE` on success. The work is in
+`BanlistService` (`features/deck_validation/banlist_service.py`, since 4.0.4): `list_cards()` returns the
+sorted names (`None` when the DB isn't initialized), `add_card()` and `remove_card()` return a
+`ServiceResult` whose `message` the cog sends as is. Before 4.0.4 the cog opened DB sessions itself, a
+duplicate raised `IntegrityError` (`card_name` is `UNIQUE`) and reached staff as the generic error, and
+removal matched the stored name exactly, so removing a card as `/banlist` shows it (lowercased) failed.
 
 ### 8. Result Embed — `features/deck_validation/embeds.py`
 
@@ -143,11 +151,10 @@ The banlist is cached in memory in the module variable `_banlist_cache: set[str]
 `features/deck_validation/service.py`, shared by every `ArtisanService` instance. It is loaded from the DB on the
 first validation (or after an invalidation) and kept in memory until invalidated.
 
-`ArtisanService.reload_banlist()` forces the refresh: `/banlist_aggiungi` and `/banlist_rimuovi` call it right
-after writing to the DB. Since the cache is shared at module level (instead of a per-instance attribute), the
-invalidation is immediately visible to **both** `ArtisanService` instances the bot creates
-(`features/tournaments/cog.py`, when that cog is loaded, and `features/deck_validation/cog.py`) — not only the one the method is called
-on.
+`BanlistService` calls `invalidate_banlist_cache()` after every successful add or remove, and the next
+validation reloads the banlist from the DB. Since the cache is shared at module level (instead of a
+per-instance attribute), the invalidation is immediately visible to **both** `ArtisanService` instances the
+bot creates (`features/tournaments/cog.py`, when that cog is loaded, and `features/deck_validation/cog.py`).
 
 ---
 
@@ -202,8 +209,8 @@ documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and
    must list only the cards actually stored in the DB, not synthetic variants.
 
 2. **Live updates** — fixed. `self._banlist` in `ArtisanService` wasn't invalidated after add/remove via
-   slash command. `/banlist_aggiungi` and `/banlist_rimuovi` now call `ArtisanService.reload_banlist()` right
-   after writing to the DB (see `features/deck_validation/cog.py`). The cache is module-level
+   slash command. `/banlist_aggiungi` and `/banlist_rimuovi` now invalidate it after writing to the DB
+   (`BanlistService`, since 4.0.4; `ArtisanService.reload_banlist()` before). The cache is module-level
    (`_banlist_cache`), so the invalidation also covers the second `ArtisanService` instance used by
    `features/deck_validation/cog.py` — a first attempt with a per-instance cache would have left that second
    instance stale.

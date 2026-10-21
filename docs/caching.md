@@ -440,7 +440,7 @@ instance.
 |---|---|
 | Loading | First validation after startup (or after an invalidation): `await BanlistRepository.get_all_for_format()`, then expanded with `_expand_double_faced()` (adds the front half alone of double-faced cards — see `docs/banlist-system.md` "Known Issues") |
 | Validity | Until the next explicit invalidation |
-| Invalidation | `ArtisanService.reload_banlist()` (wrapper over `invalidate_banlist_cache()`), called by `/banlist_aggiungi` and `/banlist_rimuovi` right after writing to the DB — the effect is visible from every instance, not only the one it is called on |
+| Invalidation | `invalidate_banlist_cache()`, called by `BanlistService` after every successful `/banlist_aggiungi` or `/banlist_rimuovi`; the next validation reloads it. The effect is visible from every instance |
 
 ---
 
@@ -452,4 +452,4 @@ instance.
 | Rarity overrides | `arena_rarity_data.json` | On update | Explicit (`invalidate_override_cache()`) |
 | Arena Event Schedule | `arena_event_schedule_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_event_schedule_check` (ignores `lastmod`) |
 | Banned and Restricted | `ban_announcement_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_ban_announcement_check` (ignores `lastmod`) |
-| Banlist | `_banlist_cache` (module) | Shared across instances | Explicit (`reload_banlist()` after add/remove) |
+| Banlist | `_banlist_cache` (module) | Shared across instances | Explicit (`BanlistService` after add/remove) |

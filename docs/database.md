@@ -201,7 +201,8 @@ Generic repository with basic CRUD:
 |---|---|
 | `get_all_for_format(format)` | Set of banned cards (lowercase) |
 | `add_card(card_name, format)` | Adds a card |
-| `remove_card(card_name)` | Removes by exact name |
+| `contains(card_name)` | Whether the card is banned, case-insensitive |
+| `remove_card(card_name)` | Removes a card, case-insensitive |
 | `count()` | Banlist size |
 | `import_from_file(path)` | Bulk import from txt (only if the table is empty) |
 

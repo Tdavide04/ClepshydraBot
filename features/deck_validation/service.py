@@ -42,7 +42,8 @@ class ScryfallUnavailable(Exception):
 
 # Module-level banlist cache: the bot creates two separate ArtisanService
 # instances (the tournament cog and the deck validation cog), which must see the same
-# banlist, explicit invalidations after add/remove included. A per-instance
+# banlist, explicit invalidations after add/remove included (BanlistService
+# calls invalidate_banlist_cache() after every change). A per-instance
 # self._banlist attribute (as before) left stale the instance not used by the
 # command that made the change.
 _banlist_cache: set[str] | None = None
@@ -98,17 +99,6 @@ class ArtisanService:
             return _banlist_cache
         finally:
             await session.close()
-
-    async def reload_banlist(self) -> set[str]:
-        """Invalidates the module cache and reloads the banlist from the DB
-        right away.
-
-        Called by /banlist_aggiungi and /banlist_rimuovi: since the cache is
-        shared at module level, the effect is immediately visible to the
-        other ArtisanService instance too (features/deck_validation/cog.py).
-        """
-        invalidate_banlist_cache()
-        return await self._load_banlist()
 
     async def validate_deck(
         self,

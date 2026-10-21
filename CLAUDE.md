@@ -148,7 +148,7 @@ never imports a feature. A feature imports another feature only from a disabled 
 |---|---|---|
 | Swiss tournaments (disabled) | `features/tournaments/` | `docs/tournaments.md` |
 | Artisan deck validation | `features/deck_validation/` | `docs/deck-validation.md` |
-| Banlist | `features/deck_validation/` (`banlist_repository.py`, `validators.py`, `cog.py`) | `docs/banlist-system.md` |
+| Banlist | `features/deck_validation/` (`banlist_service.py`, `banlist_repository.py`, `validators.py`) | `docs/banlist-system.md` |
 | Scryfall card cache, SPG overrides | `features/deck_validation/card_cache.py`, `features/deck_validation/arena_overrides.py` | `docs/caching.md` |
 | Wizards monitors (Event Schedule, Banned and Restricted, calendar image) | `features/monitors/` | `docs/caching.md` |
 | Onboarding | `features/onboarding/` | `docs/onboarding.md` |
@@ -179,8 +179,9 @@ listed in the map.
   crashes on every restart.
 - **Schema changes go through `_SCHEMA_MIGRATIONS` in `database/engine.py`** as a `(table, column, ddl)`
   tuple. There is no Alembic.
-- **The banlist cache is module-level and shared by both `ArtisanService` instances.** Invalidate it with
-  `reload_banlist()` and never reload a single instance.
+- **The banlist cache is module-level and shared by both `ArtisanService` instances.** Change the banlist
+  only through `BanlistService`, which calls `invalidate_banlist_cache()` after every change; never cache
+  the banlist per instance.
 - **The Wizards monitors are notification-only.** They never write to `banned_cards`. They select pages
   by the newest sitemap `lastmod`, and a parser that cannot find the expected structure returns `None`,
   which logs a `WARN`.

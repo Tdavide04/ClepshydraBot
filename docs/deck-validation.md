@@ -17,6 +17,7 @@ features/deck_validation/
 ├── validators.py         # parse_decklist(), check_banlist(), validate_counts()
 ├── service.py            # ArtisanService.validate_deck()
 ├── embeds.py             # Embed builder for validation results
+├── banlist_service.py    # BanlistService: /banlist, /banlist_aggiungi, /banlist_rimuovi
 ├── banlist_repository.py # BanlistRepository (banned_cards table)
 ├── card_cache.py         # Persistent Scryfall cache (SQLite)
 ├── arena_overrides.py    # SPG rarity overrides

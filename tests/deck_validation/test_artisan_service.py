@@ -7,6 +7,7 @@ import features.deck_validation.card_cache as card_cache
 import features.deck_validation.service as service_module
 from database import close_db, get_session, init_db
 from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_service import BanlistService
 from features.deck_validation.models import DeckEntry
 from features.deck_validation.service import ArtisanService, ScryfallUnavailable
 
@@ -190,8 +191,9 @@ class TestValidateDeck:
 
     def test_banlist_cache_shared_across_instances(self, isolated_db):
         """Regression for the 1.4.0 fix: the bot creates two separate
-        ArtisanService instances (the tournament cog and the deck validation cog). An
-        invalidation called on one must be visible from the other."""
+        ArtisanService instances (the tournament cog and the deck validation cog).
+        A banlist change must be visible from both, including the one that
+        already cached the banlist."""
 
         async def scenario():
             registering_service = ArtisanService()  # e.g. the tournament cog
@@ -209,16 +211,15 @@ class TestValidateDeck:
             first = await checking_service.validate_deck(entries, "Test Deck", 60)
             assert first.banned_cards == []
 
-            # an admin bans the card through the FIRST instance...
-            session = get_session()
-            try:
-                repo = BanlistRepository(session)
-                await repo.add_card("Later Banned")
-            finally:
-                await session.close()
-            await registering_service.reload_banlist()
+            # staff ban the card (BanlistService invalidates the shared cache)...
+            outcome = await BanlistService().add_card("Later Banned")
+            assert outcome.ok
 
-            # ...and the SECOND instance (never touched directly) must see it right away
+            # ...and both instances must see it right away, the one that had
+            # already cached the banlist included
+            assert (await registering_service.validate_deck(entries, "Test Deck", 60)).banned_cards == [
+                "Later Banned"
+            ]
             return await checking_service.validate_deck(entries, "Test Deck", 60)
 
         result = run_with_db(scenario)

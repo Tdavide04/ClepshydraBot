@@ -5,8 +5,7 @@ from discord.ext import commands
 
 from core.interaction_errors import ReportingModal
 from core.permissions import is_admin
-from database import get_session
-from features.deck_validation.banlist_repository import BanlistRepository
+from features.deck_validation.banlist_service import DB_UNAVAILABLE_MESSAGE, BanlistService
 from features.deck_validation.service import ArtisanService
 from features.deck_validation.validators import parse_decklist
 
@@ -47,6 +46,7 @@ class DeckValidationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.service = ArtisanService(bot)
+        self.banlist = BanlistService()
 
     async def _log(self, level, event, user=None, info=None):
         logger = self.bot.get_cog("Logger")
@@ -66,34 +66,27 @@ class DeckValidationCog(commands.Cog):
     ):
         await interaction.response.defer(ephemeral=False)
 
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
+        cards = await self.banlist.list_cards()
+        if cards is None:
+            return await interaction.followup.send(DB_UNAVAILABLE_MESSAGE, ephemeral=True)
+        if not cards:
+            return await interaction.followup.send("Nessuna carta bannata.", ephemeral=True)
 
-        try:
-            repo = BanlistRepository(session)
-            cards = await repo.get_all_for_format()
-            if not cards:
-                await interaction.followup.send("Nessuna carta bannata.", ephemeral=True)
-                return
-            sorted_cards = sorted(cards)
-            embed = discord.Embed(
-                title=f"\U0001f6ab Banlist ({len(sorted_cards)} carte)",
-                color=discord.Color.red(),
-                timestamp=datetime.now(),
+        embed = discord.Embed(
+            title=f"\U0001f6ab Banlist ({len(cards)} carte)",
+            color=discord.Color.red(),
+            timestamp=datetime.now(),
+        )
+        chunks = [cards[i : i + 30] for i in range(0, len(cards), 30)]
+        for i, chunk in enumerate(chunks):
+            name = "Carte" if len(chunks) == 1 else f"Carte (parte {i + 1})"
+            embed.add_field(
+                name=name,
+                value="\n".join(f"\u2022 {c}" for c in chunk),
+                inline=False,
             )
-            chunks = [sorted_cards[i : i + 30] for i in range(0, len(sorted_cards), 30)]
-            for i, chunk in enumerate(chunks):
-                name = "Carte" if len(chunks) == 1 else f"Carte (parte {i + 1})"
-                embed.add_field(
-                    name=name,
-                    value="\n".join(f"\u2022 {c}" for c in chunk),
-                    inline=False,
-                )
-            embed.set_footer(text="Formato: Artisan")
-            await interaction.followup.send(embed=embed)
-        finally:
-            await session.close()
+        embed.set_footer(text="Formato: Artisan")
+        await interaction.followup.send(embed=embed)
 
     @discord.app_commands.command(
         name="banlist_aggiungi", description="Aggiungi una carta alla banlist (admin)"
@@ -106,17 +99,10 @@ class DeckValidationCog(commands.Cog):
         carta: str,
     ):
         await interaction.response.defer(ephemeral=True)
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
-        try:
-            repo = BanlistRepository(session)
-            await repo.add_card(carta)
-            await self.service.reload_banlist()
-            await self._log("INFO", "BANLIST_ADD", user=interaction.user, info=f"Added: {carta}")
-            await interaction.followup.send(f"Carta **{carta}** aggiunta alla banlist.", ephemeral=True)
-        finally:
-            await session.close()
+        outcome = await self.banlist.add_card(carta)
+        if outcome.ok:
+            await self._log("INFO", "BANLIST_ADD", user=interaction.user, info=f"Added: {carta.strip()}")
+        await interaction.followup.send(outcome.message, ephemeral=True)
 
     @discord.app_commands.command(
         name="banlist_rimuovi", description="Rimuovi una carta dalla banlist (admin)"
@@ -129,22 +115,10 @@ class DeckValidationCog(commands.Cog):
         carta: str,
     ):
         await interaction.response.defer(ephemeral=True)
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
-        try:
-            repo = BanlistRepository(session)
-            ok = await repo.remove_card(carta)
-            if ok:
-                await self.service.reload_banlist()
-                await self._log("INFO", "BANLIST_REMOVE", user=interaction.user, info=f"Removed: {carta}")
-                await interaction.followup.send(f"Carta **{carta}** rimossa dalla banlist.", ephemeral=True)
-            else:
-                await interaction.followup.send(
-                    f"Carta **{carta}** non trovata nella banlist.", ephemeral=True
-                )
-        finally:
-            await session.close()
+        outcome = await self.banlist.remove_card(carta)
+        if outcome.ok:
+            await self._log("INFO", "BANLIST_REMOVE", user=interaction.user, info=f"Removed: {carta.strip()}")
+        await interaction.followup.send(outcome.message, ephemeral=True)
 
 
 async def setup(bot):

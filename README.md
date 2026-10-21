@@ -92,7 +92,7 @@ ClepshydraBot/
 │   │   ├── spg_cog.py       # /forced_rarity_refresh, /invalidate_card_cache
 │   │   ├── service.py       # ArtisanService
 │   │   ├── validators.py, models.py, embeds.py
-│   │   ├── banlist_repository.py
+│   │   ├── banlist_service.py, banlist_repository.py
 │   │   ├── card_cache.py
 │   │   ├── arena_overrides.py
 │   │   └── image.py         # Deck showcase image
