@@ -20,7 +20,7 @@ Alchemy, etc.) is this community's homebrew Artisan, so updating the banlist alw
 ┌─────────────────────────────────────────────────────────┐
 │                    Bot startup                          │
 │  database/engine.py:_migrate_banlist()                  │
-│    → imports cards.txt into the SQLite DB               │
+│    → imports seeds/banlist.txt into the SQLite DB       │
 │    → only if the table is empty                         │
 └──────────────────────┬──────────────────────────────────┘
                        │
@@ -48,9 +48,14 @@ Alchemy, etc.) is this community's homebrew Artisan, so updating the banlist alw
 
 ## Components in Detail
 
-### 1. Seed Data — `cards.txt`
+### 1. Seed Data — `seeds/banlist.txt`
 
-Text file with 219 banned cards, one per line. It includes:
+Text file with the starting banlist, one card per line (it was `cards.txt` at the repository root until
+4.0.2). It is read only to fill an empty `banned_cards` table, so it matters only on a fresh database:
+**the banlist in the DB is authoritative**, and staff change it with `/banlist_aggiungi` and
+`/banlist_rimuovi`. The seed is never updated by those commands, so it can be older than the real banlist.
+It sits in `seeds/`, not `data/`, because `data/` is excluded from the Docker image and mounted as a volume.
+It includes:
 - Cards with the `A-` prefix (Alchemy versions on Arena)
 - Double-faced cards (`Name // Name`)
 - "Normal" banned cards (e.g. `Abiding Grace`, `Mishra's Bauble`)
@@ -58,7 +63,7 @@ Text file with 219 banned cards, one per line. It includes:
 ### 2. Startup Migration — `_migrate_banlist()` in `database/engine.py`
 
 At startup, `_migrate_banlist()`:
-1. Checks whether `cards.txt` exists
+1. Checks whether `seeds/banlist.txt` exists
 2. Calls `BanlistRepository.import_from_file()`
 3. If the table is empty, imports every card with format=`"Artisan"`
 4. If the table already has data, skips the import (no duplicates)
@@ -114,14 +119,7 @@ Logic:
 - On a match, adds it to the result list (no duplicates)
 - If the resulting list isn't empty → deck invalid
 
-### 7. Banlist from File (legacy) — `load_banlist()` in `cogs/deck_validation/validators.py`
-
-`load_banlist()` is no longer called by any code:
-- Reads `cards.txt` line by line
-- For double-faced cards (` // `), also adds the front name alone
-- Returns a `set[str]` (lowercase)
-
-### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/deck_validation/__init__.py`
+### 7. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/deck_validation/__init__.py`
 
 Next to `/artisan_check_deck`, in `DeckValidationCog`, since 4.0.0; until then they lived in the tournament cog
 and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
@@ -132,14 +130,14 @@ and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
 | `/banlist_aggiungi <carta>` | Adds a card to the DB | `@is_admin()` (`Staff` role) |
 | `/banlist_rimuovi <carta>` | Removes a card from the DB | `@is_admin()` |
 
-### 9. Result Embed — `cogs/deck_validation/embeds.py`
+### 8. Result Embed — `cogs/deck_validation/embeds.py`
 
 If the deck has banned cards, the embed shows:
 - **Carte Bannate**: the list (max 10)
 - **Resoconto** (summary): count of banned cards
 - Red color (`is_valid = False`)
 
-### 10. Caching
+### 9. Caching
 
 The banlist is cached in memory in the module variable `_banlist_cache: set[str] | None` in
 `cogs/deck_validation/service.py`, shared by every `ArtisanService` instance. It is loaded from the DB on the
@@ -180,12 +178,13 @@ Deck INVALID     Deck OK
 ## External APIs
 
 The banlist system **calls no external API**. It only uses:
-- The local file `cards.txt` for the initial seed
+- The local file `seeds/banlist.txt` for the initial seed
 - The SQLite database for persistent storage
 - A purely textual comparison (`name.lower() in banlist`)
 
 The Scryfall APIs are used in the next phase (Artisan rarity validation), not for the banlist. That phase —
-SPG rarity overrides (`utils/arena_overrides.py`, `data/arena_rarity_data.json`), the Scryfall card cache
+SPG rarity overrides (`utils/arena_overrides.py`, `data/arena_rarity_data.json`, seeded from
+`seeds/arena_rarity.json`), the Scryfall card cache
 (`utils/card_cache.py`, `cached_cards` table, TTL on `artisan_legal`) and the Arena legality check — is
 documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and overrides).
 
@@ -193,7 +192,7 @@ documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and
 
 ## Known Issues
 
-1. **Double-faced cards** — fixed. `cards.txt`/`banned_cards` store the full name
+1. **Double-faced cards** — fixed. The seed and `banned_cards` store the full name
    (`A-Blessed Hippogriff // A-Tyr's Blessing`), but `parse_decklist()` always truncates to the front face
    when reading the user's deck (mimicking MTG Arena's export format), so the comparison **always** failed
    for these cards. `ArtisanService._load_banlist()` (`cogs/deck_validation/service.py`) now expands the

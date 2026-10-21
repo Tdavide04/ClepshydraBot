@@ -58,7 +58,7 @@ def _expand_double_faced(names: set[str]) -> set[str]:
     """Adds the front half alone for every double-faced card ("front //
     back") already in the set.
 
-    cards.txt (and therefore banned_cards) stores double-faced cards with the
+    The banlist seed (seeds/banlist.txt, and therefore banned_cards) stores double-faced cards with the
     full name, but parse_decklist() truncates to the front face when reading
     the user's deck (mimicking MTG Arena's export format) - without this
     expansion, check_banlist() (exact set comparison) never matches these

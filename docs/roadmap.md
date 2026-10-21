@@ -52,6 +52,8 @@ features/
                           event_schedule_cog.py, ban_announcement_cog.py
   tournaments/            cog.py, service.py, pairing_engine.py, rating.py, standings.py, repository.py,
                           user_repository.py, embeds.py, logic.py
+seeds/                    tracked starting data: banlist.txt, arena_rarity.json (since 4.0.2)
+data/                     runtime state, ignored by git
 tests/                    mirrors features/ and core/
 ```
 
@@ -101,37 +103,34 @@ Small behaviour fixes, done first so they don't get lost inside a large diff.
   "Presentazione annullata" followed by the generic error message.
 - `_on_confirm` catches every exception and shows the user the raw text (`❌ Errore: {e}`), bypassing
   `ReportingView`: staff get no log and the user sees internal details.
-
 - Found while fixing it: on an invalid presentation, or with the presentation channel missing, the member
   got "Benvenuto tra i Planeswalker!" anyway. `publish()` now returns a `ServiceResult` (tested in
   `tests/onboarding/`).
 
 Verification: service tests, plus the two buttons by hand under `TEST_MODE=True`. Docs: `docs/onboarding.md`.
 
-## Step 2 — Seeds in `data/seeds/`, runtime state out of git
+## Step 2 — Seeds in `seeds/`, runtime state out of git
 
-**Status:** todo · `fix(cache)` · PATCH
+**Status:** done (2026-10-21, 4.0.2) · `fix(cache)` · PATCH
 
-The file holds `overrides` (cards whose Arena rarity differs from paper) and `checked_cards` (SPG scan
-progress). `update_spg_overrides()` writes both in production, and nobody edits it by hand (confirmed by the
-user, 2026-10-21), so it is runtime state that happens to be tracked.
+`data/arena_rarity_data.json` holds `overrides` (cards whose Arena rarity differs from paper) and
+`checked_cards` (SPG scan progress). `update_spg_overrides()` writes both in production, and nobody edits it
+by hand (confirmed by the user, 2026-10-21), so it was runtime state that happened to be tracked.
 
-Decision: stop tracking it. The current content becomes a tracked seed, `data/seeds/arena_rarity.json`. On
-start, if `data/arena_rarity_data.json` is missing, it is created from the seed. The runtime file goes into
-`.gitignore`.
+- The tracked content moved to `seeds/arena_rarity.json`, and the runtime file is ignored by git. The loader
+  reads the runtime file, or the seed while it doesn't exist, **without copying**: an earlier draft copied
+  the seed on load, and the deck validation tests then wrote the real `data/` file. The first SPG scan
+  (at every start) creates the runtime file.
+- `cards.txt` moved to `seeds/banlist.txt`. It was already a seed: `import_from_file()` reads it only when
+  `banned_cards` is empty. `docs/banlist-system.md` now says the DB is authoritative and the seed may be
+  older. The dead `load_banlist()` / `BANLIST_PATH` in `validators.py` went with it, since they named the
+  old path.
+- Changed from the plan: the folder is `seeds/` at the root, not `data/seeds/`. `data/` is excluded from
+  the Docker image (`.dockerignore`) and mounted as a volume, so a seed under it would never reach the
+  container. `cards.txt` worked in Docker only because it was at the root.
 
-`cards.txt` moves next to it as `data/seeds/banlist.txt`. It is already a seed: `import_from_file()` reads it
-only when `banned_cards` is empty, and staff edit the banlist in the DB. In production the table is already
-seeded, so moving it changes nothing at runtime. `docs/banlist-system.md` says that the DB is authoritative
-and the seed may be older.
-
-Deploy caveat: the pull that removes the file from git also deletes it on the VM. The seed recreates it on
-the next start, but the scan progress written since the seed was taken is lost. So the deploy for this step
-backs the file up before the pull and restores it before the restart.
-
-Test first: loading with only the seed present creates the runtime file, and a scan writes the runtime file,
-never the seed. Docs: `docs/caching.md`, `docs/banlist-system.md`, `docs/infrastructure.md` (deploy steps),
-`.gitignore`, ADR-0003 (it cites `cards.txt`).
+Deploy caveat: the pull that removes the runtime file from git also deletes it on the VM, so the 4.0.2
+deploy backs it up before the pull and restores it before the restart (`docs/infrastructure.md`).
 
 ---
 
@@ -172,8 +171,6 @@ announcement and the calendar image, stays in `event_schedule.py`.
 
 The current `cogs/deck_validation/` package plus the deck image generator, the card cache, the SPG overrides,
 the banlist repository and `spg_override_updater` (`/forced_rarity_refresh`, `/invalidate_card_cache`).
-Also delete `load_banlist()` and `BANLIST_PATH` from `validators.py`: they have no callers, since the banlist
-is read from the DB.
 
 ## Step 7 — `features/onboarding/`
 

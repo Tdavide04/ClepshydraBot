@@ -114,7 +114,8 @@ ClepshydraBot/
 ├── config/
 │   └── config.py
 ├── assets/backgrounds/      # MTG color-themed backgrounds
-├── data/                    # Runtime data (cache, db)
+├── data/                    # Runtime data (db, monitor state, SPG overrides), not in git
+├── seeds/                   # Tracked starting data: banlist.txt, arena_rarity.json
 ├── main.py
 └── requirements.txt
 ```

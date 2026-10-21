@@ -19,7 +19,7 @@ limits, it implements a three-level caching system. It also watches two kinds of
 ┌──────────────────────────────────────────────────────────────┐
 │  Level 1: Rarity overrides (arena_overrides.py)               │
 │  • In-memory cache (_override_cache)                          │
-│  • arena_rarity_data.json (persistent)                        │
+│  • arena_rarity_data.json (persistent, seed in seeds/)        │
 │  • Only for SPG / cards with an Arena-paper mismatch          │
 └────────────────────────┬─────────────────────────────────────┘
                          │
@@ -193,6 +193,20 @@ A failed batch (Scryfall query without a valid answer) marks none of its cards a
 retried together on the next run, the same "never lose a card forever" principle already used for single
 failures before the redesign.
 
+### Runtime File and Seed
+
+`data/arena_rarity_data.json` is written only by the SPG scan (`update_spg_overrides()`), nobody edits it by
+hand, so it is ignored by git (since 4.0.2; it used to be tracked, and the bot's rewrites in production
+blocked `git pull`). The tracked starting copy is `seeds/arena_rarity.json`. `_load_override_data()` reads
+the runtime file when it exists and the seed otherwise, without copying it: a read never writes, and the
+first save after a scan creates the runtime file with the seed's content plus the new results. The scan runs
+at every start (`periodic_spg_refresh_loop`), so on a fresh clone or a new Docker volume the runtime file
+appears right away. The seed lives in `seeds/`, not `data/`, because `data/` is excluded from the Docker
+image and mounted as a volume.
+
+The seed is a snapshot: refresh it by copying the production runtime file over it when it falls far behind.
+A stale seed only costs the first scan a few extra cards.
+
 ### JSON Structure (`data/arena_rarity_data.json`)
 
 ```json
@@ -299,7 +313,7 @@ saved state: it is retried on the next run instead of being marked as "already s
 ```
 
 Tracks only the latest (newest) page actually processed, not the whole history — pure operational
-bookkeeping; unlike `arena_rarity_data.json` it holds no curated/editorial data, so it isn't tracked in git
+bookkeeping, so it isn't tracked in git
 (see `.gitignore`). Written atomically (`save_json_state()`: `.tmp` + `os.replace`).
 
 Admin command (`ADMIN_ROLE` role, default `Staff`) to force an immediate check (ignores the `lastmod`

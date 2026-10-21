@@ -31,7 +31,7 @@ The community the bot serves is Italian, and so are its members and staff.
 **Unchanged:**
 - git history
 - past `CHANGELOG.md` entries (up to 3.6.4)
-- data files (`cards.txt`, `data/*.json`)
+- data files (the banlist and rarity seeds, now in `seeds/`, and `data/*.json`)
 - `COMUNICATION_CHANNEL_ID`: fixing the typo means renaming an env var, which is a separate fix
 
 Italian UI strings stay inline in the code. They are not extracted into a catalog.

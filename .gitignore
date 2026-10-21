@@ -28,20 +28,23 @@ Thumbs.db
 # SQLite
 *.db
 
-# Scryfall card cache: since the migration to SQLite (Step 4 of
-# roadmap.md) it lives in the DB, so the legacy JSON no longer
+# Scryfall card cache: since the migration to SQLite (1.6.0) it lives in the DB, so the legacy JSON no longer
 # needs tracking. It can stay on disk as a local backup/migration fallback: the
 # bot neither reads nor writes it once the cached_cards table is populated.
 data/card_cache.json
 
 # "Last lastmod seen" state for the Arena Event Schedule pages (utils/arena_event_schedule.py):
 # pure operational bookkeeping to avoid reprocessing pages already notified, no editorial value
-# to track in git (unlike arena_rarity_data.json, which holds hand-curated overrides).
+# to track in git.
 data/arena_event_schedule_state.json
 
 # Same for the "last lastmod seen" state of the Banned and Restricted Announcements
 # (utils/ban_announcement.py) - pure bookkeeping, no editorial value.
 data/ban_announcement_state.json
+
+# SPG rarity overrides (utils/arena_overrides.py): rewritten by the weekly SPG scan, nobody edits it by hand.
+# The tracked starting copy is seeds/arena_rarity.json, read while this file doesn't exist yet.
+data/arena_rarity_data.json
 
 # Leftover of an interrupted atomic write (save_json_state(): `.tmp` + os.replace), never real data.
 data/*.tmp

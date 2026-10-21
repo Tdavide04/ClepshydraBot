@@ -1,11 +1,14 @@
 import asyncio
 import json
+import os
 
 import pytest
 
 import utils.arena_overrides as arena_overrides
 
 SEARCH_URL = "https://api.scryfall.com/cards/search?q=set%3Aspg&unique=prints"
+# Captured before the autouse fixture points SEED_PATH at a temp dir.
+TRACKED_SEED_PATH = arena_overrides.SEED_PATH
 
 
 @pytest.fixture(autouse=True)
@@ -15,6 +18,7 @@ def isolated_overrides(tmp_path, monkeypatch):
     on, but recreating it still avoids sharing state between tests that run
     on separate asyncio.run() calls)."""
     monkeypatch.setattr(arena_overrides, "DATA_PATH", str(tmp_path / "arena_rarity_data.json"))
+    monkeypatch.setattr(arena_overrides, "SEED_PATH", str(tmp_path / "seed" / "arena_rarity.json"))
     monkeypatch.setattr(arena_overrides, "_override_cache", None)
     monkeypatch.setattr(arena_overrides, "_update_lock", asyncio.Lock())
     yield
@@ -186,6 +190,50 @@ class TestOverrideFileSurvivesFailedWrite:
 
         with open(arena_overrides.DATA_PATH, encoding="utf-8") as f:
             assert f.read() == previous_text
+
+
+def _write_seed(data: dict) -> None:
+    os.makedirs(os.path.dirname(arena_overrides.SEED_PATH), exist_ok=True)
+    with open(arena_overrides.SEED_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
+class TestOverrideSeed:
+    """The runtime file is ignored by git (the SPG scan rewrites it in
+    production); a fresh clone or Docker volume gets it from the tracked seed."""
+
+    def test_missing_runtime_file_reads_the_seed_without_writing(self):
+        _write_seed({"overrides": {"Card A": "common"}, "checked_cards": {}})
+
+        assert arena_overrides.get_override_rarity("Card A") == "common"
+        assert not os.path.exists(arena_overrides.DATA_PATH), "a read must never write"
+
+    def test_existing_runtime_file_wins_over_the_seed(self):
+        _write_seed({"overrides": {"Card A": "common"}, "checked_cards": {}})
+        with open(arena_overrides.DATA_PATH, "w", encoding="utf-8") as f:
+            json.dump({"overrides": {"Card A": "uncommon"}, "checked_cards": {}}, f)
+
+        assert arena_overrides.get_override_rarity("Card A") == "uncommon"
+
+    def test_scan_writes_the_runtime_file_and_never_the_seed(self, monkeypatch):
+        seed = {"overrides": {"Seeded Card": "common"}, "checked_cards": {}}
+        _write_seed(seed)
+        _install_fake_search(monkeypatch, BASE_SEARCH, [])
+        _install_fake_prints_batch(monkeypatch, BASE_PRINTINGS, [])
+
+        run(arena_overrides.update_spg_overrides())
+
+        with open(arena_overrides.SEED_PATH, encoding="utf-8") as f:
+            assert json.load(f) == seed
+        with open(arena_overrides.DATA_PATH, encoding="utf-8") as f:
+            overrides = json.load(f)["overrides"]
+        assert overrides == {"Seeded Card": "common", "Card A": "common"}
+
+    def test_the_tracked_seed_is_valid(self):
+        with open(TRACKED_SEED_PATH, encoding="utf-8") as f:
+            seed = json.load(f)
+        assert seed["overrides"], "the seed must carry the curated overrides"
+        assert set(seed["overrides"].values()) <= {"common", "uncommon"}
 
 
 class TestPrintsBatching:

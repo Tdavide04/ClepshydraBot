@@ -221,7 +221,8 @@ class DeckValidationResult:
 See [caching.md](caching.md) for the details of the override system.
 
 Quick flow:
-1. `get_override_rarity(name)` checks `data/arena_rarity_data.json`
+1. `get_override_rarity(name)` checks `data/arena_rarity_data.json` (or the seed `seeds/arena_rarity.json`
+   until the first SPG scan writes it)
 2. If found as `"common"` or `"uncommon"` → card legal (skips the API)
 3. Covers the SPG (Special Guests) cards that are rare/mythic on Arena but common/uncommon on paper
 4. Refreshed automatically every week (`periodic_spg_refresh_loop`); can be forced right away with

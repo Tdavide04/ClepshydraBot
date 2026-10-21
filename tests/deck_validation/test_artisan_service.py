@@ -100,7 +100,7 @@ class TestValidateDeck:
         assert result.mainboard == []
 
     def test_banned_double_faced_card_matches_front_face_only(self, isolated_db):
-        """Regression: cards.txt/banned_cards stores double-faced cards with
+        """Regression: the banlist seed/banned_cards stores double-faced cards with
         the full name ("Front // Back"), but parse_decklist() truncates to the
         front face when reading the user's deck. Without expanding the banlist
         with the front half alone, check_banlist() never matched these cards,
@@ -134,7 +134,7 @@ class TestValidateDeck:
                 await session.close()
 
         raw = run_with_db(scenario)
-        # The real cards.txt is imported into the test DB anyway (_migrate_banlist
+        # The real banlist seed is imported into the test DB anyway (_migrate_banlist
         # runs on every init_db()), so raw also holds those ~219 cards: check
         # presence/absence, not equality of the whole set.
         assert "test front // test back" in raw

@@ -93,6 +93,27 @@ pm2 startup             # restarts pm2 (and the saved processes) when the VM boo
 pm2 logs ClepshydraBotte --lines 2000 --nostream | grep -E "BAN ANNOUNCEMENT|EVENT SCHEDULE"
 ```
 
+### Updating production
+
+```bash
+cd ~/ClepshydraBot
+git status --short                      # must be clean: runtime files live in ignored paths
+git pull --ff-only origin main
+venv/bin/python -m pip install -r requirements.txt
+pm2 restart ClepshydraBotte
+```
+
+Runtime state (`data/*.json`, the SQLite DB) is ignored by git, so a pull never touches it. One exception,
+once: the 4.0.2 pull removes `data/arena_rarity_data.json` from git, and git deletes the VM's copy with it.
+Back it up before that pull and restore it before the restart, otherwise the bot falls back to the seed and
+the SPG scan progress since the seed was taken is checked again:
+
+```bash
+cp data/arena_rarity_data.json ~/arena_rarity_data.json.bak
+git pull --ff-only origin main
+cp ~/arena_rarity_data.json.bak data/arena_rarity_data.json
+```
+
 `main.py` catches `discord.LoginFailure` and other startup exceptions, exits with a non-zero code and prints
 an explicit error to stderr — visible in `pm2 logs ClepshydraBotte`. Note: if the token is genuinely
 expired/invalid, `pm2` restarts the process anyway, and it fails again the same way until the token is

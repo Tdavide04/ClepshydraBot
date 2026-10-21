@@ -14,6 +14,34 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## 4.0.2 (2026-10-21)
+
+### Fixed
+- `data/arena_rarity_data.json` is no longer tracked by git. The weekly SPG scan rewrites it in production,
+  so every deploy found it modified and `git pull` refused to run (seen on the 4.0.0 deploy). Its tracked
+  content is now the seed `seeds/arena_rarity.json`: the bot reads the seed until the first scan writes the
+  runtime file, and a read never writes.
+
+### Changed
+- `cards.txt` moved to `seeds/banlist.txt`. It is only read to fill an empty `banned_cards` table, so nothing
+  changes for a database that already has a banlist (production). The seeds sit at the root, not in `data/`,
+  because `data/` is excluded from the Docker image and mounted as a volume: a Docker container now gets the
+  rarity overrides too, which it never did.
+- Removed `load_banlist()` and `BANLIST_PATH` from `cogs/deck_validation/validators.py`, unused since the
+  banlist moved to the DB.
+
+**Deploy:** the pull deletes the VM's `data/arena_rarity_data.json` along with its removal from git. Back it
+up before the pull and restore it before the restart (`docs/infrastructure.md`, "Updating production").
+
+Verified: new `TestOverrideSeed` tests (seed read without writing, runtime file wins over the seed, a scan
+never writes the seed, the tracked seed is valid), full suite, ruff; the suite no longer leaves a
+`data/arena_rarity_data.json` behind.
+
+### Docs
+- `docs/caching.md` (runtime file and seed), `docs/banlist-system.md` (seed path, DB authoritative, legacy
+  loader section removed), `docs/infrastructure.md` (new "Updating production" section with the one-off
+  backup), `docs/database.md`, `docs/deck-validation.md`, ADR-0003, `README.md` structure, `.gitignore`.
+
 ## 4.0.1 (2026-10-21)
 
 ### Fixed

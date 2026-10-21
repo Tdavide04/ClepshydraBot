@@ -41,6 +41,7 @@ import aiohttp
 from utils.sitemap_monitor import save_json_state
 
 DATA_PATH = "data/arena_rarity_data.json"
+SEED_PATH = "seeds/arena_rarity.json"
 
 _MIN_REQUEST_INTERVAL = 0.11
 
@@ -75,22 +76,26 @@ def _load_override_data() -> dict:
     if _override_cache is not None:
         return _override_cache
 
-    if not os.path.exists(DATA_PATH):
+    # The runtime file is ignored by git. On a fresh clone or Docker volume it
+    # doesn't exist yet: read the tracked seed instead, without copying it, so
+    # a read never writes. The first save (the SPG scan) creates the runtime file.
+    path = next((p for p in (DATA_PATH, SEED_PATH) if os.path.exists(p)), None)
+    if path is None:
         _override_cache = {
             "overrides": {},
             "checked_cards": {},
         }
         return _override_cache
 
-    with open(DATA_PATH, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         _override_cache = json.load(f)
 
     return _override_cache
 
 
 def _save_override_data(data: dict) -> None:
-    """Saves the JSON and updates the in-memory cache. The write is atomic: the file is curated data, and a
-    failure mid-write used to leave it truncated (fixed in 3.6.6)."""
+    """Saves the JSON and updates the in-memory cache. The write is atomic: a failure mid-write used to leave
+    it truncated (fixed in 3.6.6)."""
 
     global _override_cache
 

@@ -29,7 +29,7 @@ def get_engine():
     return _engine
 
 
-BANLIST_FILE = "cards.txt"
+BANLIST_FILE = "seeds/banlist.txt"
 
 
 async def init_db():

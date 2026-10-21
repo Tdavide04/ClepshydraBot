@@ -19,7 +19,7 @@ driver **aiosqlite**. SQLite was chosen because of the hardware constraints (1 G
 
 At startup, after `Base.metadata.create_all`, `init_db()` runs in order:
 
-1. **`_migrate_banlist()`** — imports `cards.txt` into `banned_cards` if the table is empty
+1. **`_migrate_banlist()`** — imports the banlist seed `seeds/banlist.txt` into `banned_cards` if the table is empty
 2. **`_migrate_schema()`** — adds the missing columns listed in `_SCHEMA_MIGRATIONS` (table, column, DDL):
    - `tournament_players.deck_name`
    - `matches.p1_game_wins`, `matches.p2_game_wins`

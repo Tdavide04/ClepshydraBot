@@ -1,24 +1,6 @@
-import os
 import re
 
 from cogs.deck_validation.models import DeckEntry
-
-BANLIST_PATH = "cards.txt"
-
-
-def load_banlist(path: str = BANLIST_PATH) -> set[str]:
-    banned: set[str] = set()
-    if not os.path.exists(path):
-        return banned
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            name = line.strip()
-            if not name:
-                continue
-            banned.add(name.lower())
-            if " // " in name:
-                banned.add(name.split(" // ")[0].strip().lower())
-    return banned
 
 
 def parse_decklist(raw: str) -> tuple[list[DeckEntry], int, str]:
