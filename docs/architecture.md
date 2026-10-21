@@ -25,14 +25,14 @@ functions).
 │                                                                       │
 │  ┌─────────────────────┐  ┌──────────────────────┐                   │
 │  │  PresentationCog    │  │  TournamentSystemCog  │                   │
-│  │  /presentati        │  │  18 slash commands    │                   │
+│  │  /presentati        │  │  15 slash commands    │                   │
 │  │  on_member_join     │  │  modals, select menus │                   │
 │  └────────┬────────────┘  └───────────┬──────────┘                   │
 │           │                            │                              │
 │  ┌────────┴────────────┐  ┌───────────┴──────────┐                   │
-│  │  Tournament         │  │  Logger               │                   │
-│  │  (deck_validation)  │  │  send_log()           │                   │
-│  │  /artisan_check_deck│  ├──────────────────────┤                   │
+│  │  DeckValidationCog  │  │  Logger               │                   │
+│  │  /artisan_check_deck│  │  send_log()           │                   │
+│  │  /banlist (+ admin) │  ├──────────────────────┤                   │
 │  └────────┬────────────┘  │  ErrorHandler         │                   │
 │           │               │  tree.on_error        │                   │
 │  ┌────────┴────────────┐  └──────────────────────┘                   │

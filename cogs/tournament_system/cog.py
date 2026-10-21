@@ -6,9 +6,7 @@ from discord.ext import commands
 from cogs.deck_validation.service import SCRYFALL_UNAVAILABLE_MESSAGE, ArtisanService
 from cogs.deck_validation.validators import parse_decklist, validate_counts
 from config.config import GUILD_ID, PUBLIC_DECK_CHANNEL_ID, TOURNAMENT_CHANNEL_ID
-from database import get_session
 from database.models import Tournament, TournamentPlayer, TournamentStatus
-from repositories.banlist_repository import BanlistRepository
 from services.results import ResultKind
 from services.tournament_service import TournamentService
 from utils.interaction_errors import ReportingModal, ReportingView
@@ -1385,99 +1383,6 @@ class TournamentSystemCog(commands.Cog):
 
         embed.set_footer(text=f"Mostrati {len(entries)}/{limit} giocatori")
         await interaction.followup.send(embed=embed)
-
-    @discord.app_commands.command(name="banlist", description="Visualizza le carte bannate")
-    async def banlist_lista(
-        self,
-        interaction: discord.Interaction,
-    ):
-        if not await self._check_tournament_channel(interaction):
-            return
-        await interaction.response.defer(ephemeral=False)
-
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
-
-        try:
-            repo = BanlistRepository(session)
-            cards = await repo.get_all_for_format()
-            if not cards:
-                await interaction.followup.send("Nessuna carta bannata.", ephemeral=True)
-                return
-            sorted_cards = sorted(cards)
-            embed = discord.Embed(
-                title=f"\U0001f6ab Banlist ({len(sorted_cards)} carte)",
-                color=discord.Color.red(),
-                timestamp=datetime.now(),
-            )
-            chunks = [sorted_cards[i : i + 30] for i in range(0, len(sorted_cards), 30)]
-            for i, chunk in enumerate(chunks):
-                name = "Carte" if len(chunks) == 1 else f"Carte (parte {i + 1})"
-                embed.add_field(
-                    name=name,
-                    value="\n".join(f"\u2022 {c}" for c in chunk),
-                    inline=False,
-                )
-            embed.set_footer(text="Formato: Artisan")
-            await interaction.followup.send(embed=embed)
-        finally:
-            await session.close()
-
-    @discord.app_commands.command(
-        name="banlist_aggiungi", description="Aggiungi una carta alla banlist (admin)"
-    )
-    @is_admin()
-    @discord.app_commands.describe(carta="Nome della carta da bannare")
-    async def banlist_aggiungi(
-        self,
-        interaction: discord.Interaction,
-        carta: str,
-    ):
-        if not await self._check_tournament_channel(interaction):
-            return
-        await interaction.response.defer(ephemeral=True)
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
-        try:
-            repo = BanlistRepository(session)
-            await repo.add_card(carta)
-            await self.artisan_service.reload_banlist()
-            await self._log("INFO", "BANLIST_ADD", user=interaction.user, info=f"Added: {carta}")
-            await interaction.followup.send(f"Carta **{carta}** aggiunta alla banlist.", ephemeral=True)
-        finally:
-            await session.close()
-
-    @discord.app_commands.command(
-        name="banlist_rimuovi", description="Rimuovi una carta dalla banlist (admin)"
-    )
-    @is_admin()
-    @discord.app_commands.describe(carta="Nome della carta da rimuovere")
-    async def banlist_rimuovi(
-        self,
-        interaction: discord.Interaction,
-        carta: str,
-    ):
-        if not await self._check_tournament_channel(interaction):
-            return
-        await interaction.response.defer(ephemeral=True)
-        session = get_session()
-        if session is None:
-            return await interaction.followup.send("Database non disponibile.", ephemeral=True)
-        try:
-            repo = BanlistRepository(session)
-            ok = await repo.remove_card(carta)
-            if ok:
-                await self.artisan_service.reload_banlist()
-                await self._log("INFO", "BANLIST_REMOVE", user=interaction.user, info=f"Removed: {carta}")
-                await interaction.followup.send(f"Carta **{carta}** rimossa dalla banlist.", ephemeral=True)
-            else:
-                await interaction.followup.send(
-                    f"Carta **{carta}** non trovata nella banlist.", ephemeral=True
-                )
-        finally:
-            await session.close()
 
 
 async def setup(bot):

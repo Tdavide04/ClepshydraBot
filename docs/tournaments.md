@@ -18,7 +18,7 @@ services/
 └── results.py              # ServiceResult(ok, message, kind) + ResultKind
 
 cogs/tournament_system/
-└── cog.py                  # 18 slash commands + modals + views
+└── cog.py                  # 15 slash commands + modals + views
 
 utils/
 ├── tournament_logic.py     # Utilities (OMW bar, rank label, columns)
@@ -227,9 +227,6 @@ Every command lives in `cogs/tournament_system/cog.py`:
 | `/turni` | Public | Current round's pairings |
 | `/lista_tornei` | Public | Tournament list |
 | `/leaderboard` | Public | Rating leaderboard |
-| `/banlist` | Public | Banned card list |
-| `/banlist_aggiungi` | Admin | Adds a banned card |
-| `/banlist_rimuovi` | Admin | Removes a banned card |
 
 ### InviaDeckModal (`cog.py`)
 
@@ -292,7 +289,6 @@ the service returned `"Risultato registrato!"`.
 | `ROUND_GENERATED` | INFO | `/torneo_next_turn` (new round) |
 | `TOURNAMENT_CONCLUDED` | INFO | `/concludi_torneo` (forced conclusion) |
 | `TOURNAMENT_COMPLETED` | INFO | Last round completed, tournament concluded naturally |
-| `BANLIST_ADD` / `BANLIST_REMOVE` | INFO | `/banlist_aggiungi` / `/banlist_rimuovi` |
 
 ---
 

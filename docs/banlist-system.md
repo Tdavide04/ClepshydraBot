@@ -121,7 +121,10 @@ Logic:
 - For double-faced cards (` // `), also adds the front name alone
 - Returns a `set[str]` (lowercase)
 
-### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/tournament_system/cog.py`
+### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/deck_validation/__init__.py`
+
+Next to `/artisan_check_deck`, in `DeckValidationCog`, since 3.7.0; until then they lived in the tournament cog
+and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
 
 | Command | Description | Permissions |
 |---|---|---|
@@ -145,7 +148,7 @@ first validation (or after an invalidation) and kept in memory until invalidated
 `ArtisanService.reload_banlist()` forces the refresh: `/banlist_aggiungi` and `/banlist_rimuovi` call it right
 after writing to the DB. Since the cache is shared at module level (instead of a per-instance attribute), the
 invalidation is immediately visible to **both** `ArtisanService` instances the bot creates
-(`tournament_system/cog.py` and `cogs/deck_validation/__init__.py`) — not only the one the method is called
+(`tournament_system/cog.py`, when that cog is loaded, and `cogs/deck_validation/__init__.py`) — not only the one the method is called
 on.
 
 ---
@@ -201,7 +204,7 @@ documented in `docs/deck-validation.md` (flow) and `docs/caching.md` (caches and
 
 2. **Live updates** — fixed. `self._banlist` in `ArtisanService` wasn't invalidated after add/remove via
    slash command. `/banlist_aggiungi` and `/banlist_rimuovi` now call `ArtisanService.reload_banlist()` right
-   after writing to the DB (see `cogs/tournament_system/cog.py`). The cache is module-level
+   after writing to the DB (see `cogs/deck_validation/__init__.py`). The cache is module-level
    (`_banlist_cache`), so the invalidation also covers the second `ArtisanService` instance used by
    `cogs/deck_validation/__init__.py` — a first attempt with a per-instance cache would have left that second
    instance stale.
