@@ -16,6 +16,12 @@ Command and parameter names are the real slash-command names, in Italian, as use
 |---|---|---|
 | `/artisan_check_deck` | Checks an Artisan deck's legality | Modal (text decklist) |
 
+### Tournaments (disabled since 4.0.0)
+
+The commands in the tournament sections below are **not registered**: `cogs/tournament_system` is in
+`DISABLED_COGS` (`docs/adr/0004-helper-only-tournaments-disabled.md`). They're kept here for when the cog is
+re-enabled.
+
 ### Tournaments — Registration
 
 | Command | Description |

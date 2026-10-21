@@ -1,11 +1,14 @@
 # CLAUDE.md
 
-ClepshydraBot is a Discord bot (discord.py) for the "Clepshydra" MTG Arena community. It covers:
+ClepshydraBot is a Discord helper bot (discord.py) for the "Clepshydra" MTG Arena community. It covers:
 
 - member onboarding
 - Artisan-format deck validation against Scryfall
-- Swiss tournaments with Glicko-2 rating
 - monitors for Wizards' Arena Event Schedule and Banned and Restricted pages
+
+The Swiss tournament system (`cogs/tournament_system/`, `services/`) is **disabled** since 4.0.0: the cog is
+in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code, tests and DB tables stay
+(`docs/adr/0004-helper-only-tournaments-disabled.md`). Don't add tournament features unless it's re-enabled.
 
 **Language** (`docs/adr/0003-project-language.md`):
 - **English** for everything developers and logs see: code, comments, docstrings, test names, console
@@ -138,7 +141,7 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 
 | Area | Code | Topic doc |
 |---|---|---|
-| Swiss tournaments, results, Glicko-2 | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
+| Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
 | Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
 | Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
 | Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |

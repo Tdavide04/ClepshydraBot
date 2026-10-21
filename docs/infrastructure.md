@@ -42,7 +42,7 @@ Loaded from `.env` via `python-dotenv` (template: `.env.example`):
 | `DISCORD_TOKEN` | Production bot token | `DISCORD_TOKEN_TEST` |
 | `GUILD_ID` | Discord server | `GUILD_ID_TEST` |
 | `PRESENTATION_CHANNEL_ID` | Presentation channel | `*_TEST` |
-| `TOURNAMENT_CHANNEL_ID` | Tournament channel (optional, `0` = any channel) | `*_TEST` |
+| `TOURNAMENT_CHANNEL_ID` | Tournament channel (optional, `0` = any channel); unused while the tournament cog is disabled | `*_TEST` |
 | `PUBLIC_DECK_CHANNEL_ID` | Public deck channel | `*_TEST` |
 | `COMUNICATION_CHANNEL_ID` | Public community channel for monitor notifications (optional, `0` = off; note the spelling) | `*_TEST` |
 | `LOG_CHANNEL_ID` | Staff log channel | none: shared by both modes |

@@ -14,6 +14,30 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## 4.0.0 (2026-10-21)
+
+The bot becomes a helper only: tournaments are hosted on another platform (`docs/adr/0004-helper-only-tournaments-disabled.md`).
+**Breaking**: 15 slash commands are no longer available, hence the MAJOR bump (decided explicitly).
+
+### Changed
+- **Tournament commands disabled**: `main.py` no longer loads `cogs/tournament_system` (new `DISABLED_COGS`
+  set, with a console line at startup). The 15 commands — `/crea_torneo`, `/avvia_torneo`, `/torneo_next_turn`,
+  `/drop_giocatore`, `/concludi_torneo`, `/correggi_risultato`, `/lista_tornei`, `/iscriviti`, `/invia_deck`,
+  `/iscrizioni_torneo`, `/left_torneo`, `/risultato`, `/classifica`, `/turni`, `/leaderboard` — disappear from
+  Discord at the next startup's command sync. Code, tests and DB tables (tournaments, matches, ratings) stay;
+  re-enabling means removing one entry from `DISABLED_COGS`.
+- **Banlist commands moved** to the deck validation cog (`DeckValidationCog`, formerly the `Tournament` class
+  in `cogs/deck_validation/__init__.py`): `/banlist`, `/banlist_aggiungi`, `/banlist_rimuovi` stay active and
+  now work in any channel (they were limited to `TOURNAMENT_CHANNEL_ID`).
+
+Verified: a stubbed run of `setup_hook()` loads 7 cogs and skips `tournament_system`; the deck validation cog
+exposes `/artisan_check_deck` and the three banlist commands. Not verified live: the command sync on Discord
+(next start in production, or a `TEST_MODE` run).
+
+### Docs
+- `README.md`, `CLAUDE.md`, `docs/tournaments.md`, `docs/commands.md`, `docs/architecture.md`,
+  `docs/banlist-system.md`, `docs/technical-report.md`, `docs/infrastructure.md`, roadmap step 18; new ADR-0004.
+
 ## 3.6.7 (2026-10-21)
 
 ### Fixed
@@ -30,7 +54,7 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   string; `ServiceResult` gains an optional `kind` (`ResultKind.PENDING_RESULTS`, `TOURNAMENT_COMPLETED`) for
   `generate_next_round`. The tournament cog branches on these fields and no longer matches message text.
   Regression tests at the service seam for both bugs. Manual check in `TEST_MODE`: **not done** — the
-  tournament commands are disabled right after this release (3.7.0). Roadmap step 17.
+  tournament commands are disabled right after this release (4.0.0). Roadmap step 17.
 
 ### Changed
 - `.env.example`: `DB_PATH=data/clepshydra.db` (it said `clepsydra.db`, so a copied template named the DB

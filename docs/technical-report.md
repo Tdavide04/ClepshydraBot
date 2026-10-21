@@ -98,7 +98,7 @@ and their trade-offs are tracked in `docs/infrastructure.md` ("Constraints" sect
 | Artisan deck validation | `docs/deck-validation.md` |
 | Banlist system | `docs/banlist-system.md` |
 | Onboarding (presentations) | `docs/onboarding.md` |
-| Swiss tournament system | `docs/tournaments.md` |
+| Swiss tournament system (disabled) | `docs/tournaments.md` |
 | Technical debt and improvement plan | `docs/roadmap.md` |
 | Decisions and rationale | `docs/adr/` |
 | Guide for Claude Code | `CLAUDE.md` |

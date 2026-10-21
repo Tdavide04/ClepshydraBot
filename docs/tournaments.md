@@ -1,5 +1,10 @@
 # Swiss Tournament System
 
+> **Disabled since 4.0.0.** Tournaments are hosted on another platform, so `main.py` doesn't load
+> `cogs/tournament_system` (`DISABLED_COGS`) and none of the commands below is registered on Discord. The code,
+> its tests and the DB tables stay; `/banlist` and the two admin banlist commands moved to the deck validation
+> cog. Re-enabling is described in `docs/adr/0004-helper-only-tournaments-disabled.md`.
+
 ## Overview
 
 The tournament system manages the whole lifecycle of a Swiss tournament for Magic: The Gathering Arena. It

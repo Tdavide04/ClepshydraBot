@@ -24,8 +24,8 @@ functions).
 │  COGS (Controller)                                                   │
 │                                                                       │
 │  ┌─────────────────────┐  ┌──────────────────────┐                   │
-│  │  PresentationCog    │  │  TournamentSystemCog  │                   │
-│  │  /presentati        │  │  15 slash commands    │                   │
+│  │  PresentationCog    │  │  TournamentSystemCog  │  (not loaded,     │
+│  │  /presentati        │  │  15 slash commands    │   since 4.0.0)    │
 │  │  on_member_join     │  │  modals, select menus │                   │
 │  └────────┬────────────┘  └───────────┬──────────┘                   │
 │           │                            │                              │
@@ -174,7 +174,7 @@ User → /artisan_check_deck → ArtisanDeckCheckModal
   → Embed + image → log and deck channels
 ```
 
-### Tournament Lifecycle
+### Tournament Lifecycle (disabled since 4.0.0, see `docs/tournaments.md`)
 
 ```
 Admin → /crea_torneo → TournamentService.create_tournament()

@@ -1,6 +1,9 @@
 # ClepshydraBot
 
-Discord bot for the **Clepshydra** Magic: The Gathering Arena community. Automates user verification, Artisan format deck validation, and Swiss tournament management.
+Discord helper bot for the **Clepshydra** Magic: The Gathering Arena community: member onboarding, Artisan
+format deck validation and the banlist, and monitors for Wizards' Arena Event Schedule and Banned and Restricted
+pages. The Swiss tournament system is disabled since 4.0.0 (tournaments are hosted elsewhere): its code stays in
+the repo but isn't loaded (`docs/adr/0004-helper-only-tournaments-disabled.md`).
 
 The bot talks to its users in Italian (command names, replies, community announcements); code, logs and
 documentation are in English (see `docs/adr/0003-project-language.md`).
@@ -9,7 +12,6 @@ documentation are in English (see `docs/adr/0003-project-language.md`).
 
 - **Presentation System** — Multi-step modal wizard (`/presentati`) with role assignment
 - **Artisan Deck Check** — Validate decks against banlist + Scryfall rarity check (`/artisan_check_deck`)
-- **Swiss Tournaments** — Full tournament lifecycle: registration, pairing, results, standings
 - **Deck Image Generator** — Dynamic PNG showcase with color-identity backgrounds
 - **Rarity Override System** — Automatic SPG card rarity correction via Scryfall
 - **Arena Event Schedule Monitor** — Detects when the current MTG Arena "Event Schedule" page (Quick Draft rotation, Arena Direct, etc.) is new or updated and posts a monthly calendar image to Discord (one row per category, color-coded by family: Draft, Flashback, Sealed & Cube, Metagame, Community), to both the staff log channel and a public community channel
@@ -22,22 +24,7 @@ documentation are in English (see `docs/adr/0003-project-language.md`).
 |---|---|---|
 | `/presentati` | Open presentation wizard | All |
 | `/artisan_check_deck` | Validate Artisan deck | All |
-| `/lista_tornei` | List tournaments with status and player count | All |
-| `/iscriviti` | Register for tournament (deck sent separately) | All |
-| `/invia_deck` | Submit/update your deck for a tournament you're registered in | All |
-| `/iscrizioni_torneo` | Registered players and who has already sent a deck | All |
-| `/left_torneo` | Leave a tournament before it starts | All |
-| `/risultato` | Submit match result | All |
-| `/turni` | View current pairings | All |
-| `/classifica` | View standings | All |
-| `/leaderboard` | Glicko-2 rating leaderboard | All |
 | `/banlist` | View the Artisan banlist | All |
-| `/crea_torneo` | Create tournament | Admin |
-| `/avvia_torneo` | Start tournament | Admin |
-| `/torneo_next_turn` | Generate next round | Admin |
-| `/correggi_risultato` | Correct (or enter) a match result | Admin |
-| `/drop_giocatore` | Remove a player (during registration or a running tournament) | Admin |
-| `/concludi_torneo` | Force-conclude a tournament | Admin |
 | `/banlist_aggiungi` / `/banlist_rimuovi` | Add/remove a card from the Artisan banlist | Admin |
 | `/invalidate_card_cache` | Force a full Scryfall re-check of one card | Admin |
 | `/forced_rarity_refresh` | Force an immediate rarity override check (also runs automatically every week) | Admin |
@@ -91,7 +78,7 @@ ClepshydraBot/
 ├── cogs/
 │   ├── presentation/        # User presentation wizard
 │   ├── deck_validation/     # Artisan deck validation
-│   ├── tournament_system/   # Swiss tournament management
+│   ├── tournament_system/   # Swiss tournaments (disabled, not loaded)
 │   ├── logger.py            # Centralized logging
 │   ├── error_handler.py     # Global slash command error handler
 │   ├── spg_override_updater.py
@@ -193,7 +180,7 @@ sqlitebrowser data/clepshydra.db
 |---|---|
 | Architecture | `docs/architecture.md` |
 | Commands | `docs/commands.md` |
-| Tournaments | `docs/tournaments.md` |
+| Tournaments (disabled) | `docs/tournaments.md` |
 | Deck validation and banlist | `docs/deck-validation.md`, `docs/banlist-system.md` |
 | Caching, Scryfall, Wizards monitors | `docs/caching.md` |
 | Onboarding | `docs/onboarding.md` |

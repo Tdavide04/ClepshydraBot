@@ -545,9 +545,10 @@ touched, recorded in `CHANGELOG.md`.
 
 **Status:** todo, no priority, to be decided in a dedicated session
 
-**Problem:** command names are mixed (`/iscriviti`, `/classifica`, but `/forced_rarity_refresh`). A renamed
-slash command leaves no alias: it must be announced to the community. Still to decide: which commands to rename,
-and whether descriptions stay in Italian.
+**Problem:** command names are mixed (`/presentati`, `/banlist_aggiungi`, but `/forced_rarity_refresh`). A
+renamed slash command leaves no alias: it must be announced to the community. Still to decide: which commands to
+rename, and whether descriptions stay in Italian. Since 4.0.0 the tournament commands (`/iscriviti`,
+`/classifica`...) are disabled, so the active set is down to 9 commands.
 
 ## Step 19 — Atomic write for the SPG override JSON
 

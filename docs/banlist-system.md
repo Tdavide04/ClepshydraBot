@@ -123,7 +123,7 @@ Logic:
 
 ### 8. Slash Commands — `banlist_lista`/`banlist_aggiungi`/`banlist_rimuovi` in `cogs/deck_validation/__init__.py`
 
-Next to `/artisan_check_deck`, in `DeckValidationCog`, since 3.7.0; until then they lived in the tournament cog
+Next to `/artisan_check_deck`, in `DeckValidationCog`, since 4.0.0; until then they lived in the tournament cog
 and only worked in `TOURNAMENT_CHANNEL_ID`. They now work in any channel.
 
 | Command | Description | Permissions |

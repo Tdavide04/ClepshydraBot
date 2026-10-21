@@ -11,6 +11,14 @@ from utils.arena_overrides import periodic_spg_refresh_loop
 from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
 from utils.card_cache import periodic_save_loop, save_cache
 
+# Extensions under cogs/ that are kept in the repo but not loaded: their slash commands disappear from Discord
+# at the next tree.sync(). Remove an entry to bring the feature back.
+DISABLED_COGS = {
+    # Tournaments are hosted elsewhere since 4.0.0, the bot is a helper only
+    # (docs/adr/0004-helper-only-tournaments-disabled.md).
+    "tournament_system",
+}
+
 
 class ClepshydraBotte(commands.Bot):
     def __init__(self):
@@ -24,6 +32,9 @@ class ClepshydraBotte(commands.Bot):
 
         for entry in os.listdir("./cogs"):
             path = os.path.join("./cogs", entry)
+            if entry.removesuffix(".py") in DISABLED_COGS:
+                print(f"Cog cogs.{entry.removesuffix('.py')} disabled (DISABLED_COGS), not loaded")
+                continue
             if entry.endswith(".py") and entry != "__init__.py":
                 await self.load_extension(f"cogs.{entry[:-3]}")
             # Blocking os.path calls are fine here: startup only, before the bot serves interactions.
