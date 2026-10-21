@@ -86,7 +86,7 @@ the bot no longer writes it.
 - `database`/`database.models` are imported **inside the functions** (not at module level) to avoid a
   circular import: `database/engine.py` calls `card_cache.load_cache()`, which in turn needs
   `database.get_session` — the same pattern `database/engine.py:_migrate_banlist()` already uses for
-  `repositories.banlist_repository`
+  `features.deck_validation.banlist_repository`
 
 ### Migration from JSON to SQLite
 

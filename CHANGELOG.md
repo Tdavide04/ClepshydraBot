@@ -14,59 +14,45 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
+## 4.0.3 (2026-10-21)
+
+The code is organized by feature (`docs/roadmap.md`, phase 2). Nothing changes for members or staff: the same
+7 cogs and 9 slash commands load, with the same behaviour. Two unused deploy setups are gone, and the
+production VM now restarts the bot after a reboot.
 
 ### Refactored
-- `main.py` loads the extensions from an explicit `EXTENSIONS` list instead of scanning the `cogs/` folder,
-  so the coming move to `features/` and `core/` (`docs/roadmap.md`, phase 2) doesn't change what loads.
-  `DISABLED_COGS` now holds full module paths (`"cogs.tournament_system"`). The bot starts from `main()`
-  behind `if __name__ == "__main__"`, so tests can import `main.py`. Released with the phase 2 bump.
-- New `core/` package for the cross-cutting code: `console.py`, `permissions.py`, `interaction_errors.py`
-  (from `utils/`), `results.py` (from `services/`), `repository_base.py` (`repositories/base.py`),
-  `error_handler.py` and `logger.py` (from `cogs/`, now the extensions `core.error_handler` and
-  `core.logger`), and `json_state.py` (`load_json_state`/`save_json_state`, split out of
-  `utils/sitemap_monitor.py`, which no longer re-exports `log`). Moves and import rewrites only; CI coverage
-  now includes `core`. Verified: pytest (292 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs
-  and 9 slash commands.
-- New `features/monitors/` package for the Wizards monitors: `sitemap.py` (was `utils/sitemap_monitor.py`),
-  `event_schedule.py` (`utils/arena_event_schedule.py`), `ban_announcement.py`, `calendar_image.py`
-  (`utils/event_calendar_image_generator.py`) and the two cogs `event_schedule_cog.py` and
-  `ban_announcement_cog.py` (`cogs/*_updater.py`). Tests moved to `tests/monitors/`. Moves and import
-  rewrites only. Verified: pytest (294 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
-  slash commands.
-- New `features/deck_validation/` package: the former `cogs/deck_validation/` (its `__init__.py` is now
-  `cog.py`), `spg_cog.py` (`cogs/spg_override_updater.py`), `image.py` (`utils/deck_image_generator.py`),
-  `card_cache.py`, `arena_overrides.py` (from `utils/`) and `banlist_repository.py` (from `repositories/`,
-  no longer re-exported by `repositories/__init__.py`). Moves and import rewrites only. `CLAUDE.md` now
-  states exactly which modules load `config.config` at import time. Verified: pytest (295 passed), ruff; a
-  stubbed `setup_hook()` loads the same 7 cogs and 9 slash commands.
-- `cogs/presentation/` is now `features/onboarding/`, named after its topic doc and commit scope; the
-  extension is `features.onboarding.cog` (the package no longer re-exports the cog). Moves and import
-  rewrites only. Verified: pytest (295 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9
-  slash commands.
-- New `features/tournaments/` package for the disabled tournament system: the cog, `TournamentService`
-  (`service.py`), pairing, rating, standings, the tournament and user repositories (`repository.py`,
-  `user_repository.py`) and the embed and logic helpers (`embeds.py`, `logic.py`). Tests moved to
-  `tests/tournaments/`. `cogs/`, `services/`, `repositories/` and `utils/` are gone. The pure algorithm
-  modules no longer load `config.config` at import. CI coverage now runs on `core`, `features` and
-  `database`. Verified: pytest (292 passed: fewer import checks, since the re-exporting `__init__.py` files
-  are gone), ruff; a stubbed `setup_hook()` loads the same 7 cogs and 9 slash commands, and loading the
-  tournament cog by hand adds its 15.
+- **Layout by feature.** `cogs/`, `services/`, `repositories/` and `utils/` are gone. Each feature is a
+  package under `features/`, holding its cog, logic and data access; cross-cutting code is in `core/`:
+
+  | Now | Was |
+  |---|---|
+  | `core/` | `utils/console.py`, `utils/permissions.py`, `utils/interaction_errors.py`, `services/results.py`, `repositories/base.py` (now `repository_base.py`), `cogs/logger.py`, `cogs/error_handler.py`, plus `json_state.py` split out of `utils/sitemap_monitor.py` |
+  | `features/onboarding/` | `cogs/presentation/` |
+  | `features/deck_validation/` | `cogs/deck_validation/` (`__init__.py` is now `cog.py`), `cogs/spg_override_updater.py` (`spg_cog.py`), `utils/deck_image_generator.py` (`image.py`), `utils/card_cache.py`, `utils/arena_overrides.py`, `repositories/banlist_repository.py` |
+  | `features/monitors/` | `utils/sitemap_monitor.py` (`sitemap.py`), `utils/arena_event_schedule.py` (`event_schedule.py`), `utils/ban_announcement.py`, `utils/event_calendar_image_generator.py` (`calendar_image.py`), `cogs/arena_event_schedule_updater.py` and `cogs/ban_announcement_updater.py` (`*_cog.py`) |
+  | `features/tournaments/` (disabled) | `cogs/tournament_system/cog.py`, `services/` (`tournament_service.py` is now `service.py`), `repositories/tournament_repository.py` (`repository.py`), `repositories/user_repository.py`, `utils/tournament_embeds.py` (`embeds.py`), `utils/tournament_logic.py` (`logic.py`) |
+
+  Moves and import rewrites only; class names are unchanged. Tests follow the same layout
+  (`tests/core/`, `tests/onboarding/`, `tests/deck_validation/`, `tests/monitors/`, `tests/tournaments/`).
+- **Explicit extension list.** `main.py` loads the extensions listed in `EXTENSIONS` instead of scanning the
+  `cogs/` folder. `DISABLED_COGS` holds full module paths (`"features.tournaments.cog"`). The bot starts
+  from `main()` behind `if __name__ == "__main__"`, so tests can import `main.py`; pm2 still runs
+  `python main.py`.
+- Side effects of the move: `sitemap.py` no longer re-exports `log`, the packages no longer re-export their
+  cogs from `__init__.py`, and the pure tournament algorithms (pairing, rating, standings) no longer load
+  `config.config` at import, which the eager `services/__init__.py` used to drag in.
 
 ### Added
-- `tests/core/test_extensions.py`: imports every application module and checks that every module with a
-  `setup()` coroutine is listed in `EXTENSIONS`. Cogs have no tests, so this is what catches a broken import
-  after a move before production does.
-
-Verified: pytest (290 passed), ruff; a stubbed `setup_hook()` run (no DB, no Discord sync) loads the same
-7 cogs and 9 slash commands as 4.0.0 and skips `cogs.tournament_system`.
+- `tests/core/test_extensions.py`: imports every application module and fails if a module with a `setup()`
+  coroutine is missing from `EXTENSIONS`. Cogs have no tests, so this is what catches a broken import after
+  a move before production does.
 
 ### Removed
 - The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and the systemd unit
   `deploy/clepshydrabot.service`, with their sections in `README.md` and `docs/infrastructure.md`. Production
   never used either: CI never built the image, and the unit pointed at a path and venv that don't exist.
   `pm2` on the VM is the only deployment method. Rationale and the way back:
-  `docs/adr/0005-unused-deploy-alternatives-removed.md`. Nothing changes for the running bot.
+  `docs/adr/0005-unused-deploy-alternatives-removed.md`.
 
 ### Fixed (production VM, no code change)
 - The bot now restarts after a VM reboot. pm2 had no boot service (`pm2 startup` had never been run), so a
@@ -75,9 +61,22 @@ Verified: pytest (290 passed), ruff; a stubbed `setup_hook()` run (no DB, no Dis
   list (`ClepshydraBotte`, `venv/bin/python`). Verified with `systemctl is-enabled` and by reading the unit
   and the saved list; not verified with an actual reboot.
 
+### Changed
+- CI coverage runs on `core`, `features` and `database`.
+
 ### Docs
-- `docs/infrastructure.md`: the boot start, when to run `pm2 save` again, and the systemd alternative
-  removed. `CLAUDE.md` (production invariant), `docs/technical-report.md`, ADR-0003, ADR-0005.
+- `CLAUDE.md`: layering by feature, architecture map, config-import invariant (which modules load
+  `config.config` at import time, and why), new-extension invariant, production invariant, test commands.
+- `docs/architecture.md` (overview, extension loading, tests), the topic docs' paths (`tournaments.md`,
+  `deck-validation.md`, `onboarding.md`, `caching.md`, `banlist-system.md`, `database.md`, `commands.md`),
+  `docs/infrastructure.md` (boot start, `pm2 save`, systemd and Docker sections removed),
+  `docs/technical-report.md`, ADR-0002, ADR-0003, ADR-0004, new ADR-0005, `README.md` structure and diagram,
+  `.gitignore` comments, `docs/roadmap.md`.
+
+Verified: pytest, ruff check, ruff format --check and pre-commit on every commit of the phase; a stubbed
+`setup_hook()` (no DB, no Discord sync) loads the same 7 cogs and 9 slash commands as 4.0.0, and loading
+the tournament cog by hand adds its 15; the `docs/commands.md` line numbers are unchanged. Not verified
+live: a start on Discord (next deploy, or a `TEST_MODE` run).
 
 ## 4.0.2 (2026-10-21)
 

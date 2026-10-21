@@ -135,7 +135,7 @@ deploy backs it up before the pull and restores it before the restart (`docs/inf
 
 ## Step 2a — Remove the unused deploy alternatives
 
-**Status:** done (2026-10-21) · `build` · no bump
+**Status:** done (2026-10-21) · `build` · no bump of its own, shipped in 4.0.3
 
 Added during this phase, after step 2 showed Docker still shaping decisions. Production runs under `pm2`, so
 the Docker setup (never built by CI) and `deploy/clepshydrabot.service` (never installed, wrong paths) are
@@ -234,13 +234,16 @@ this step also rewrote the docs, the `CLAUDE.md` layering and map, and the CI co
 
 ## Step 9 — Remove the old folders and update the docs
 
-**Status:** todo · `refactor` · PATCH for the whole phase
+**Status:** done (2026-10-21, 4.0.3) · `refactor` · PATCH for the whole phase
 
 Most of the planned work landed in steps 4–8, each keeping the docs truthful as it moved code (folders
 deleted, CI paths, `CLAUDE.md`, topic docs, README). What remains:
 
 - a final sweep of every doc for paths and descriptions that predate the restructure;
 - consolidate the Unreleased CHANGELOG entries into 4.0.3 and bump `VERSION`.
+
+Done: the sweep fixed the `.gitignore` comments, a `docs/caching.md` module path and the
+`docs/infrastructure.md` note on `pytest.ini`; the CHANGELOG entry is 4.0.3.
 
 ---
 

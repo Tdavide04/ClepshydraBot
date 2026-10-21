@@ -165,7 +165,7 @@ pip install -r requirements-dev.txt
 
 `pytest.ini` (`pythonpath = .`) explicitly adds the repo root to `sys.path`: without it, the bare
 `pytest tests/` invocation (used by CI, unlike `python -m pytest`, which adds the cwd automatically) fails
-with `ModuleNotFoundError` on the top-level modules (`services`, `database`, `utils`), because there is no
+with `ModuleNotFoundError` on the top-level packages (`core`, `features`, `database`), because there is no
 chain of `tests/__init__.py` up to the root.
 
 ---
