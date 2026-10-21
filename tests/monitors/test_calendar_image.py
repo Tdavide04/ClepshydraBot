@@ -41,6 +41,26 @@ class TestCreateMonthCalendar:
 
         assert image.width == 900
 
+    def test_a_row_with_many_categories_grows_to_show_them_all(self):
+        """Regression: the categories caption was one line cut with "…", so the
+        last categories of an event listed under many of them were lost."""
+        one = _render(entries={"Premier Draft": [(1, 30, "Star Trek")]})
+        many = _render(
+            entries={
+                category: [(1, 30, "Star Trek")]
+                for category in (
+                    "Premier Draft",
+                    "Contender Draft",
+                    "Pick-Two Draft",
+                    "Traditional Draft",
+                    "Flashback Premier Draft",
+                    "Sealed and Traditional Sealed",
+                )
+            }
+        )
+
+        assert many.height > one.height
+
     def test_logs_a_warning_for_an_unclassified_event(self, capsys):
         _render(entries={"Midweek Magic": [(15, 16, "Momir")]})
 

@@ -47,7 +47,9 @@ class EventCalendarImageGenerator:
     NAME_MAX_LINES = 3
     NAME_LINE_HEIGHT = 26
     ROW_PADDING = 20
-    CAPTION_HEIGHT = 22
+    CAPTION_LINE_HEIGHT = 20
+    CAPTION_GAP = 2
+    CAPTION_MAX_LINES = 4
     GROUP_HEADER_HEIGHT = 52
 
     # Strip of day ticks at the right of each row. Fixed tick width, so a
@@ -128,6 +130,29 @@ class EventCalendarImageGenerator:
         return lines
 
     @classmethod
+    def _caption_lines(
+        cls, draw: ImageDraw.ImageDraw, categories: tuple[str, ...], font, max_width: float
+    ) -> list[str]:
+        """Wraps the categories caption one category at a time, so a name like
+        "Pick-Two Draft" is never split across two lines. A single category
+        wider than the column is cut with an ellipsis."""
+        lines: list[str] = []
+        current = ""
+        for category in categories:
+            candidate = f"{current} · {category}" if current else category
+            if not current or draw.textlength(candidate, font=font) <= max_width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = category
+        lines.append(current)
+        lines = [cls._fit_text(draw, line, font, max_width) for line in lines]
+        if len(lines) > cls.CAPTION_MAX_LINES:
+            lines = lines[: cls.CAPTION_MAX_LINES]
+            lines[-1] = cls._fit_text(draw, f"{lines[-1]} …", font, max_width)
+        return lines
+
+    @classmethod
     def _date_labels(cls, year: int, month: int, row: AgendaRow) -> tuple[str, str]:
         """("3 – 12", "mar → gio"), or ("21", "sab") for a one-day event."""
         first = WEEKDAYS_IT[date(year, month, row.start_day).weekday()]
@@ -168,15 +193,21 @@ class EventCalendarImageGenerator:
 
         # Measure first, so the canvas height is known before drawing.
         measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
-        laid_out: list[tuple[str, list[tuple[AgendaRow, list[str], int]]]] = []
+        laid_out: list[tuple[str, list[tuple[AgendaRow, list[str], list[str], int]]]] = []
         total_height = cls.CONTENT_TOP + cls.BOTTOM_PADDING
         for group, rows in agenda.groups.items():
             total_height += cls.GROUP_HEADER_HEIGHT
             measured = []
             for row in rows:
                 lines = cls._wrap_text(measure, row.name, font_name, name_width, cls.NAME_MAX_LINES)
-                height = len(lines) * cls.NAME_LINE_HEIGHT + cls.ROW_PADDING + cls.CAPTION_HEIGHT
-                measured.append((row, lines, height))
+                caption = cls._caption_lines(measure, row.categories, font_caption, name_width)
+                height = (
+                    len(lines) * cls.NAME_LINE_HEIGHT
+                    + cls.ROW_PADDING
+                    + cls.CAPTION_GAP
+                    + len(caption) * cls.CAPTION_LINE_HEIGHT
+                )
+                measured.append((row, lines, caption, height))
                 total_height += height
             laid_out.append((group, measured))
 
@@ -196,7 +227,7 @@ class EventCalendarImageGenerator:
             draw.text((cls.MARGIN + 30, y + 15), group, fill=cls.TEXT_PRIMARY, font=font_group)
             y += cls.GROUP_HEADER_HEIGHT
 
-            for row, lines, height in measured:
+            for row, lines, caption, height in measured:
                 draw.rounded_rectangle(
                     [cls.MARGIN - 12, y + 4, cls.MARGIN - 8, y + height - 4], radius=2, fill=color
                 )
@@ -208,8 +239,9 @@ class EventCalendarImageGenerator:
                 for line in lines:
                     draw.text((name_x, text_y), line, fill=cls.TEXT_PRIMARY, font=font_name)
                     text_y += cls.NAME_LINE_HEIGHT
-                caption = cls._fit_text(draw, " · ".join(row.categories), font_caption, name_width)
-                draw.text((name_x, text_y + 1), caption, fill=cls.TEXT_SECONDARY, font=font_caption)
+                for caption_line in caption:
+                    draw.text((name_x, text_y + 1), caption_line, fill=cls.TEXT_SECONDARY, font=font_caption)
+                    text_y += cls.CAPTION_LINE_HEIGHT
 
                 for day in range(1, last_day + 1):
                     x = strip_x + (day - 1) * cls.TICK_WIDTH
