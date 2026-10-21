@@ -17,6 +17,10 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 ## Unreleased
 
 ### Changed
+- `.env.example`: `DB_PATH=data/clepshydra.db` (it said `clepsydra.db`, so a copied template named the DB
+  differently from the code default). An existing `.env` is not affected and must not be renamed: it would
+  point the bot at a new, empty DB. `docs/infrastructure.md`: the production venv is `venv/`, not `.venv/`.
+  Roadmap step 20.
 - CI prints a test coverage report (`pytest-cov` 7.1.0, pinned in `requirements-dev.txt`), with no
   threshold yet. Baseline: 73.2% on the logic layers (`services`, `utils`, `repositories`, `database`), 49%
   overall with the cogs. Roadmap step 15.

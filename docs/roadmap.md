@@ -564,7 +564,10 @@ leaves the previous file intact.
 
 ## Step 20 — `.env.example` DB name typo
 
-**Status:** todo (found 2026-10-20)
+**Status:** done (2026-10-21). Fixed the template only: the bot reads the production `.env`, which wasn't
+touched. If that `.env` was copied from the old template, it points at `data/clepsydra.db` and must stay that
+way — renaming the variable there would open a new, empty DB. The production venv path was corrected in
+`docs/infrastructure.md` at the same time (`venv/`, not `.venv/`, confirmed on the VM).
 
 **Problem:** `.env.example` has `DB_PATH=data/clepsydra.db` (missing "h"), while the code default is
 `data/clepshydra.db`. Copying the template as is gives a differently named DB file.

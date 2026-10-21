@@ -52,9 +52,6 @@ Loaded from `.env` via `python-dotenv` (template: `.env.example`):
 | `DB_PATH` | DB path (default: `data/clepshydra.db`) | `_test.db` suffix |
 | `TEST_MODE` | Test flag | — |
 
-`.env.example` still has `DB_PATH=data/clepsydra.db` (missing "h"): copying it as is gives a DB file name
-different from the code default.
-
 `VERSION` is **not** an environment variable: it is a hardcoded constant in `config/config.py` (`-test` is
 appended when `TEST_MODE` is on), bumped by hand on every release together with `CHANGELOG.md` — see
 "Versioning" at the top of that file for the convention (MINOR for features, PATCH for fixes).
@@ -74,8 +71,8 @@ appended when `TEST_MODE` is on), bumped by hand on every release together with 
 ### Running with pm2 (current)
 
 ```bash
-source .venv/bin/activate
-pm2 start main.py --name ClepshydraBotte --interpreter .venv/bin/python
+source venv/bin/activate
+pm2 start main.py --name ClepshydraBotte --interpreter venv/bin/python
 ```
 
 The production process is called **`ClepshydraBotte`** (case-sensitive — the log files are
@@ -145,8 +142,8 @@ and update the VM's venv with the same `pip install -r requirements.txt`.
 Installation (production):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
