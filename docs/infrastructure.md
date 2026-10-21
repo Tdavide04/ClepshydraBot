@@ -68,7 +68,7 @@ appended when `TEST_MODE` is on), bumped by hand on every release together with 
 
 ## Deployment
 
-### Running with pm2 (current)
+### Running with pm2
 
 ```bash
 source venv/bin/activate
@@ -80,14 +80,29 @@ The production process is called **`ClepshydraBotte`** (case-sensitive — the l
 `pm2 logs clepshydrabot` finds no process, and a downstream `grep` returns empty output with no error,
 easy to mistake for "no logs".
 
-`pm2` manages the process and restarts it automatically on crash. Useful commands:
+`pm2` manages the process and restarts it automatically on crash.
+
+**Start at boot.** The `pm2-ubuntu` systemd service starts pm2 when the VM boots and runs `pm2 resurrect`,
+which restarts the processes saved in `~/.pm2/dump.pm2`. It was set up on 2026-10-21 with:
+
+```bash
+pm2 startup systemd     # prints a sudo command: run it once
+pm2 save                # saves the current process list
+```
+
+Until then it didn't exist: a VM reboot would have left the bot down until someone started it by hand (the VM
+had been up since 2026-08-09, so it never happened). Run `pm2 save` again whenever the process list changes
+(a new name, interpreter or path), otherwise the boot restores the old one. Check it with
+`systemctl is-enabled pm2-ubuntu` (`enabled`); it shows `inactive` until the first reboot, because the pm2
+daemon running now was started by hand.
+
+Useful commands:
 
 ```bash
 pm2 status              # process status
 pm2 logs ClepshydraBotte  # live logs
 pm2 restart ClepshydraBotte
-pm2 save                # persists the process list
-pm2 startup             # restarts pm2 (and the saved processes) when the VM boots
+pm2 save                # saves the process list that is restored at boot
 
 # history of the sitemap monitor checks (timestamped lines since 3.5.3)
 pm2 logs ClepshydraBotte --lines 2000 --nostream | grep -E "BAN ANNOUNCEMENT|EVENT SCHEDULE"
@@ -119,32 +134,6 @@ an explicit error to stderr — visible in `pm2 logs ClepshydraBotte`. Note: if 
 expired/invalid, `pm2` restarts the process anyway, and it fails again the same way until the token is
 updated by hand — automatic restart doesn't "fix" a credentials problem, it only keeps it visible in the
 logs.
-
-### Running with systemd (unused alternative)
-
-The unit file is in `deploy/clepshydrabot.service` (to copy into `/etc/systemd/system/`), kept in the
-repository as an alternative but not installed on the production VM (which uses `pm2`):
-
-```
-[Unit]
-Description=ClepshydraBot
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/opt/clepsydrabot
-EnvironmentFile=/opt/clepsydrabot/.env
-ExecStart=/opt/clepsydrabot/.venv/bin/python main.py
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-With systemd, the same `main.py` behavior (non-zero exit on startup errors) would show up in
-`journalctl -u clepshydrabot` instead of `pm2 logs`.
 
 ---
 
@@ -225,8 +214,9 @@ Discord log channel is unreachable.
 ### Sprint 7 — Docker (removed)
 
 A Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) existed from September 2026 as an
-extra deploy option. Production never used it and CI never built it, so it was removed in October 2026:
-see `docs/adr/0005-docker-setup-removed.md`. `pm2` ("Deployment" above) is the only deployment method.
+extra deploy option, next to a systemd unit (`deploy/clepshydrabot.service`). Production never used either,
+so both were removed in October 2026: see `docs/adr/0005-unused-deploy-alternatives-removed.md`. `pm2`
+("Deployment" above) is the only deployment method.
 
 ### Sprint 8 — CI/CD (done)
 

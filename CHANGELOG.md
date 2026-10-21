@@ -17,10 +17,22 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 ## Unreleased
 
 ### Removed
-- The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and its sections in `README.md` and
-  `docs/infrastructure.md`. Production never used it and CI never built it; `pm2` on the VM is the only
-  deployment method. Rationale and the way back: `docs/adr/0005-docker-setup-removed.md`. Nothing changes
-  for the running bot.
+- The Docker setup (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) and the systemd unit
+  `deploy/clepshydrabot.service`, with their sections in `README.md` and `docs/infrastructure.md`. Production
+  never used either: CI never built the image, and the unit pointed at a path and venv that don't exist.
+  `pm2` on the VM is the only deployment method. Rationale and the way back:
+  `docs/adr/0005-unused-deploy-alternatives-removed.md`. Nothing changes for the running bot.
+
+### Fixed (production VM, no code change)
+- The bot now restarts after a VM reboot. pm2 had no boot service (`pm2 startup` had never been run), so a
+  reboot would have left the bot down until someone started it by hand. On 2026-10-21 `pm2 startup systemd`
+  created `pm2-ubuntu.service` (enabled, runs `pm2 resurrect`) and `pm2 save` stored the current process
+  list (`ClepshydraBotte`, `venv/bin/python`). Verified with `systemctl is-enabled` and by reading the unit
+  and the saved list; not verified with an actual reboot.
+
+### Docs
+- `docs/infrastructure.md`: the boot start, when to run `pm2 save` again, and the systemd alternative
+  removed. `CLAUDE.md` (production invariant), `docs/technical-report.md`, ADR-0003, ADR-0005.
 
 ## 4.0.2 (2026-10-21)
 

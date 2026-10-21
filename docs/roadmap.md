@@ -133,13 +133,15 @@ by hand (confirmed by the user, 2026-10-21), so it was runtime state that happen
 Deploy caveat: the pull that removes the runtime file from git also deletes it on the VM, so the 4.0.2
 deploy backs it up before the pull and restores it before the restart (`docs/infrastructure.md`).
 
-## Step 2a — Remove the unused Docker setup
+## Step 2a — Remove the unused deploy alternatives
 
 **Status:** done (2026-10-21) · `build` · no bump
 
-Added during this phase, after step 2 showed Docker still shaping decisions. Production runs under `pm2` and
-CI never built the image, so `Dockerfile`, `docker-compose.yml` and `.dockerignore` are gone, with their
-docs. Rationale and the way back: `docs/adr/0005-docker-setup-removed.md`.
+Added during this phase, after step 2 showed Docker still shaping decisions. Production runs under `pm2`, so
+the Docker setup (never built by CI) and `deploy/clepshydrabot.service` (never installed, wrong paths) are
+gone, with their docs. Checking the unit showed that pm2 had no boot service on the VM: `pm2 startup` and
+`pm2 save` were run there, so the bot now comes back after a reboot. Rationale and the way back:
+`docs/adr/0005-unused-deploy-alternatives-removed.md`.
 
 ---
 

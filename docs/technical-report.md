@@ -20,7 +20,7 @@ this document doesn't repeat them.
 | Public IP | 80.225.91.142 |
 | SSH username | ubuntu |
 | Access | SSH with a private key |
-| Process manager | `pm2` — restarts the bot automatically on crash |
+| Process manager | `pm2` — restarts the bot on crash, and at VM boot through the `pm2-ubuntu` service |
 
 ## 2. Hardware Specifications
 

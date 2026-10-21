@@ -182,8 +182,8 @@ listed in the map.
 - **Inside `utils/`, `config.config` is imported inside the function that uses it**, never at module
   top, so these modules stay importable in tests without a `.env`. Examples: `utils/permissions.py` and
   the two monitors.
-- **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB). `deploy/clepshydrabot.service` is an
-  unused alternative.
+- **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
+  systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 
 ### Writing tests
 

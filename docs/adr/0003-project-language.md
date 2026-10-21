@@ -20,7 +20,7 @@ The community the bot serves is Italian, and so are its members and staff.
 - console output (`pm2 logs`) and the Discord log channel (`Logger.send_log()` `info`/`fields`)
 - `docs/` (file names included), `README.md`, `CLAUDE.md`, ADRs, `CONTEXT.md`
 - commit subjects and scopes, and new `CHANGELOG.md` entries
-- comments in supporting files (`.env.example`, CI, `deploy/`, `ruff.toml`)
+- comments in supporting files (`.env.example`, CI, `ruff.toml`)
 
 **Italian** covers everything a user sees as a reply to an action or in a public channel:
 - replies to every slash command, admin ones included
