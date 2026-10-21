@@ -487,7 +487,11 @@ succeeds.
 
 ## Step 15 — Measured coverage
 
-**Status:** todo
+**Status:** done (2026-10-21). `pytest-cov` 7.1.0 pinned; CI prints the report, no threshold yet. Baseline
+(local run, Python 3.14, 231 tests): `database` 91.0%, `repositories` 86.7%, `services` 86.3%, `utils`
+63.4% — **logic layers 73.2%** — `cogs` 13.2% (exempt from test-first), **total 49%**. `utils` is pulled
+down by the two image generators (`deck_image_generator.py` 18%, `event_calendar_image_generator.py` 69%)
+and `permissions.py` (0%). Next: set `--cov-fail-under` on the logic layers once the CI number is confirmed.
 
 **Changes:** `pytest-cov` in `requirements-dev.txt`. In CI: `pytest --cov=services --cov=utils
 --cov=repositories --cov=database --cov=cogs --cov-report=term-missing`, as a report only, no threshold. The

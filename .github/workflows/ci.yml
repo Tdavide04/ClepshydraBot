@@ -15,7 +15,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: pytest tests/ -v
+      # Coverage is a report only for now (roadmap step 15): no --cov-fail-under threshold yet.
+      - run: >-
+          pytest tests/ -v
+          --cov=services --cov=utils --cov=repositories --cov=database --cov=cogs
+          --cov-report=term-missing
 
   lint:
     runs-on: ubuntu-latest

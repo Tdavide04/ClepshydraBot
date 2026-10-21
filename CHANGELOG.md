@@ -17,6 +17,9 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 ## Unreleased
 
 ### Changed
+- CI prints a test coverage report (`pytest-cov` 7.1.0, pinned in `requirements-dev.txt`), with no
+  threshold yet. Baseline: 73.2% on the logic layers (`services`, `utils`, `repositories`, `database`), 49%
+  overall with the cogs. Roadmap step 15.
 - Dependencies pinned (`requirements.txt`) to the versions running in production: discord.py 2.7.1,
   python-dotenv 1.2.2, aiohttp 3.14.1, Pillow 12.3.0, SQLAlchemy 2.0.51, aiosqlite 0.22.1. `pytest` pinned
   in `requirements-dev.txt`; `.python-version` set to 3.12. Checked on a clean Python 3.12.3 venv: install

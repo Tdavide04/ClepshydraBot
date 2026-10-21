@@ -228,7 +228,9 @@ stays the method actually used in production until a migration is decided.
 ### Sprint 8 — CI/CD (done)
 
 `.github/workflows/ci.yml`, active on push/PR:
-- `pytest` on every push and PR — **blocking gate**
+- `pytest` on every push and PR — **blocking gate**, with a coverage report (`pytest-cov`,
+  `--cov-report=term-missing` on `services`, `utils`, `repositories`, `database`, `cogs`) since roadmap step
+  15; no minimum threshold yet
 - `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in Step 8 of `docs/roadmap.md` (at the time partly by excluding `legacy/`, later
   removed from the repository — see `CHANGELOG.md`)

@@ -121,7 +121,8 @@ pip install -r requirements-dev.txt          # deps + pytest + ruff + pre-commit
 pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per clone
 python main.py                                # needs .env (see .env.example)
 TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
-python -m pytest                              # CI runs `pytest tests/ -v`
+python -m pytest                              # CI runs `pytest tests/ -v` plus a coverage report
+python -m pytest --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
 python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
 python -m ruff format .                       # CI runs `ruff format --check .`
