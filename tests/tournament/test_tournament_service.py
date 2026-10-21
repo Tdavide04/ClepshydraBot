@@ -9,6 +9,7 @@ import pytest
 import database.engine as db_engine
 from database import close_db, init_db
 from database.models import MatchResult, TournamentStatus
+from services.results import ResultKind
 from services.tournament_service import TournamentService
 
 
@@ -42,20 +43,27 @@ class TestRegistration:
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Test Cup")
-            msg1 = await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
-            assert "Iscrizione confermata" in msg1
-            msg2 = await service.register_player(t.id, discord_id=1)
-            assert "gia iscritto" in msg2
+            first = await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
+            assert first.ok is True
+            duplicate = await service.register_player(t.id, discord_id=1)
+            assert duplicate.ok is False
+            assert "gia iscritto" in duplicate.message
 
         run_with_db(scenario)
 
-    def test_max_players_enforced(self, isolated_db):
+    def test_registration_to_a_full_tournament_is_a_failed_result(self, isolated_db):
+        """Regression (roadmap step 17): /iscriviti never looked at the outcome, so a registration refused
+        because the tournament was full was announced publicly as confirmed. The refusal must be readable
+        from a field, not only from the message text."""
+
         async def scenario():
             service = TournamentService()
-            t = await service.create_tournament("Small Cup", max_players=1)
-            await service.register_player(t.id, discord_id=1)
-            msg = await service.register_player(t.id, discord_id=2)
-            assert "massimo" in msg
+            t = await service.create_tournament("Full Cup", max_players=1)
+            first = await service.register_player(t.id, discord_id=1)
+            second = await service.register_player(t.id, discord_id=2)
+            assert first.ok is True
+            assert second.ok is False
+            assert "massimo" in second.message
 
         run_with_db(scenario)
 
@@ -65,8 +73,8 @@ class TestRegistration:
             t = await service.create_tournament("Rejoin Cup")
             await service.register_player(t.id, discord_id=1)
             await service.unregister_player(t.id, discord_id=1)
-            msg = await service.register_player(t.id, discord_id=1, deck_name="Azorius Fliers")
-            assert "confermata" in msg
+            rejoin = await service.register_player(t.id, discord_id=1, deck_name="Azorius Fliers")
+            assert rejoin.ok is True
 
         run_with_db(scenario)
 
@@ -85,8 +93,8 @@ class TestRegistration:
                 service.register_player(t.id, discord_id=3),
             )
 
-            assert sum("confermata" in r for r in results) == 1
-            assert sum("massimo" in r for r in results) == 1
+            assert sum(r.ok for r in results) == 1
+            assert sum("massimo" in r.message for r in results if not r.ok) == 1
             assert len(await service.get_registered_players(t.id)) == 2
 
         run_with_db(scenario)
@@ -116,9 +124,10 @@ class TestRegistration:
             await service.register_player(t.id, discord_id=1)
             await service.unregister_player(t.id, discord_id=1)
 
-            msg = await service.unregister_player(t.id, discord_id=1)
+            outcome = await service.unregister_player(t.id, discord_id=1)
 
-            assert "Non sei iscritto" in msg
+            assert outcome.ok is False
+            assert "Non sei iscritto" in outcome.message
 
         run_with_db(scenario)
 
@@ -129,8 +138,8 @@ class TestDeckSubmission:
             service = TournamentService()
             t = await service.create_tournament("Deck Cup")
             await service.register_player(t.id, discord_id=1)  # no deck
-            msg = await service.submit_deck(t.id, discord_id=1, deck_name="Mono Red")
-            assert "Mono Red" in msg
+            outcome = await service.submit_deck(t.id, discord_id=1, deck_name="Mono Red")
+            assert outcome.ok is True
 
             players = await service.get_registered_players(t.id)
             assert players[0].deck_name == "Mono Red"
@@ -153,12 +162,25 @@ class TestDeckSubmission:
 
         run_with_db(scenario)
 
+    def test_submit_deck_to_an_unknown_tournament_is_a_failed_result(self, isolated_db):
+        """Regression (roadmap step 17): /invia_deck matched only "Non sei iscritto"/"non accetta piu", so the
+        service's "Torneo non trovato." was treated as a recorded deck."""
+
+        async def scenario():
+            service = TournamentService()
+            outcome = await service.submit_deck(999, discord_id=1, deck_name="Mono Red")
+            assert outcome.ok is False
+            assert "non trovato" in outcome.message
+
+        run_with_db(scenario)
+
     def test_submit_deck_requires_existing_registration(self, isolated_db):
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Deck Cup")
-            msg = await service.submit_deck(t.id, discord_id=999, deck_name="Mono Red")
-            assert "Non sei iscritto" in msg
+            outcome = await service.submit_deck(t.id, discord_id=999, deck_name="Mono Red")
+            assert outcome.ok is False
+            assert "Non sei iscritto" in outcome.message
 
         run_with_db(scenario)
 
@@ -170,8 +192,9 @@ class TestDeckSubmission:
             await service.register_player(t.id, discord_id=2, deck_name="Mono Blue")
             await service.start_tournament(t.id)
 
-            msg = await service.submit_deck(t.id, discord_id=1, deck_name="New Deck")
-            assert "non accetta piu" in msg
+            outcome = await service.submit_deck(t.id, discord_id=1, deck_name="New Deck")
+            assert outcome.ok is False
+            assert "non accetta piu" in outcome.message
 
         run_with_db(scenario)
 
@@ -181,16 +204,17 @@ class TestTournamentFlow:
         t = await service.create_tournament("Swiss Cup")
         for i in range(count):
             await service.register_player(t.id, discord_id=1000 + i, deck_name=f"Deck {i}")
-        msg = await service.start_tournament(t.id)
-        return t, msg
+        outcome = await service.start_tournament(t.id)
+        return t, outcome
 
     def test_start_requires_two_players(self, isolated_db):
         async def scenario():
             service = TournamentService()
             t = await service.create_tournament("Solo Cup")
             await service.register_player(t.id, discord_id=1)
-            msg = await service.start_tournament(t.id)
-            assert "almeno 2" in msg
+            outcome = await service.start_tournament(t.id)
+            assert outcome.ok is False
+            assert "almeno 2" in outcome.message
 
         run_with_db(scenario)
 
@@ -200,8 +224,9 @@ class TestTournamentFlow:
             t = await service.create_tournament("Swiss Cup")
             await service.register_player(t.id, discord_id=1, deck_name="Mono Red")
             await service.register_player(t.id, discord_id=2)  # no deck submitted
-            msg = await service.start_tournament(t.id)
-            assert "non hanno ancora inviato un mazzo" in msg
+            outcome = await service.start_tournament(t.id)
+            assert outcome.ok is False
+            assert "non hanno ancora inviato un mazzo" in outcome.message
 
             tournament = await service.get_tournament(t.id)
             assert tournament.status == TournamentStatus.REGISTRATION
@@ -211,8 +236,8 @@ class TestTournamentFlow:
     def test_start_generates_round_one(self, isolated_db):
         async def scenario():
             service = TournamentService()
-            t, msg = await self._start_with_players(service, 4)
-            assert "iniziato" in msg
+            t, outcome = await self._start_with_players(service, 4)
+            assert outcome.ok is True
             tournament = await service.get_tournament(t.id)
             assert tournament.status == TournamentStatus.ACTIVE
             matches = await service.get_matches(t.id)
@@ -223,8 +248,9 @@ class TestTournamentFlow:
     def test_bye_awarded_with_odd_players(self, isolated_db):
         async def scenario():
             service = TournamentService()
-            _, msg = await self._start_with_players(service, 3)
-            assert "bye" in msg.lower()
+            _, outcome = await self._start_with_players(service, 3)
+            assert outcome.ok is True
+            assert "bye" in outcome.message.lower()
 
         run_with_db(scenario)
 
@@ -247,8 +273,9 @@ class TestTournamentFlow:
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 4)
-            msg = await service.generate_next_round(t.id)
-            assert "senza risultato" in msg
+            outcome = await service.generate_next_round(t.id)
+            assert outcome.ok is False
+            assert outcome.kind is ResultKind.PENDING_RESULTS
 
         run_with_db(scenario)
 
@@ -260,8 +287,9 @@ class TestTournamentFlow:
             for m in round1:
                 await service.submit_result(m.id, m.player1_id, "win")
 
-            msg = await service.generate_next_round(t.id)
-            assert "Round 2 generato" in msg
+            outcome = await service.generate_next_round(t.id)
+            assert outcome.ok is True
+            assert outcome.kind is None
 
             round2 = [m for m in await service.get_matches(t.id) if m.round_number == 2]
             round1_pairs = {frozenset((m.player1_id, m.player2_id)) for m in round1}
@@ -281,8 +309,9 @@ class TestTournamentFlow:
             match = (await service.get_matches(t.id))[0]
             await service.submit_result(match.id, match.player1_id, "win")
 
-            msg = await service.generate_next_round(t.id)
-            assert "completato" in msg.lower()
+            outcome = await service.generate_next_round(t.id)
+            assert outcome.ok is True
+            assert outcome.kind is ResultKind.TOURNAMENT_COMPLETED
 
             tournament = await service.get_tournament(t.id)
             assert tournament.status == TournamentStatus.COMPLETED
@@ -379,13 +408,13 @@ class TestTournamentFlow:
                 await service.register_player(t.id, discord_id=discord_id)
             await service.submit_deck(t.id, 1, "Deck 1")
             await service.submit_deck(t.id, 2, "Deck 2")
-            assert "non hanno" in await service.start_tournament(t.id)
+            assert (await service.start_tournament(t.id)).ok is False
 
-            msg = await service.force_drop_player(t.id, discord_id=3)
+            dropped = await service.force_drop_player(t.id, discord_id=3)
 
-            assert "rimosso" in msg
+            assert dropped.ok is True
             assert [p.user.discord_id for p in await service.get_registered_players(t.id)] == [1, 2]
-            assert "iniziato" in await service.start_tournament(t.id)
+            assert (await service.start_tournament(t.id)).ok is True
 
         run_with_db(scenario)
 
@@ -393,11 +422,12 @@ class TestTournamentFlow:
         async def scenario():
             service = TournamentService()
             t, _ = await self._start_with_players(service, 2)
-            await service.force_conclude_tournament(t.id)
+            assert (await service.force_conclude_tournament(t.id)).ok is True
 
-            msg = await service.force_drop_player(t.id, discord_id=1000)
+            outcome = await service.force_drop_player(t.id, discord_id=1000)
 
-            assert "non e attivo" in msg
+            assert outcome.ok is False
+            assert "non e attivo" in outcome.message
 
         run_with_db(scenario)
 

@@ -522,7 +522,13 @@ the read/write, on a 1-OCPU VM); `B007` flags an unused loop variable.
 
 ## Step 17 — `ServiceResult` instead of matching on messages
 
-**Status:** todo
+**Status:** done (2026-10-21, 3.6.7). Seven methods (`register_player`, `submit_deck`, `unregister_player`,
+`start_tournament`, `force_drop_player`, `force_conclude_tournament`, `generate_next_round`) return
+`ServiceResult`; a `kind` field with the `ResultKind` enum (`PENDING_RESULTS`, `TOURNAMENT_COMPLETED`) covers
+`generate_next_round`'s four outcomes. Doing it surfaced two real bugs: `/iscriviti` never checked the outcome
+and announced a registration refused because the tournament was full as confirmed, publicly; `/invia_deck`
+didn't recognize "Torneo non trovato." and treated it as a recorded deck. Both have a regression test at the
+service seam (red on the old contract). No `msg` left in the cog.
 
 **Problem:** 9 places in `cogs/tournament_system/cog.py` decide what to do by looking for phrases in the
 service's message (`"non trovato" in msg`, `"completato" in msg`...). Rewording a message silently breaks the

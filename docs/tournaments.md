@@ -15,7 +15,7 @@ services/
 ├── pairing_engine.py       # Swiss pairing algorithm
 ├── standings.py            # Standings with tiebreakers
 ├── rating.py               # Glicko-2 rating system
-└── results.py              # ServiceResult(ok, message)
+└── results.py              # ServiceResult(ok, message, kind) + ResultKind
 
 cogs/tournament_system/
 └── cog.py                  # 18 slash commands + modals + views
@@ -177,8 +177,11 @@ interval).
 
 ## TournamentService (`services/tournament_service.py`)
 
-Main orchestrator, coordinating every tournament operation. Methods return Italian user-facing messages
-(a `str`, or a `ServiceResult` for the methods already migrated, see roadmap step 17).
+Main orchestrator, coordinating every tournament operation. The methods the cog acts on return a
+`ServiceResult(ok, message, kind=None)` (`services/results.py`): `ok` tells success from failure, `message`
+is the Italian text shown to the user, and `kind` (a `ResultKind`) is set only where `ok` isn't enough —
+today `generate_next_round()`. The cog branches on these fields, never on the message text (until 3.6.7 it
+matched phrases such as `"non trovato" in msg`, and `/iscriviti` didn't check the outcome at all).
 
 | Method | Description |
 |---|---|
@@ -189,7 +192,7 @@ Main orchestrator, coordinating every tournament operation. Methods return Itali
 | `start_tournament(tournament_id)` | Starts, computes the rounds, generates round 1 — **refuses** if an active registered player has `deck_name is None` |
 | `submit_result(match_id, winner_tp_id, result, p1_game_wins, p2_game_wins)` | Records a result; returns `ServiceResult(ok, message)` (`services/results.py`), refuses if the match already has a result |
 | `correct_result(tournament_id, round_number, table_number, winner_discord_id, winner_games, loser_games)` | Staff correction: overwrites or enters a table's result (`winner_discord_id=None` = draw, `round_number=None` = current round); `active` tournaments only; `ServiceResult` with the before → after |
-| `generate_next_round(tournament_id)` | Next round or conclusion |
+| `generate_next_round(tournament_id)` | Next round or conclusion: `ok=True` for a generated round, `ok=True, kind=TOURNAMENT_COMPLETED` after the last round, `ok=False, kind=PENDING_RESULTS` while current-round results are missing, `ok=False` otherwise |
 | `force_drop_player(tournament_id, discord_id)` | Removal decided by staff: in `registration` it only marks the registration as dropped (unblocks a `start_tournament()` stuck on a missing deck); in `active` it also gives the win to the opponent in the current round's pending match |
 | `force_conclude_tournament(tournament_id)` | Early conclusion |
 | `get_standings(tournament_id)` | Standings with names; includes dropped players who played at least one match (`StandingsEntry.dropped`) |
@@ -277,6 +280,7 @@ the service returned `"Risultato registrato!"`.
 |---|---|---|
 | `TOURNAMENT_CREATED` | INFO | `/crea_torneo` |
 | `REGISTRATION_CONFIRMED` | INFO | `/iscriviti` (registration, deck not submitted yet) |
+| `REGISTRATION_REFUSED` | WARN | `/iscriviti` refused by the service (e.g. tournament full); the user gets the reason privately |
 | `TOURNAMENT_DECK_SUBMITTED` | INFO/WARN | `/invia_deck` — INFO if the deck is valid and recorded, WARN if invalid or refused (not registered / tournament no longer in registration) |
 | `SCRYFALL_UNAVAILABLE` | WARN | `/invia_deck` with Scryfall unreachable: deck not evaluated |
 | `PLAYER_UNREGISTERED` | INFO | `/left_torneo` (voluntary leave) |

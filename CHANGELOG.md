@@ -14,7 +14,23 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
+## 3.6.7 (2026-10-21)
+
+### Fixed
+- **`/iscriviti` announced refused registrations as confirmed**: the cog never checked the outcome of
+  `register_player()`, so a registration refused because the tournament was full got the public "✅ Iscrizione
+  confermata" embed (with the refusal text inside) and an INFO `REGISTRATION_CONFIRMED` log. The refusal now
+  goes to the user privately, with a WARN `REGISTRATION_REFUSED` log.
+- **`/invia_deck` treated "Torneo non trovato." as a recorded deck**: the cog only recognized "Non sei
+  iscritto"/"non accetta piu".
+
+### Refactored
+- `TournamentService.register_player`, `submit_deck`, `unregister_player`, `start_tournament`,
+  `force_drop_player`, `force_conclude_tournament` and `generate_next_round` return `ServiceResult` instead of a
+  string; `ServiceResult` gains an optional `kind` (`ResultKind.PENDING_RESULTS`, `TOURNAMENT_COMPLETED`) for
+  `generate_next_round`. The tournament cog branches on these fields and no longer matches message text.
+  Regression tests at the service seam for both bugs. Manual check in `TEST_MODE`: **not done** — the
+  tournament commands are disabled right after this release (3.7.0). Roadmap step 17.
 
 ### Changed
 - `.env.example`: `DB_PATH=data/clepshydra.db` (it said `clepsydra.db`, so a copied template named the DB

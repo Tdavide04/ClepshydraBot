@@ -9,6 +9,7 @@ from config.config import GUILD_ID, PUBLIC_DECK_CHANNEL_ID, TOURNAMENT_CHANNEL_I
 from database import get_session
 from database.models import Tournament, TournamentPlayer, TournamentStatus
 from repositories.banlist_repository import BanlistRepository
+from services.results import ResultKind
 from services.tournament_service import TournamentService
 from utils.interaction_errors import ReportingModal, ReportingView
 from utils.permissions import is_admin
@@ -230,17 +231,17 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
                 )
             return
 
-        msg = await self.service.submit_deck(self.torneo_id, interaction.user.id, deck_name)
+        outcome = await self.service.submit_deck(self.torneo_id, interaction.user.id, deck_name)
 
-        if "Non sei iscritto" in msg or "non accetta piu" in msg:
-            await interaction.followup.send(msg, ephemeral=True)
+        if not outcome.ok:
+            await interaction.followup.send(outcome.message, ephemeral=True)
             if logger:
                 await logger.send_log(
                     level="WARN",
                     event="TOURNAMENT_DECK_SUBMITTED",
                     user=interaction.user,
                     info=(
-                        f"Outcome: REJECTED ({msg})\n"
+                        f"Outcome: REJECTED ({outcome.message})\n"
                         f"Tournament: **{self.torneo_name}** (ID: {self.torneo_id})\n"
                         f"Deck: **{deck_name}**"
                     ),
@@ -249,7 +250,7 @@ class InviaDeckModal(ReportingModal, title="Invia il mazzo per il torneo"):
 
         embed = discord.Embed(
             title="\u2705 Mazzo registrato",
-            description=msg,
+            description=outcome.message,
             color=discord.Color.green(),
             timestamp=datetime.now(),
         )
@@ -590,21 +591,16 @@ class TournamentSystemCog(commands.Cog):
                 "Il torneo non \u00e8 in fase di iscrizioni.", ephemeral=True
             )
 
-        msg = await self.service.start_tournament(tournament.id)
+        outcome = await self.service.start_tournament(tournament.id)
 
-        if (
-            "non trovato" in msg
-            or "non e attivo" in msg
-            or "Servono almeno" in msg
-            or "non hanno ancora inviato" in msg
-        ):
+        if not outcome.ok:
             await self._log(
                 "WARN",
                 "TOURNAMENT_START_BLOCKED",
                 user=interaction.user,
-                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {msg}",
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {outcome.message}",
             )
-            return await interaction.followup.send(msg, ephemeral=True)
+            return await interaction.followup.send(outcome.message, ephemeral=True)
 
         players = await self.service.get_registered_players(tournament.id)
         player_data = [(self._resolve_name(p), p.deck_name or "") for p in players]
@@ -657,7 +653,7 @@ class TournamentSystemCog(commands.Cog):
             "INFO",
             "TOURNAMENT_STARTED",
             user=interaction.user,
-            info=f"{msg}\n\n**Participants:**\n{partecipanti_text}",
+            info=f"{outcome.message}\n\n**Participants:**\n{partecipanti_text}",
         )
 
     @discord.app_commands.command(
@@ -685,14 +681,14 @@ class TournamentSystemCog(commands.Cog):
                 ephemeral=True,
             )
 
-        msg = await self.service.force_drop_player(tournament.id, giocatore.id)
+        outcome = await self.service.force_drop_player(tournament.id, giocatore.id)
 
-        if "non trovato" in msg or "non e attivo" in msg or "non iscritto" in msg:
-            return await interaction.followup.send(msg, ephemeral=True)
+        if not outcome.ok:
+            return await interaction.followup.send(outcome.message, ephemeral=True)
 
         embed = discord.Embed(
             title="\u274c Giocatore Rimosso",
-            description=msg,
+            description=outcome.message,
             color=discord.Color.red(),
             timestamp=datetime.now(),
         )
@@ -810,14 +806,14 @@ class TournamentSystemCog(commands.Cog):
                 ephemeral=True,
             )
 
-        msg = await self.service.force_conclude_tournament(tournament.id)
+        outcome = await self.service.force_conclude_tournament(tournament.id)
 
-        if "non trovato" in msg or "non e attivo" in msg:
-            return await interaction.followup.send(msg, ephemeral=True)
+        if not outcome.ok:
+            return await interaction.followup.send(outcome.message, ephemeral=True)
 
         embed = discord.Embed(
             title="\U0001f3f4 Torneo Concluso",
-            description=msg,
+            description=outcome.message,
             color=discord.Color.dark_red(),
             timestamp=datetime.now(),
         )
@@ -854,15 +850,15 @@ class TournamentSystemCog(commands.Cog):
         if tournament.status != TournamentStatus.ACTIVE:
             return await interaction.followup.send("Il torneo non \u00e8 attivo.", ephemeral=True)
 
-        msg = await self.service.generate_next_round(tournament.id)
+        outcome = await self.service.generate_next_round(tournament.id)
 
-        if "non trovato" in msg or "non e attivo" in msg:
-            return await interaction.followup.send(msg, ephemeral=True)
+        if not outcome.ok and outcome.kind is not ResultKind.PENDING_RESULTS:
+            return await interaction.followup.send(outcome.message, ephemeral=True)
 
-        if "ancora" in msg and "senza risultato" in msg:
+        if outcome.kind is ResultKind.PENDING_RESULTS:
             embed = discord.Embed(
                 title="\u23f3 Partite in sospeso",
-                description=msg,
+                description=outcome.message,
                 color=discord.Color.orange(),
                 timestamp=datetime.now(),
             )
@@ -870,10 +866,10 @@ class TournamentSystemCog(commands.Cog):
             await interaction.followup.send(embed=embed)
             return
 
-        if "completato" in msg:
+        if outcome.kind is ResultKind.TOURNAMENT_COMPLETED:
             embed = discord.Embed(
                 title="\U0001f3c6 Torneo Completato!",
-                description=msg,
+                description=outcome.message,
                 color=discord.Color.gold(),
                 timestamp=datetime.now(),
             )
@@ -891,7 +887,7 @@ class TournamentSystemCog(commands.Cog):
         current_round = await self.service.get_current_round(tournament.id)
         embed = discord.Embed(
             title=f"\U0001f504 Round {current_round} Generato",
-            description=msg,
+            description=outcome.message,
             color=discord.Color.teal(),
             timestamp=datetime.now(),
         )
@@ -933,7 +929,7 @@ class TournamentSystemCog(commands.Cog):
             "INFO",
             "ROUND_GENERATED",
             user=interaction.user,
-            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {msg}",
+            info=f"Tournament **{tournament.name}** (ID: {tournament.id}) \u2014 Round {current_round}: {outcome.message}",
         )
 
     # ------------------------------------------------------------------
@@ -1017,13 +1013,23 @@ class TournamentSystemCog(commands.Cog):
                 "Sei gi\u00e0 iscritto a questo torneo.", ephemeral=True
             )
 
-        await interaction.response.defer(ephemeral=False)
-        msg = await self.service.register_player(tournament.id, interaction.user.id)
+        # Called before answering the interaction (a local SQLite write, well within Discord's 3s): a public
+        # defer would make the refusal below public too.
+        outcome = await self.service.register_player(tournament.id, interaction.user.id)
+        if not outcome.ok:
+            await interaction.response.send_message(outcome.message, ephemeral=True)
+            await self._log(
+                "WARN",
+                "REGISTRATION_REFUSED",
+                user=interaction.user,
+                info=f"Tournament **{tournament.name}** (ID: {tournament.id}): {outcome.message}",
+            )
+            return
 
         embed = discord.Embed(
             title="\u2705 Iscrizione confermata",
             description=(
-                f"{msg}\n\nInvia il mazzo prima dell'avvio con "
+                f"{outcome.message}\n\nInvia il mazzo prima dell'avvio con "
                 f"`/invia_deck torneo_id:{tournament.id}` \u2014 il torneo non pu\u00f2 "
                 f"partire finch\u00e9 tutti gli iscritti non hanno inviato un mazzo valido."
             ),
@@ -1032,7 +1038,7 @@ class TournamentSystemCog(commands.Cog):
         )
         embed.add_field(name="Giocatore", value=interaction.user.mention, inline=True)
         embed.set_footer(text=f"Torneo ID: {tournament.id}")
-        await interaction.followup.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
         await self._log(
             "INFO",
@@ -1141,9 +1147,9 @@ class TournamentSystemCog(commands.Cog):
                 "Non puoi uscire da un torneo gi\u00e0 iniziato o completato.", ephemeral=True
             )
 
-        msg = await self.service.unregister_player(tournament.id, interaction.user.id)
-        if "Non sei iscritto" in msg or "Torneo non trovato" in msg:
-            return await interaction.followup.send(msg, ephemeral=True)
+        outcome = await self.service.unregister_player(tournament.id, interaction.user.id)
+        if not outcome.ok:
+            return await interaction.followup.send(outcome.message, ephemeral=True)
 
         embed = discord.Embed(
             title="\U0001f6aa Uscita dal torneo",

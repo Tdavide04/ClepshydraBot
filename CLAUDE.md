@@ -58,9 +58,9 @@ in the CHANGELOG entry.
   repository → test. Then widen it.
 - **Programming by coincidence is banned.** Verify external behaviour (Scryfall queries, Wizards HTML,
   Discord limits) live before relying on it, and record the evidence in the topic doc.
-- **Explicit contracts.** Services return `ServiceResult(ok, message)` (`services/results.py`), and cogs
-  branch on its fields. The string-matching that remains in `cogs/tournament_system/cog.py` is tracked
-  debt (roadmap step 17).
+- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`services/results.py`),
+  and cogs branch on its fields, never on the message text. Add a `ResultKind` member only when `ok` alone
+  can't tell the caller's cases apart.
 - **Fail loud.** On unexpected input, return `None`, raise, or log a `WARN` that asks for a manual check,
   as the monitor parsers do. Never post a guessed result as if it were authoritative.
 
