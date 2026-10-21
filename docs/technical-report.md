@@ -73,8 +73,8 @@ this document doesn't repeat them.
 
 | Component | Version |
 |---|---|
-| Python | 3.12+ |
-| discord.py | Latest stable (not pinned yet, see roadmap step 14) |
+| Python | 3.12 (`.python-version`) |
+| Dependencies | pinned in `requirements.txt` to the production versions (e.g. discord.py) |
 | Bot | see `CHANGELOG.md` for the current version |
 
 ## 5. Resource Constraint

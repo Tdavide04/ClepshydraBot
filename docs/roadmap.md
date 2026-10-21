@@ -465,7 +465,11 @@ created; a message with scope and attribution trailer and one without scope pass
 
 ## Step 14 — Reproducible dependencies
 
-**Status:** todo
+**Status:** done (2026-10-21). The six direct dependencies pinned to the production versions (`pip freeze`
+of the bot's venv on the VM); transitive ones left to the direct pins' requirements — a full lockfile would be
+stricter but needs regenerating on every upgrade. `pytest` pinned to the local version; `.python-version`
+says 3.12. Verified: a clean Python 3.12.3 venv installs `requirements-dev.txt` and passes the whole suite.
+Not verified: `docker build` (Docker Desktop wasn't running).
 
 **Problem:**
 - `requirements.txt` pins no versions, so a `pip install` on the production VM can bring in a new major of

@@ -17,6 +17,10 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
 ## Unreleased
 
 ### Changed
+- Dependencies pinned (`requirements.txt`) to the versions running in production: discord.py 2.7.1,
+  python-dotenv 1.2.2, aiohttp 3.14.1, Pillow 12.3.0, SQLAlchemy 2.0.51, aiosqlite 0.22.1. `pytest` pinned
+  in `requirements-dev.txt`; `.python-version` set to 3.12. Checked on a clean Python 3.12.3 venv: install
+  and test suite green. Roadmap step 14.
 - Lint widened with `ruff` rule families `B` (bugbear) and `ASYNC`. The 5 `ASYNC230`/`ASYNC240` findings
   are blocking file calls that run only once at startup, before the bot serves interactions, so they get a
   `# noqa` with that reason instead of an `asyncio.to_thread` wrapper; the rules stay on to catch runtime

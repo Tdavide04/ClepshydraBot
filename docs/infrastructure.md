@@ -132,17 +132,15 @@ With systemd, the same `main.py` behavior (non-zero exit on startup errors) woul
 
 ## Dependencies (`requirements.txt`)
 
-```
-discord.py
-python-dotenv
-aiohttp
-Pillow
-sqlalchemy[asyncio]
-aiosqlite
-```
+The six direct dependencies (discord.py, python-dotenv, aiohttp, Pillow, `sqlalchemy[asyncio]`, aiosqlite)
+are pinned with `==` to the versions running in production, read with `pip freeze` from the bot's venv on
+the VM; `requirements.txt` is the source of truth for the exact versions. Transitive dependencies (yarl,
+multidict, greenlet...) are not pinned: they follow the direct pins' own requirements, so a fresh install can
+get a newer patch of them than production has. `requirements-dev.txt` pins `pytest`, `ruff` and `pre-commit`
+too. The target Python version is 3.12 (`.python-version`, CI, Docker image `python:3.12-slim`).
 
-Versions are not pinned yet (roadmap step 14), except `ruff` in `requirements-dev.txt`, which the CI
-format check depends on.
+To upgrade a dependency: change one pin, `pip install -r requirements-dev.txt`, run the tests, then deploy
+and update the VM's venv with the same `pip install -r requirements.txt`.
 
 Installation (production):
 

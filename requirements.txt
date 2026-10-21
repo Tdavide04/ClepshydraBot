@@ -1,6 +1,9 @@
-discord.py
-python-dotenv
-aiohttp
-Pillow
-sqlalchemy[asyncio]
-aiosqlite
+# Direct dependencies, pinned to the versions running in production (pip freeze of the bot's venv on the VM,
+# 2026-10-21). Transitive dependencies are left to these pins' own requirements. Upgrade one at a time, run
+# the tests, then update this file.
+discord.py==2.7.1
+python-dotenv==1.2.2
+aiohttp==3.14.1
+Pillow==12.3.0
+sqlalchemy[asyncio]==2.0.51
+aiosqlite==0.22.1
