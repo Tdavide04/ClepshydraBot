@@ -1,54 +1,40 @@
-from dotenv import load_dotenv
 import os
+
+from dotenv import load_dotenv
 
 load_dotenv()
 
 TEST_MODE = os.getenv("TEST_MODE", "False").lower() == "true"
 
-DISCORD_TOKEN = os.getenv(
-    "DISCORD_TOKEN_TEST" if TEST_MODE else "DISCORD_TOKEN"
-)
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN_TEST" if TEST_MODE else "DISCORD_TOKEN")
 
-GUILD_ID = int(
-    os.getenv(
-        "GUILD_ID_TEST" if TEST_MODE else "GUILD_ID"
-    )
-)
+GUILD_ID = int(os.getenv("GUILD_ID_TEST" if TEST_MODE else "GUILD_ID"))
 
 PRESENTATION_CHANNEL_ID = int(
-    os.getenv(
-        "PRESENTATION_CHANNEL_ID_TEST" if TEST_MODE else "PRESENTATION_CHANNEL_ID"
-        )
-    )
+    os.getenv("PRESENTATION_CHANNEL_ID_TEST" if TEST_MODE else "PRESENTATION_CHANNEL_ID")
+)
 
 TOURNAMENT_CHANNEL_ID = int(
-    os.getenv(
-        "TOURNAMENT_CHANNEL_ID_TEST" if TEST_MODE else "TOURNAMENT_CHANNEL_ID"
-    ) or "0"
+    os.getenv("TOURNAMENT_CHANNEL_ID_TEST" if TEST_MODE else "TOURNAMENT_CHANNEL_ID") or "0"
 )
 
-# Canale pubblico per notifiche di interesse community (es. Banned and
-# Restricted Announcement) - distinto dal canale log, che resta ad uso
-# staff. Opzionale (fallback "0") come TOURNAMENT_CHANNEL_ID, cosi' un .env
-# non ancora aggiornato con questa variabile non fa crashare il bot.
+# Public channel for community-relevant notifications (e.g. a Banned and
+# Restricted Announcement), separate from the staff-only log channel.
+# Optional (fallback "0") like TOURNAMENT_CHANNEL_ID, so a .env that predates
+# this variable doesn't crash the bot.
 COMUNICATION_CHANNEL_ID = int(
-    os.getenv(
-        "COMUNICATION_CHANNEL_ID_TEST" if TEST_MODE else "COMUNICATION_CHANNEL_ID"
-    ) or "0"
+    os.getenv("COMUNICATION_CHANNEL_ID_TEST" if TEST_MODE else "COMUNICATION_CHANNEL_ID") or "0"
 )
 
-# Non da .env: bump manuale in codice ad ogni release (MINOR per feature,
-# PATCH per bug fix - vedi nota "Versioning" in CHANGELOG.md), cosi' resta
-# tracciata in git invece di poter disallinearsi silenziosamente da un .env
-# non aggiornato su una specifica macchina.
-VERSION = "3.5.2"
+# Not read from .env: bumped by hand in code on every release (MINOR for a
+# feature, PATCH for a bug fix - see "Versioning" in CHANGELOG.md), so it is
+# tracked in git instead of silently drifting with a stale .env on one machine.
+VERSION = "4.0.0"
 if TEST_MODE:
     VERSION = VERSION + "-test"
 
 PUBLIC_DECK_CHANNEL_ID = int(
-    os.getenv(
-        "PUBLIC_DECK_CHANNEL_ID_TEST" if TEST_MODE else "PUBLIC_DECK_CHANNEL_ID"
-    )
+    os.getenv("PUBLIC_DECK_CHANNEL_ID_TEST" if TEST_MODE else "PUBLIC_DECK_CHANNEL_ID")
 )
 
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))

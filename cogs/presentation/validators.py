@@ -2,70 +2,186 @@ import re
 from datetime import datetime
 
 VALIDI_colori = {
-    "bianco", "nero", "rosso", "blu", "verde", "incolore",
-    "white", "black", "red", "blue", "green", "colorless",
-    "w", "b", "r", "u", "g", "5c",
-    "tutti", "nessuno", "n/a"
+    "bianco",
+    "nero",
+    "rosso",
+    "blu",
+    "verde",
+    "incolore",
+    "white",
+    "black",
+    "red",
+    "blue",
+    "green",
+    "colorless",
+    "w",
+    "b",
+    "r",
+    "u",
+    "g",
+    "5c",
+    "tutti",
+    "nessuno",
+    "n/a",
 }
 
 VALIDI_gilde = {
-    "azorius", "rakdos", "boros", "golgari",
-    "orzhov", "selesnya", "gruul", "izzet",
-    "dimir", "simic",
-    "esper", "grixis", "bant", "temur",
-    "jeskai", "mardu", "abzan", "sultai",
-    "jund", "naya",
-    "wu", "uw", "wb", "bw", "wr", "rw",
-    "wg", "gw", "ub", "bu", "ur", "ru",
-    "ug", "gu", "br", "rb", "bg", "gb",
-    "rg", "gr",
-    "nessuno", "n/a", "tutte"
+    "azorius",
+    "rakdos",
+    "boros",
+    "golgari",
+    "orzhov",
+    "selesnya",
+    "gruul",
+    "izzet",
+    "dimir",
+    "simic",
+    "esper",
+    "grixis",
+    "bant",
+    "temur",
+    "jeskai",
+    "mardu",
+    "abzan",
+    "sultai",
+    "jund",
+    "naya",
+    "wu",
+    "uw",
+    "wb",
+    "bw",
+    "wr",
+    "rw",
+    "wg",
+    "gw",
+    "ub",
+    "bu",
+    "ur",
+    "ru",
+    "ug",
+    "gu",
+    "br",
+    "rb",
+    "bg",
+    "gb",
+    "rg",
+    "gr",
+    "nessuno",
+    "n/a",
+    "tutte",
 }
 
 VALIDI_formati_constructed = {
-    "standard", "pioneer", "modern", "legacy", "vintage",
-    "explorer", "historic", "alchemy", "timeless",
-    "pauper", "penny", "artisan", "nessuno", "n/a"
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "vintage",
+    "explorer",
+    "historic",
+    "alchemy",
+    "timeless",
+    "pauper",
+    "penny",
+    "artisan",
+    "nessuno",
+    "n/a",
 }
 
 VALIDI_formati_limited = {
-    "draft", "sealed", "limited", "block", "blocco",
-    "centurion", "commander", "oathbreaker", "brawl", "extended",
-    "two-headed giant", "two headed giant", "conspiracy",
-    "planechase", "archenemy", "momir", "kitchen table",
-    "nessuno", "n/a"
+    "draft",
+    "sealed",
+    "limited",
+    "block",
+    "blocco",
+    "centurion",
+    "commander",
+    "oathbreaker",
+    "brawl",
+    "extended",
+    "two-headed giant",
+    "two headed giant",
+    "conspiracy",
+    "planechase",
+    "archenemy",
+    "momir",
+    "kitchen table",
+    "nessuno",
+    "n/a",
 }
 
 
 def normalizza_colore(value: str) -> str:
     mapping = {
-        "white": "Bianco", "w": "Bianco", "bianco": "Bianco",
-        "black": "Nero", "b": "Nero", "nero": "Nero",
-        "red": "Rosso", "r": "Rosso", "rosso": "Rosso",
-        "blue": "Blu", "u": "Blu", "blu": "Blu",
-        "green": "Verde", "g": "Verde", "verde": "Verde",
-        "colorless": "Incolore", "incolore": "Incolore", "5c": "Incolore",
-        "tutti": "Tutti", "nessuno": "Nessuno", "n/a": "N/A"
+        "white": "Bianco",
+        "w": "Bianco",
+        "bianco": "Bianco",
+        "black": "Nero",
+        "b": "Nero",
+        "nero": "Nero",
+        "red": "Rosso",
+        "r": "Rosso",
+        "rosso": "Rosso",
+        "blue": "Blu",
+        "u": "Blu",
+        "blu": "Blu",
+        "green": "Verde",
+        "g": "Verde",
+        "verde": "Verde",
+        "colorless": "Incolore",
+        "incolore": "Incolore",
+        "5c": "Incolore",
+        "tutti": "Tutti",
+        "nessuno": "Nessuno",
+        "n/a": "N/A",
     }
     return mapping.get(value.lower().strip(), value)
 
 
 def normalizza_gilda(value: str) -> str:
     mapping = {
-        "wu": "Azorius", "uw": "Azorius", "azorius": "Azorius",
-        "wr": "Boros", "rw": "Boros", "boros": "Boros",
-        "wb": "Orzhov", "bw": "Orzhov", "orzhov": "Orzhov",
-        "wg": "Selesnya", "gw": "Selesnya", "selesnya": "Selesnya",
-        "ub": "Dimir", "bu": "Dimir", "dimir": "Dimir",
-        "ur": "Izzet", "ru": "Izzet", "izzet": "Izzet",
-        "br": "Rakdos", "rb": "Rakdos", "rakdos": "Rakdos",
-        "bg": "Golgari", "gb": "Golgari", "golgari": "Golgari",
-        "ug": "Simic", "gu": "Simic", "simic": "Simic",
-        "rg": "Gruul", "gruul": "Gruul",
-        "esper": "Esper", "grixis": "Grixis", "bant": "Bant", "temur": "Temur",
-        "jeskai": "Jeskai", "mardu": "Mardu", "abzan": "Abzan", "sultai": "Sultai",
-        "jund": "Jund", "naya": "Naya",
-        "nessuno": "Nessuno", "n/a": "N/A", "tutte": "Tutte"
+        "wu": "Azorius",
+        "uw": "Azorius",
+        "azorius": "Azorius",
+        "wr": "Boros",
+        "rw": "Boros",
+        "boros": "Boros",
+        "wb": "Orzhov",
+        "bw": "Orzhov",
+        "orzhov": "Orzhov",
+        "wg": "Selesnya",
+        "gw": "Selesnya",
+        "selesnya": "Selesnya",
+        "ub": "Dimir",
+        "bu": "Dimir",
+        "dimir": "Dimir",
+        "ur": "Izzet",
+        "ru": "Izzet",
+        "izzet": "Izzet",
+        "br": "Rakdos",
+        "rb": "Rakdos",
+        "rakdos": "Rakdos",
+        "bg": "Golgari",
+        "gb": "Golgari",
+        "golgari": "Golgari",
+        "ug": "Simic",
+        "gu": "Simic",
+        "simic": "Simic",
+        "rg": "Gruul",
+        "gruul": "Gruul",
+        "esper": "Esper",
+        "grixis": "Grixis",
+        "bant": "Bant",
+        "temur": "Temur",
+        "jeskai": "Jeskai",
+        "mardu": "Mardu",
+        "abzan": "Abzan",
+        "sultai": "Sultai",
+        "jund": "Jund",
+        "naya": "Naya",
+        "nessuno": "Nessuno",
+        "n/a": "N/A",
+        "tutte": "Tutte",
     }
     return mapping.get(value.lower().strip(), value.title())
 
@@ -101,7 +217,7 @@ def valida_colori(colori: list[str]) -> bool:
     if not colori:
         return True
     normalizzati = [normalizza_colore(c) for c in colori]
-    # Confronta in minuscolo per matching case-insensitive
+    # Compare lowercased for case-insensitive matching
     return all(c.lower() in VALIDI_colori for c in normalizzati)
 
 
@@ -109,7 +225,7 @@ def valida_gilde(gilde: list[str]) -> bool:
     if not gilde:
         return True
     normalizzate = [normalizza_gilda(g) for g in gilde]
-    # Confronta in minuscolo per matching case-insensitive
+    # Compare lowercased for case-insensitive matching
     return all(g.lower() in VALIDI_gilde for g in normalizzate)
 
 

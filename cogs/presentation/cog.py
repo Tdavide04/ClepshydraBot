@@ -1,10 +1,12 @@
 import re
+
 import discord
 from discord.ext import commands
 
-from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
 from cogs.presentation.modals import BasicPresentationModal
 from cogs.presentation.views import PreferencesView
+from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
+
 
 class PresentationCog(commands.Cog):
     def __init__(self, bot):
@@ -12,7 +14,7 @@ class PresentationCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        logger = self.bot.get_cog('Logger')
+        logger = self.bot.get_cog("Logger")
         role = discord.utils.get(member.guild.roles, name=INITIAL_ROLE)
         try:
             if role:
@@ -21,10 +23,7 @@ class PresentationCog(commands.Cog):
             if logger:
                 level = "WARN" if e.status == 429 else "ERROR"
                 await logger.send_log(
-                    level=level,
-                    event="JOIN_ROLE_FAIL",
-                    user=member,
-                    info=f"Errore API {e.status}: {e.text}"
+                    level=level, event="JOIN_ROLE_FAIL", user=member, info=f"API error {e.status}: {e.text}"
                 )
         except discord.errors.Forbidden:
             if logger:
@@ -32,7 +31,7 @@ class PresentationCog(commands.Cog):
                     level="ERROR",
                     event="JOIN_PERMISSIONS_FAIL",
                     user=member,
-                    info="Il bot non ha permessi per gestire il ruolo Viandante."
+                    info="The bot lacks permission to manage the Viandante role.",
                 )
 
         channel = member.guild.get_channel(PRESENTATION_CHANNEL_ID)
@@ -41,36 +40,28 @@ class PresentationCog(commands.Cog):
                 f"Benvenuto {member.mention}! Attualmente hai una visione limitata dei canali del server. "
                 f"Usa `/presentati` per sbloccare tutte le funzionalita del server. "
                 f"All'interno troverai canali specifici per ogni formato di Magic Arena, canali generali e qualche nuovo amico.",
-                delete_after=1800.0
+                delete_after=1800.0,
             )
 
     @discord.app_commands.command(name="presentati", description="Apri il modulo di presentazione")
     async def presentati(self, interaction: discord.Interaction):
         if not interaction.guild:
             return await interaction.response.send_message(
-                "Questo comando puo essere usato solo in un server.",
-                ephemeral=True
+                "Questo comando puo essere usato solo in un server.", ephemeral=True
             )
 
         member = interaction.user
         if isinstance(member, discord.Member):
             if any(role.name == FINAL_ROLE for role in member.roles):
-                return await interaction.response.send_message(
-                    "Sei gia verificato!",
-                    ephemeral=True
-                )
+                return await interaction.response.send_message("Sei gia verificato!", ephemeral=True)
 
         async def after_basic_modal(interaction: discord.Interaction, data):
             view = PreferencesView(data)
             view.message = interaction.message
-            await interaction.followup.send(
-                "Seleziona le tue preferenze:",
-                view=view,
-                ephemeral=True
-            )
+            await interaction.followup.send("Seleziona le tue preferenze:", view=view, ephemeral=True)
 
         modal = BasicPresentationModal(
-            interaction.user.id if hasattr(interaction.user, 'id') else 0,
+            interaction.user.id if hasattr(interaction.user, "id") else 0,
             on_complete=after_basic_modal,
         )
         await interaction.response.send_modal(modal)
@@ -83,7 +74,7 @@ class PresentationCog(commands.Cog):
         if message.channel.id != PRESENTATION_CHANNEL_ID:
             return
 
-        logger = self.bot.get_cog('Logger')
+        logger = self.bot.get_cog("Logger")
         try:
             await message.delete()
             if logger:
@@ -92,12 +83,12 @@ class PresentationCog(commands.Cog):
                     event="MESSAGE_DELETE",
                     user=message.author,
                     channel=message.channel,
-                    info=self._build_delete_info(message)
+                    info=self._build_delete_info(message),
                 )
             await message.channel.send(
                 f"Attenzione {message.author.mention}, in questo canale puoi solo usare `/presentati`. "
                 f"I messaggi normali vengono eliminati.",
-                delete_after=300.0
+                delete_after=300.0,
             )
         except Exception as e:
             if logger:
@@ -105,19 +96,19 @@ class PresentationCog(commands.Cog):
                     level="ERROR",
                     event="CLEANUP_ERROR",
                     channel=message.channel,
-                    info=f"Impossibile eliminare messaggio: {str(e)}"
+                    info=f"Could not delete message: {str(e)}",
                 )
 
     def _format_content(self, message):
         if not message.content:
-            return "[Solo allegati]"
+            return "[Attachments only]"
 
         content = message.content
 
         for role in message.role_mentions:
-            content = content.replace(f'<@&{role.id}>', f'@{role.name}')
+            content = content.replace(f"<@&{role.id}>", f"@{role.name}")
 
-        content = re.sub(r'<@&(\d+)>', r'@_\1', content)
+        content = re.sub(r"<@&(\d+)>", r"@_\1", content)
 
         return content
 
@@ -125,9 +116,9 @@ class PresentationCog(commands.Cog):
         types = set()
 
         if message.content:
-            types.add("Testo")
+            types.add("Text")
 
-        if message.content and re.search(r'https?://', message.content):
+        if message.content and re.search(r"https?://", message.content):
             types.add("Link")
 
         if message.mentions or message.role_mentions or message.channel_mentions:
@@ -142,13 +133,13 @@ class PresentationCog(commands.Cog):
         for a in message.attachments:
             ct = (a.content_type or "").lower()
             fn = a.filename.lower()
-            if 'gif' in ct or fn.endswith('.gif'):
+            if "gif" in ct or fn.endswith(".gif"):
                 has_gif = True
-            elif ct.startswith('image/') or fn.endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp')):
+            elif ct.startswith("image/") or fn.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
                 has_image = True
-            elif ct.startswith('video/') or fn.endswith(('.mp4', '.webm', '.mov', '.avi')):
+            elif ct.startswith("video/") or fn.endswith((".mp4", ".webm", ".mov", ".avi")):
                 has_video = True
-            elif ct.startswith('audio/') or fn.endswith(('.mp3', '.wav', '.ogg', '.flac')):
+            elif ct.startswith("audio/") or fn.endswith((".mp3", ".wav", ".ogg", ".flac")):
                 has_audio = True
             else:
                 has_file = True
@@ -156,7 +147,7 @@ class PresentationCog(commands.Cog):
         if has_gif:
             types.add("GIF")
         if has_image:
-            types.add("Immagine")
+            types.add("Image")
         if has_video:
             types.add("Video")
         if has_audio:
@@ -170,7 +161,7 @@ class PresentationCog(commands.Cog):
         if message.embeds:
             types.add("Embed")
 
-        return " + ".join(sorted(types)) if types else "Sconosciuto"
+        return " + ".join(sorted(types)) if types else "Unknown"
 
     def _get_attachments_info(self, message):
         if not message.attachments:

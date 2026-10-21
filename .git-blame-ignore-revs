@@ -1,0 +1,5 @@
+# Mechanical commits that `git blame` should skip. GitHub reads this file automatically;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply ruff format and sort imports (roadmap step 12)
+24cff10f97ed188a19ba1dd9f5788dc6dd658da1

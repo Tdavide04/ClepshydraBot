@@ -1,24 +1,22 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from database.models import (
-    Tournament, TournamentPlayer, Match,
+    Match,
+    Tournament,
+    TournamentPlayer,
     TournamentStatus,
 )
 from repositories.base import BaseRepository
 
 
-
 class TournamentRepository(BaseRepository[Tournament]):
-
     def __init__(self, session):
         super().__init__(session, Tournament)
 
     async def get_by_status(self, status: TournamentStatus) -> list[Tournament]:
         result = await self.session.execute(
-            select(Tournament)
-            .where(Tournament.status == status)
-            .order_by(Tournament.created_at.desc())
+            select(Tournament).where(Tournament.status == status).order_by(Tournament.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -39,31 +37,34 @@ class TournamentRepository(BaseRepository[Tournament]):
 
     async def get_with_players(self, tournament_id: int) -> Tournament | None:
         result = await self.session.execute(
-            select(Tournament)
-            .where(Tournament.id == tournament_id)
-            .options(joinedload(Tournament.players))
+            select(Tournament).where(Tournament.id == tournament_id).options(joinedload(Tournament.players))
         )
         return result.unique().scalar_one_or_none()
 
 
 class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
-
     def __init__(self, session):
         super().__init__(session, TournamentPlayer)
 
-    async def get_by_tournament(self, tournament_id: int) -> list[TournamentPlayer]:
-        result = await self.session.execute(
+    async def get_by_tournament(
+        self, tournament_id: int, include_dropped: bool = False
+    ) -> list[TournamentPlayer]:
+        """Tournament registrations ordered by seed. Active ones only by
+        default (pairing, start, registration list); include_dropped=True for
+        standings and rating, where matches a dropped player already played
+        still count."""
+        query = (
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
-            .where(TournamentPlayer.dropped.is_(False))
             .options(joinedload(TournamentPlayer.user))
             .order_by(TournamentPlayer.seed)
         )
+        if not include_dropped:
+            query = query.where(TournamentPlayer.dropped.is_(False))
+        result = await self.session.execute(query)
         return list(result.unique().scalars().all())
 
-    async def get_by_tournament_and_user(
-        self, tournament_id: int, user_id: int
-    ) -> TournamentPlayer | None:
+    async def get_by_tournament_and_user(self, tournament_id: int, user_id: int) -> TournamentPlayer | None:
         result = await self.session.execute(
             select(TournamentPlayer)
             .where(TournamentPlayer.tournament_id == tournament_id)
@@ -79,9 +80,16 @@ class TournamentPlayerRepository(BaseRepository[TournamentPlayer]):
         )
         return len(result.all())
 
+    async def max_seed(self, tournament_id: int) -> int:
+        """Highest seed ever assigned in the tournament, dropped registrations
+        included (they keep their seed if the player registers again)."""
+        result = await self.session.execute(
+            select(func.max(TournamentPlayer.seed)).where(TournamentPlayer.tournament_id == tournament_id)
+        )
+        return result.scalar_one_or_none() or 0
+
 
 class MatchRepository(BaseRepository[Match]):
-
     def __init__(self, session):
         super().__init__(session, Match)
 
@@ -97,9 +105,7 @@ class MatchRepository(BaseRepository[Match]):
         )
         return list(result.unique().scalars().all())
 
-    async def get_by_tournament_and_round(
-        self, tournament_id: int, round_number: int
-    ) -> list[Match]:
+    async def get_by_tournament_and_round(self, tournament_id: int, round_number: int) -> list[Match]:
         result = await self.session.execute(
             select(Match)
             .where(Match.tournament_id == tournament_id)
@@ -112,9 +118,7 @@ class MatchRepository(BaseRepository[Match]):
         )
         return list(result.unique().scalars().all())
 
-    async def get_existing_pairings(
-        self, tournament_id: int
-    ) -> list[tuple[int, int]]:
+    async def get_existing_pairings(self, tournament_id: int) -> list[tuple[int, int]]:
         result = await self.session.execute(
             select(Match.player1_id, Match.player2_id)
             .where(Match.tournament_id == tournament_id)

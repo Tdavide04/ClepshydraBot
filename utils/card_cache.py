@@ -1,67 +1,70 @@
+import asyncio
 import json
 import os
-import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
-# Path del JSON legacy: usato solo per la migrazione una tantum verso SQLite
-# (vedi load_cache()). Una volta migrato, questo file non viene piu' letto ne'
-# scritto dal bot.
+from utils.console import log
+
+# Path of the legacy JSON: used only for the one-off migration to SQLite
+# (see load_cache()). Once migrated, the bot never reads or writes it again.
 CACHE_PATH = "data/card_cache.json"
 
-# Dopo quanti giorni un flag artisan_legal cacheato va ri-verificato via Scryfall
-# invece di essere considerato definitivo. Copre il caso di una carta ristampata
-# su Arena con una rarita' diversa dopo il primo check (vedi mark_artisan_legal /
-# is_artisan_legal_stale). Le entry cacheate prima dell'introduzione del TTL non
-# hanno il campo checked_at: vengono trattate come scadute (fail-open verso un
-# ricontrollo), non come valide a tempo indeterminato.
+# After how many days a cached artisan_legal flag must be re-checked against
+# Scryfall instead of being treated as final. Covers a card reprinted on Arena
+# at a different rarity after the first check (see mark_artisan_legal /
+# is_artisan_legal_stale). Entries cached before the TTL existed have no
+# checked_at field: they count as stale (fail-open toward a re-check), not as
+# valid forever.
 ARTISAN_LEGAL_TTL_DAYS = 30
 
 _card_cache: dict = {}
 _loaded = False
-# Nomi (chiave lowercase) da scrivere/rimuovere su SQLite al prossimo save_cache().
-# Sostituisce il vecchio flag booleano _dirty: invece di riscrivere l'intera
-# cache ad ogni salvataggio, save_cache() aggiorna solo le entry cambiate.
+# Names (lowercase key) to write/remove in SQLite on the next save_cache().
+# Replaces the old boolean _dirty flag: instead of rewriting the whole cache on
+# every save, save_cache() only updates the entries that changed.
 _dirty_upserts: set[str] = set()
 _dirty_deletes: set[str] = set()
 _save_lock = asyncio.Lock()
 
 
 async def load_cache() -> None:
-    """Carica la cache da SQLite in _card_cache. Chiamata una volta sola da
-    database/engine.py:init_db(), dopo che l'engine e la sessione sono pronti —
-    non da ogni ArtisanService.__init__() come in precedenza (il caricamento e'
-    un concern di avvio del bot, non di istanza del service).
+    """Loads the cache from SQLite into _card_cache. Called once only, from
+    database/engine.py:init_db(), after the engine and session are ready -
+    not from every ArtisanService.__init__() as before (loading is a bot
+    startup concern, not a per-service-instance one).
 
-    Se la tabella e' vuota e data/card_cache.json esiste ancora (dato legacy
-    da prima di questa modifica), importa il JSON in SQLite una tantum.
+    If the table is empty and data/card_cache.json still exists (legacy data
+    from before this change), imports the JSON into SQLite once.
     """
     global _card_cache, _loaded
 
     if _loaded:
         return
 
+    from sqlalchemy import select
+
     from database import get_session
     from database.models import CachedCard
-    from sqlalchemy import select
 
     session = get_session()
     if session is None:
-        # init_db() non ancora completato: niente da fare qui, load_cache()
-        # verra' richiamata da init_db() stesso a sessione pronta.
+        # init_db() not done yet: nothing to do here, init_db() itself calls
+        # load_cache() again once the session is ready.
         return
 
     try:
         result = await session.execute(select(CachedCard))
         rows = result.scalars().all()
 
-        if not rows and os.path.exists(CACHE_PATH):
+        # Blocking os.path call is fine here: load_cache() runs once at startup, before the bot serves
+        # interactions.
+        if not rows and os.path.exists(CACHE_PATH):  # noqa: ASYNC240
             legacy = _load_legacy_json()
             for name, entry in legacy.items():
                 session.add(CachedCard(card_name=name, data=json.dumps(entry, ensure_ascii=False)))
             if legacy:
                 await session.commit()
-                print(f"Cache carte: migrate {len(legacy)} entry da {CACHE_PATH} a SQLite")
+                print(f"Card cache: migrated {len(legacy)} entries from {CACHE_PATH} to SQLite")
             _card_cache = legacy
         else:
             _card_cache = {row.card_name: json.loads(row.data) for row in rows}
@@ -73,15 +76,15 @@ async def load_cache() -> None:
 
 def _load_legacy_json() -> dict:
     try:
-        with open(CACHE_PATH, "r", encoding="utf-8") as f:
+        with open(CACHE_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
 
 
 async def save_cache() -> None:
-    """Scrive su SQLite solo le entry aggiunte/modificate o rimosse dall'ultimo
-    salvataggio (UPSERT/DELETE mirati), non l'intera cache."""
+    """Writes to SQLite only the entries added/changed or removed since the
+    last save (targeted UPSERT/DELETE), not the whole cache."""
     global _dirty_upserts, _dirty_deletes
 
     async with _save_lock:
@@ -121,7 +124,7 @@ async def save_cache() -> None:
             await session.close()
 
 
-def get_cached_card(card_name: str) -> Optional[dict]:
+def get_cached_card(card_name: str) -> dict | None:
     return _card_cache.get(card_name.lower())
 
 
@@ -133,7 +136,7 @@ def set_cached_card(card_name: str, data: dict):
 
 
 def is_artisan_legal_stale(entry: dict) -> bool:
-    """True se il flag artisan_legal manca il timestamp o ha superato il TTL."""
+    """True if the artisan_legal flag has no timestamp or is past the TTL."""
     checked_at = entry.get("artisan_legal_checked_at")
     if not checked_at:
         return True
@@ -142,21 +145,21 @@ def is_artisan_legal_stale(entry: dict) -> bool:
     except ValueError:
         return True
     if checked.tzinfo is None:
-        checked = checked.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - checked > timedelta(days=ARTISAN_LEGAL_TTL_DAYS)
+        checked = checked.replace(tzinfo=UTC)
+    return datetime.now(UTC) - checked > timedelta(days=ARTISAN_LEGAL_TTL_DAYS)
 
 
 def mark_artisan_legal(card_name: str, entry: dict, legal: bool) -> None:
-    """Imposta artisan_legal + il timestamp del check e salva la entry in cache."""
+    """Sets artisan_legal + the check timestamp and stores the entry in the cache."""
     entry["artisan_legal"] = legal
-    entry["artisan_legal_checked_at"] = datetime.now(timezone.utc).isoformat()
+    entry["artisan_legal_checked_at"] = datetime.now(UTC).isoformat()
     set_cached_card(card_name, entry)
 
 
 def invalidate_card(card_name: str) -> bool:
-    """Rimuove una carta dalla cache: forza un fetch Scryfall completo (dati +
-    legalita' Artisan) alla prossima validazione. Restituisce True se la carta
-    era presente."""
+    """Removes a card from the cache: forces a full Scryfall fetch (data +
+    Artisan legality) on the next validation. Returns True if the card was
+    present."""
     key = card_name.lower()
     existed = key in _card_cache
     if existed:
@@ -166,7 +169,18 @@ def invalidate_card(card_name: str) -> bool:
     return existed
 
 
-async def periodic_save_loop():
+_SAVE_INTERVAL_SECONDS = 60
+
+
+async def periodic_save_loop(interval_seconds: int = _SAVE_INTERVAL_SECONDS):
+    """Saves the cache every minute. A failure (e.g. a locked DB) must not
+    stop the loop: it used to be unhandled and silently killed the task,
+    leaving the cache unsaved until restart. save_cache() clears
+    _dirty_upserts/_dirty_deletes only after a successful commit, so the next
+    run retries the same changes."""
     while True:
-        await asyncio.sleep(60)
-        await save_cache()
+        await asyncio.sleep(interval_seconds)
+        try:
+            await save_cache()
+        except Exception as e:
+            log(f"[CARD CACHE] save failed, retrying in {interval_seconds}s: {type(e).__name__}: {e}")

@@ -1,13 +1,23 @@
-import discord
 import os
 import sys
+
+import discord
 from discord.ext import commands
+
 from config.config import DISCORD_TOKEN, GUILD_ID, VERSION
-from database import init_db, close_db
-from utils.card_cache import periodic_save_loop
-from utils.arena_overrides import periodic_spg_refresh_loop
+from database import close_db, init_db
 from utils.arena_event_schedule import get_latest_known_event_schedule, periodic_event_schedule_check_loop
+from utils.arena_overrides import periodic_spg_refresh_loop
 from utils.ban_announcement import get_latest_known_ban_announcement, periodic_ban_announcement_check_loop
+from utils.card_cache import periodic_save_loop, save_cache
+
+# Extensions under cogs/ that are kept in the repo but not loaded: their slash commands disappear from Discord
+# at the next tree.sync(). Remove an entry to bring the feature back.
+DISABLED_COGS = {
+    # Tournaments are hosted elsewhere since 4.0.0, the bot is a helper only
+    # (docs/adr/0004-helper-only-tournaments-disabled.md).
+    "tournament_system",
+}
 
 
 class ClepshydraBotte(commands.Bot):
@@ -20,65 +30,75 @@ class ClepshydraBotte(commands.Bot):
     async def setup_hook(self):
         await init_db()
 
-        for entry in os.listdir('./cogs'):
-            path = os.path.join('./cogs', entry)
-            if entry.endswith('.py') and entry != '__init__.py':
-                await self.load_extension(f'cogs.{entry[:-3]}')
-            elif os.path.isdir(path) and os.path.exists(os.path.join(path, '__init__.py')):
-                await self.load_extension(f'cogs.{entry}')
+        for entry in os.listdir("./cogs"):
+            path = os.path.join("./cogs", entry)
+            if entry.removesuffix(".py") in DISABLED_COGS:
+                print(f"Cog cogs.{entry.removesuffix('.py')} disabled (DISABLED_COGS), not loaded")
+                continue
+            if entry.endswith(".py") and entry != "__init__.py":
+                await self.load_extension(f"cogs.{entry[:-3]}")
+            # Blocking os.path calls are fine here: startup only, before the bot serves interactions.
+            elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__init__.py")):  # noqa: ASYNC240
+                await self.load_extension(f"cogs.{entry}")
 
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
 
-        logger = self.get_cog('Logger')
+        logger = self.get_cog("Logger")
         if logger:
             await logger.send_log(
                 level="DEBUG",
                 event="SYSTEM_STARTUP",
                 info=(
-                    f"**Nome:** ClepshydraBotte\n"
-                    f"**Versione:** {VERSION}\n"
-                    f"**Stato:** Online e Operativo\n"
-                    f"**Database:** Inizializzato\n"
-                    f"**Comandi Sync:** {len(synced)}\n"
-                    f"**Versione Library:** {discord.__version__}"
-                )
+                    f"**Name:** ClepshydraBotte\n"
+                    f"**Version:** {VERSION}\n"
+                    f"**Status:** Online and operational\n"
+                    f"**Database:** Initialized\n"
+                    f"**Commands synced:** {len(synced)}\n"
+                    f"**Library version:** {discord.__version__}"
+                ),
             )
 
-            # Riepilogo di stato SOLO nel canale log (non community): quale
-            # sia l'ultima pagina Event Schedule/Banned and Restricted GIA'
-            # nota al bot, letta dagli state file su disco senza fare
-            # richieste di rete. Distinto dal check periodico vero e proprio
-            # (che invece interroga il sitemap e scatta poco dopo, appena i
-            # create_task sotto partono) - qui interessa solo mostrare cosa
-            # il bot sa gia' ad ogni riavvio, utile per verificare al volo
-            # se lo stato salvato risulta quello aspettato.
+            # Status summary for the log channel ONLY (not community): the
+            # latest Event Schedule/Banned and Restricted page the bot ALREADY
+            # knows, read from the state files on disk with no network request.
+            # Distinct from the real periodic check (which queries the sitemap
+            # shortly after, once the create_task calls below start) - this only
+            # shows what the bot already knows at each restart, handy to verify
+            # at a glance that the saved state is the expected one.
             event_schedule_state = get_latest_known_event_schedule()
             ban_announcement_state = get_latest_known_ban_announcement()
             await logger.send_log(
                 level="INFO",
                 event="STARTUP_STATUS",
                 info=(
-                    f"**Ultima pagina Event Schedule nota:** "
-                    f"{event_schedule_state['url'] or 'nessuna (stato vuoto)'}\n"
-                    f"**Ultimo Banned and Restricted Announcement noto:** "
-                    f"{ban_announcement_state['url'] or 'nessuno (stato vuoto)'}"
-                )
+                    f"**Latest known Event Schedule page:** "
+                    f"{event_schedule_state['url'] or 'none (empty state)'}\n"
+                    f"**Latest known Banned and Restricted Announcement:** "
+                    f"{ban_announcement_state['url'] or 'none (empty state)'}"
+                ),
             )
 
-        # Avviati DOPO il log di startup: create_task schedula solo, non
-        # esegue subito, ma i loro primi giri (check SPG/Event Schedule,
-        # entrambi HTTP e non istantanei) possono comunque superare in
-        # velocita' l'await di tree.sync() sopra se partono prima di lui -
-        # osservato in produzione, il log SYSTEM_STARTUP arrivava dopo i log
-        # dei controlli automatici invece che prima.
+        # Started AFTER the startup logs: create_task only schedules, it doesn't
+        # run right away, but the tasks' first runs (SPG/Event Schedule checks,
+        # both HTTP and not instant) can still finish before the await on
+        # tree.sync() above if they start before it - observed in production,
+        # the SYSTEM_STARTUP log arrived after the automatic check logs instead
+        # of before.
         self.loop.create_task(periodic_save_loop())
         self.loop.create_task(periodic_spg_refresh_loop(self))
         self.loop.create_task(periodic_event_schedule_check_loop(self))
         self.loop.create_task(periodic_ban_announcement_check_loop(self))
 
     async def close(self):
+        # Save card cache changes the 60s loop hasn't persisted yet (e.g. on a
+        # `pm2 restart`) before closing the DB. A failure here must not block
+        # shutdown.
+        try:
+            await save_cache()
+        except Exception as e:
+            print(f"Saving the card cache on shutdown failed: {e}", file=sys.stderr)
         await close_db()
         await super().close()
 
@@ -88,8 +108,8 @@ bot = ClepshydraBotte()
 try:
     bot.run(DISCORD_TOKEN)
 except discord.LoginFailure:
-    print("FATAL: token Discord non valido o scaduto. Il bot non puo' avviarsi.", file=sys.stderr)
+    print("FATAL: invalid or expired Discord token. The bot cannot start.", file=sys.stderr)
     sys.exit(1)
 except Exception as e:
-    print(f"FATAL: avvio del bot fallito: {e}", file=sys.stderr)
+    print(f"FATAL: bot startup failed: {e}", file=sys.stderr)
     sys.exit(1)

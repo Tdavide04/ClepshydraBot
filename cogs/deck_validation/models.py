@@ -38,11 +38,16 @@ class DeckValidationResult:
     illegal_rarity_cards: list[str] = field(default_factory=list)
     mainboard: list[ArtisanCard] = field(default_factory=list)
     sideboard: list[ArtisanCard] = field(default_factory=list)
+    # Set if Scryfall didn't answer: the deck was not evaluated (neither
+    # valid nor "invalid"), the caller must say to retry instead of showing
+    # a verdict.
+    service_error: str | None = None
 
     @property
     def is_valid(self) -> bool:
         return (
-            not self.banned_cards
+            not self.service_error
+            and not self.banned_cards
             and not self.invalid_cards
             and not self.illegal_rarity_cards
             and self.main_count >= 60

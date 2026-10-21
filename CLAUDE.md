@@ -1,340 +1,215 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+ClepshydraBot is a Discord helper bot (discord.py) for the "Clepshydra" MTG Arena community. It covers:
 
-## Project
+- member onboarding
+- Artisan-format deck validation against Scryfall
+- monitors for Wizards' Arena Event Schedule and Banned and Restricted pages
 
-ClepshydraBot — a Discord bot (discord.py) for the "Clepshydra" MTG Arena community. It handles member
-onboarding/presentation, Artisan-format deck validation against Scryfall, and Swiss-style tournaments
-with Glicko-2 rating. Slash commands and UI are in Italian; code identifiers are in English.
+The Swiss tournament system (`cogs/tournament_system/`, `services/`) is **disabled** since 4.0.0: the cog is
+in `DISABLED_COGS` in `main.py`, so its commands aren't registered, but its code, tests and DB tables stay
+(`docs/adr/0004-helper-only-tournaments-disabled.md`). Don't add tournament features unless it's re-enabled.
 
-Work happens on `feature/v2`; `main` only receives merges via PR from `feature/v2` — do not commit
-directly to `main`.
+**Language** (`docs/adr/0003-project-language.md`):
+- **English** for everything developers and logs see: code, comments, docstrings, test names, console
+  output, Discord log channel, docs, commits, new CHANGELOG entries.
+- **Italian** for everything a user sees as a reply to an action or in a public channel: command
+  replies (admin ones included), modals, views, service messages, community embeds, slash command names
+  and descriptions. These strings stay inline in the code.
+- A few Italian identifiers remain from before the rule (`User.nome`, `torneo_name`, `titolo`...); slash
+  command parameters such as `carta` and `giocatore` are UI and stay Italian.
+
+## Working standard
+
+Decided in `docs/adr/0002-development-standard.md`. Every change follows this loop.
+
+1. **Orient.** Read the topic doc for the area (see the map below) and any `docs/adr/` entry that touches
+   it. Use the terms defined in `CONTEXT.md`. Check `git log` on `feature/v2`, since parallel work may
+   already have touched the area. Done when you can name the files you will change and the behaviour you
+   will change.
+2. **Red.** Write the test first for logic in `services/`, `utils/`, `repositories/` or `database/`. A
+   bug fix starts from a regression test that fails on the current code, and fails on an assertion about
+   behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
+   reason you expect.
+3. **Green.** Write the smallest change that turns the test green. Done when `python -m pytest` is fully
+   green.
+4. **Refactor.** Remove duplication and sharpen names while the suite stays green. Keep the scope to the
+   change at hand: unrelated debt goes into `docs/roadmap.md`, not into this diff.
+5. **Gate.** Run `python -m pytest`, `python -m ruff check .` and `python -m ruff format --check .`.
+   All must pass (CI runs the same three).
+6. **Truthful docs.** Update every doc whose description the change made stale (`docs/`, `README.md`,
+   this file). Then:
+   - add a `CHANGELOG.md` entry in the existing format
+   - bump `VERSION` in `config/config.py`, by hand, in the same commit (see the semver mapping below)
+
+   Done when no doc describes the old behaviour.
+7. **Commit**, only when the user asks or has approved a series. One approved point = one commit = one
+   version.
+
+**Cogs are exempt from step 2.** Cogs are the Discord UI layer, so keep them thin: a decision that can be
+tested belongs in a service. Verify cog changes by hand under `TEST_MODE=True` and write what you checked
+in the CHANGELOG entry.
+
+### Pragmatic rules
+
+- **DRY applies to knowledge, not just code.** Every fact has one owning doc, and this file points to it
+  rather than repeating it. Code example: `utils/sitemap_monitor.py`, extracted once two monitors had
+  duplicated it.
+- **No broken windows.** The lint set only grows. A rule family joins `ruff.toml` once the code is clean
+  for it. Every `# noqa` names the rule and gives a reason.
+- **Tracer bullets.** Build a new feature as a thin end-to-end slice first: command → service →
+  repository → test. Then widen it.
+- **Programming by coincidence is banned.** Verify external behaviour (Scryfall queries, Wizards HTML,
+  Discord limits) live before relying on it, and record the evidence in the topic doc.
+- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`services/results.py`),
+  and cogs branch on its fields, never on the message text. Add a `ResultKind` member only when `ok` alone
+  can't tell the caller's cases apart.
+- **Fail loud.** On unexpected input, return `None`, raise, or log a `WARN` that asks for a manual check,
+  as the monitor parsers do. Never post a guessed result as if it were authoritative.
+
+### Conventional Commits
+
+Format: `<type>(<scope>): <subject>`.
+
+- **Subject:** English, lowercase, imperative, no trailing period, at most about 72 chars. It describes
+  the outcome for users or staff (`fix(tournament): ignore unplayed matches in mid-round standings`).
+- **Body:** why the change was made, and what was verified.
+- **Footer:** `Refs: #<issue>`, `BREAKING CHANGE: ...` when it applies, plus the attribution trailer.
+- **Scopes** (optional, one per commit): `tournament`, `deck`, `banlist`, `cache`, `monitor`,
+  `onboarding`, `logger`, `db`, `deps`, `ci`, `lang`. The `commit-msg` hook in `.pre-commit-config.yaml`
+  enforces this list: add a scope in both places.
+
+Type → `VERSION` bump (MAJOR moves only when the user decides it explicitly):
+
+| Type | Bump |
+|---|---|
+| `feat` | MINOR |
+| `fix`, `perf` | PATCH |
+| `refactor`, `docs`, `test` released as their own point | PATCH (as in 3.6.3) |
+| `!` / `BREAKING CHANGE` | MAJOR |
+| `style`, `chore`, `ci`, `build` that leave the running bot unchanged | none |
+
+**A mechanical change across several areas is one point** (for example the translation): several
+commits, one per area, but a single CHANGELOG entry and a single bump, in the last commit.
+
+`pre-commit` enforces all of this: on commit it runs ruff check, ruff format and whitespace/YAML/private-key
+checks, and rejects a message that isn't Conventional Commits with a listed type and scope. Activate it once
+per clone (see Commands). CI runs the same pre-commit-stage hooks on every file.
+
+### Branches and versions
+
+- Work on `feature/v2`. `main` only receives merges via PR from `feature/v2`.
+- `VERSION` is a hardcoded constant in `config/config.py`, shown in the `SYSTEM_STARTUP` log.
+
+### Agent tooling
+
+- **Skills:**
+  - `tdd` for every logic change
+  - `diagnosing-bugs` when something is broken or slow
+  - `code-review` before a PR to `main`
+  - `grilling` to stress-test a plan
+  - `domain-modeling` to add a term to `CONTEXT.md` or write an ADR when one is settled (this repo names
+    the glossary `CONTEXT.md`, not `GLOSSARY.md`)
+- **Recommended plugins** (installed per machine, `@claude-plugins-official`):
+  - `pyright-lsp`: type diagnostics and references
+  - `pr-review-toolkit`: test, error-handling and type-design review
+  - `security-guidance`: secrets and injection checks on edits. The repo is public and handles a
+    Discord token.
+  - `claude-md-management`: audit of this file
 
 ## Commands
 
 ```bash
-# Install deps (production)
-pip install -r requirements.txt
-
-# Install deps (development: adds pytest, ruff)
-pip install -r requirements-dev.txt
-
-# Run the bot (requires .env, see .env.example)
-python main.py
-
-# Run in test mode (separate token/guild/channels/db, see config/config.py)
-TEST_MODE=True python main.py
-
-# Run tests (same invocation as CI: .github/workflows/ci.yml)
-pytest tests/ -v
-python -m pytest                          # equivalent; python -m adds cwd to sys.path itself
-pytest tests/tournament/test_pairing_engine.py
-pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds::test_otto_giocatori -v
-
-# Lint (blocking gate in CI)
-ruff check .
-
-# Inspect the SQLite DB
-sqlitebrowser data/clepshydra.db
+pip install -r requirements-dev.txt          # deps + pytest + ruff + pre-commit
+pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per clone
+python main.py                                # needs .env (see .env.example)
+TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
+python -m pytest                              # CI runs `pytest tests/ -v` plus a coverage report
+python -m pytest --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
+python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
+python -m ruff check .                        # blocking CI gate
+python -m ruff format .                       # CI runs `ruff format --check .`
+pre-commit run --all-files                    # what the CI lint job runs
 ```
 
-`pytest.ini` sets `pythonpath = .` — required for the bare `pytest tests/` invocation (used by CI) to
-find top-level modules (`services`, `database`, `utils`); without it, only `python -m pytest` would work,
-since that form adds the cwd to `sys.path` itself. Both `tests/tournament/conftest.py` and
-`tests/deck_validation/conftest.py` seed the same env vars (duplicated on purpose, not shared, so each
-directory stays runnable in isolation) that `services/__init__.py` needs at import time (it eagerly
-imports `TournamentService`, which requires `config.config` to be populated) — any test importing even a
-pure-logic module like `services.pairing_engine` transitively needs these, and so does anything importing
-`cogs.deck_validation.service` (it imports `database`, which imports `database.engine` → `config.config`).
-Note the env var seeding in a conftest.py must run **before** any application import in that same file —
-`database.engine`/`utils.card_cache`/`cogs.deck_validation.service` all transitively import
-`config.config` at module load time. Within `tests/deck_validation/`, `isolated_db` / `isolated_card_cache`
-/ `isolated_banlist_cache` fixtures live in `conftest.py` (shared across `test_artisan_service.py` and
-`test_card_cache.py`, unlike the env vars) and reset `utils.card_cache`'s module globals
-(`_card_cache`, `_loaded`, `_dirty_upserts`, `_dirty_deletes`) each test — required since Step 4 made
-`_loaded` persist across `load_cache()` calls within a process, which would otherwise skip reloading from
-a fresh per-test temp DB.
+Target Python is 3.12 (CI, Docker, `ruff.toml`).
 
-Suite: 186 tests total, no `pytest-asyncio` — async integration tests
-(`tests/tournament/test_tournament_service.py`, `tests/deck_validation/test_artisan_service.py`,
-`tests/deck_validation/test_card_cache.py`, `tests/deck_validation/test_arena_overrides.py`,
-`tests/utils/test_arena_event_schedule.py`, `tests/utils/test_ban_announcement.py`,
-`tests/utils/test_sitemap_monitor.py`) instead
-wrap each scenario in a single `asyncio.run()` call,
-since aiosqlite connections are bound to the event loop that created them. `ArtisanService` tests mock
-`_post_with_retry`/`_get_with_retry` (swap them for plain async functions on the instance) instead of
-touching `aiohttp.ClientSession` — no real network calls, and it doubles as a regression test for the
-module-level banlist cache (Step 1) and the `artisan_legal` TTL (Step 3).
+## Architecture map
 
-## Architecture
+Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `utils/`. Each layer calls only
+the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
 
-Three-tier layering, consistently applied: **Cogs → Services → Repositories → Database**, plus a
-cross-cutting `utils/` layer. Read `docs/architettura.md` for the full diagram; it's accurate and worth
-opening before large changes. Other useful docs: `docs/deck-validation.md`, `docs/banlist-system.md`,
-`docs/caching.md`, `docs/tornei.md`, `docs/comandi.md`, `docs/database.md`,
-`docs/roadmap-miglioramenti.md` (tracked technical debt and in-progress improvement steps).
+| Area | Code | Topic doc |
+|---|---|---|
+| Swiss tournaments (disabled) | `cogs/tournament_system/`, `services/` | `docs/tournaments.md` |
+| Artisan deck validation | `cogs/deck_validation/` | `docs/deck-validation.md` |
+| Banlist | `repositories/banlist_repository.py`, `validators.py` | `docs/banlist-system.md` |
+| Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |
+| Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
+| Schema and migrations | `database/` | `docs/database.md` |
+| Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastructure.md` |
+| Slash command list | `cogs/` | `docs/commands.md` |
+| Tech-debt plan | | `docs/roadmap.md` |
+| Decisions and rationale | | `docs/adr/` |
 
-- **`cogs/`** — Discord-facing layer (slash commands, modals, views, embeds). Three feature cogs:
-  `presentation/` (onboarding wizard), `deck_validation/` (Artisan deck legality checks, formerly named
-  `tournament/` — see below), `tournament_system/` (Swiss tournaments, one large `cog.py` with ~14
-  slash commands). `logger.py` is a Logger cog other cogs fetch via `bot.get_cog('Logger')` and call
-  `send_log(level, event, info)` on, to post colored embeds to a central log channel — `send_log()` also
-  takes optional `fields` (list of `{"name", "value", "inline"}`, added as separate embed fields) and
-  `files` (list of `discord.File`, attached to the same message), used by the Event Schedule and Banned
-  and Restricted monitors (see below). `extra_channel_id`, when set, republishes the update to a second
-  channel (`config.COMUNICATION_CHANNEL_ID`) — but as a fully **separate** embed built from
-  `community_title`/`community_info`, not a copy of the log-channel one: the log embed carries staff
-  detail (which user forced the check, "Controllo manuale/automatico") that has no place in a public
-  channel where `@everyone` gets pinged. `files` ARE resent as-is to the second channel — each
-  `discord.File.reset()` is called first, since the stream was already consumed by the first `send()`.
-- **`services/`** — Business logic, stateless where possible. `tournament_service.py` orchestrates the
-  tournament lifecycle; `pairing_engine.py` generates Swiss pairings (bye handling, anti-rematch);
-  `standings.py` computes standings (3/1/0 scoring + tiebreakers); `rating.py` implements Glicko-2.
-- **`repositories/`** — Data access only, no business logic. `base.py` defines a generic
-  `BaseRepository[T]` (get_by_id/list_all/add/delete/count); feature repositories extend it
-  (`UserRepository`, `TournamentRepository`, `BanlistRepository`, plus a `TournamentPlayerRepository`).
-- **`database/`** — SQLAlchemy 2.0 async ORM. `models.py` defines `User`, `Tournament`,
-  `TournamentPlayer`, `Match`, `BannedCard` (see file for full schema). `engine.py` holds a lazily
-  initialized global async engine/session-maker (singleton pattern) and runs ad-hoc `ALTER TABLE ...`
-  migrations by hand inside `_migrate_schema()` at startup (no Alembic) — when adding a column to an
-  existing table, append a `(table, column, ddl)` tuple to `_SCHEMA_MIGRATIONS` there; the loop checks
-  `PRAGMA table_info(<table>)` before running each `ALTER TABLE` and only logs-and-continues
-  (`ERRORE migrazione: ...`) on an unexpected failure, instead of swallowing every exception including
-  real ones. `init_db()` also imports `cards.txt` into `banned_cards` on first run via
-  `_migrate_banlist()`, but only if the table is empty.
-- **`utils/`** — Cross-cutting helpers: `card_cache.py` (Scryfall response cache), `arena_overrides.py`
-  (SPG rarity overrides), `arena_event_schedule.py` (monitors Wizards' "[Set] MTG Arena Event Schedule"
-  pages via the site's `sitemap.xml`, see below), `event_calendar_image_generator.py` (Pillow-based
-  calendar image for the Event Schedule, see below), `ban_announcement.py` (monitors Wizards' "Banned and
-  Restricted Announcement" posts via the same `sitemap.xml`, notify-only — see below),
-  `sitemap_monitor.py` (shared by the two monitors above: JSON state load/save with atomic writes,
-  `lastmod`-based "pick the newest page" selection, generic sitemap/page GET — extracted once
-  `ban_announcement.py` duplicated `arena_event_schedule.py`'s version of this byte-for-byte; each
-  domain module still owns its own URL filtering and HTML parsing, the only genuinely different part),
-  `deck_image_generator.py` (Pillow-based deck showcase PNGs), `permissions.py` (`@is_admin()` app-command
-  check based on a configured Discord role name), `tournament_embeds.py`, `tournament_logic.py`.
+`cogs/deck_validation/` was named `cogs/tournament/` before 1.3.1, and older CHANGELOG entries still use
+that name.
 
-### Config and environment
+### Invariants
 
-`config/config.py` loads `.env` via `python-dotenv` and reads all settings as module-level constants
-(no pydantic/settings class). `TEST_MODE` selects `_TEST`-suffixed env vars (token, guild, channels, db
-path) at import time — there is no runtime toggle. `main.py` constructs the bot, calls `init_db()`,
-dynamically loads every module/package under `cogs/`, syncs the slash command tree to a single guild
-(`GUILD_ID`) rather than globally, logs `SYSTEM_STARTUP` to Discord, then a second `STARTUP_STATUS` log
-(log channel only, no `extra_channel_id` — staff-only bookkeeping) reporting the latest Event Schedule
-page and Banned and Restricted announcement the bot already knows about
-(`get_latest_known_event_schedule()`/`get_latest_known_ban_announcement()`, a pure read of the saved state
-JSON files, no network call — distinct from the real check the periodic tasks below run moments later),
-and only THEN starts four background tasks — `periodic_save_loop()` (card cache autosave, every 60s),
-`periodic_spg_refresh_loop()` (SPG rarity override auto-refresh, every 7 days — see below),
-`periodic_event_schedule_check_loop()` (Arena Event Schedule page monitor, every 24h — see below), and
-`periodic_ban_announcement_check_loop()` (Banned and Restricted Announcement monitor, every 24h — see
-below). The four `self.loop.create_task(...)` calls must stay AFTER the sync+log block, not before:
-`create_task` only schedules, it doesn't block, so if scheduled earlier the background tasks' first runs
-(both do real HTTP calls, not instant) can race ahead of and finish before the `await self.tree.sync(...)`
-call resolves — observed in production, the `SYSTEM_STARTUP` log arrived *after* the automatic check logs
-instead of before. Startup failures (`discord.LoginFailure`
-and other exceptions in `setup_hook`/`bot.run`) are caught, logged to stderr with a `FATAL:` prefix, and
-exit non-zero instead of failing silently — this also means a broken slash-command definition (e.g. a
-description over Discord's 100-char limit) crashes the whole bot on every restart, not just that one
-command, since `tree.sync()` fails for the entire batch.
+Breaking one of these has already caused a production bug. Each one is explained in the topic doc
+listed in the map.
 
-`COMUNICATION_CHANNEL_ID` (env `COMUNICATION_CHANNEL_ID`/`_TEST`, note the spelling — matches what's
-already in `.env.example`) is the public community channel — the one where `@everyone` gets pinged —
-distinct from `LOG_CHANNEL_ID` (staff-only, and notably has no `_TEST` variant, shared between normal and
-test-mode runs, unlike every other channel constant). Optional with fallback `"0"` like
-`TOURNAMENT_CHANNEL_ID`, so a `.env` predating this feature doesn't crash the bot; `Logger.send_log()`'s
-`extra_channel_id` no-ops when it's `0`/`None`.
+- **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`utils/interaction_errors.py`).
+  Slash commands are covered by `bot.tree.on_error` (`cogs/error_handler.py`); modals and views are not.
+- **A Scryfall failure is not an "illegal card" verdict.** Any non-200 response after retries raises
+  `ScryfallUnavailable`, and `validate_deck()` then sets `service_error` and marks no card. A 404 on
+  `/cards/search` is a real answer ("no Arena prints"). Keep the two cases separate.
+- **The background tasks in `main.py:setup_hook` start after `tree.sync()` and the startup logs.** The
+  comment there explains why.
+- **One slash-command description over 100 chars breaks `tree.sync()` for the whole batch**, and the bot
+  crashes on every restart.
+- **Schema changes go through `_SCHEMA_MIGRATIONS` in `database/engine.py`** as a `(table, column, ddl)`
+  tuple. There is no Alembic.
+- **The banlist cache is module-level and shared by both `ArtisanService` instances.** Invalidate it with
+  `reload_banlist()` and never reload a single instance.
+- **The Wizards monitors are notification-only.** They never write to `banned_cards`. They select pages
+  by the newest sitemap `lastmod`, and a parser that cannot find the expected structure returns `None`,
+  which logs a `WARN`.
+- **Anything posted to `COMUNICATION_CHANNEL_ID` is a dedicated community embed** with no staff detail.
+  Note the spelling of the constant. `LOG_CHANNEL_ID` has no `_TEST` variant.
+- **Inside `utils/`, `config.config` is imported inside the function that uses it**, never at module
+  top, so these modules stay importable in tests without a `.env`. Examples: `utils/permissions.py` and
+  the two monitors.
+- **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB). `deploy/clepshydrabot.service` is an
+  unused alternative.
 
-`VERSION` (shown in the `SYSTEM_STARTUP` Discord log) is a hardcoded constant in `config/config.py`, not
-an env var — bump it by hand in the same commit that bumps `CHANGELOG.md`. From 3.0.0 onward: bump MINOR
-for a new feature, PATCH for a bug fix (see "Versioning" at the top of `CHANGELOG.md`).
+### Writing tests
 
-### Deployment
+- **`pytest.ini` sets `pythonpath = .`**, so the bare `pytest tests/` command works the way CI runs it.
+- **Each `tests/*/conftest.py` seeds its own env vars**, duplicated on purpose. The seeding must run
+  before any application import in that file: `services/__init__.py`, `database.engine` and
+  `cogs.deck_validation.service` all load `config.config` at import time.
+- **There is no `pytest-asyncio`.** Each async scenario runs inside one `asyncio.run()` against a temp
+  SQLite DB, because aiosqlite binds connections to the loop that created them.
+- **Mock only at the network edge**, for example by replacing `_post_with_retry`/`_get_with_retry` on the
+  `ArtisanService` instance. Keep the DB real.
+- **`tests/deck_validation/conftest.py` provides `isolated_db`, `isolated_card_cache` and
+  `isolated_banlist_cache`.** They reset `utils.card_cache`'s module globals (`_card_cache`, `_loaded`,
+  `_dirty_upserts`, `_dirty_deletes`). Use them in any test that touches the card cache.
 
-Production runs on an Oracle Cloud VM (1 OCPU / 1 GB RAM — see `docs/ClepshydraBot_Resoconto_Tecnico.md`
-and `docs/infrastruttura.md`) under `pm2`, which restarts the process on crash. `deploy/clepshydrabot.service`
-(systemd) exists in the repo as an alternative but is **not** what's installed in production — don't
-assume systemd when writing deployment-related docs or scripts.
+## Docs conventions
 
-### Deck validation pipeline (Artisan format)
-
-`ArtisanService.validate_deck()` (`cogs/deck_validation/service.py`) runs, in order:
-1. Parse the pasted decklist (`validators.parse_decklist`) into mainboard/sideboard `DeckEntry` lists.
-2. Check names against a module-level banlist cache (`_banlist_cache` in
-   `cogs/deck_validation/service.py`, shared by every `ArtisanService` instance — the bot creates two,
-   one in `cogs/tournament_system/cog.py` and one in `cogs/deck_validation/__init__.py`). Admin
-   `/banlist_aggiungi`/`/banlist_rimuovi` call `ArtisanService.reload_banlist()`, which invalidates the
-   shared module cache (`invalidate_banlist_cache()`) so both instances reload on the next validation —
-   no restart needed.
-3. Fetch card data from Scryfall (`POST /cards/collection`, batches of 75), checking the SQLite-backed
-   cache (`cached_cards` table, loaded into the in-memory `_card_cache` dict at startup) first.
-4. Determine Artisan legality per card: SPG rarity override (`arena_overrides.py`) first, then the
-   cached `artisan_legal` flag if not stale (`is_artisan_legal_stale()`, 30-day TTL via
-   `artisan_legal_checked_at` — entries cached before the TTL existed count as stale), then a live
-   `prints_search_uri + game:arena` lookup (excluding `alchemy` set_type prints), caching the result with
-   `mark_artisan_legal()`. Admin `/invalidate_card_cache <carta>` forces a full re-check of one card
-   without waiting for the TTL. The SPG override table itself refreshes automatically every 7 days
-   (`periodic_spg_refresh_loop()`) — `update_spg_overrides()` is incremental (`checked_cards` per set
-   code, not the old "whole set done forever" `processed_sets` flag that used to make every run after the
-   first a silent no-op), so repeated/scheduled calls only cost the cards that are new since last time.
-   Unevaluated cards' prints are fetched in batches of 25 via a combined Scryfall query
-   (`_fetch_prints_by_oracle_ids()`, `q=oracleid:X or oracleid:Y or ...`) instead of one
-   `prints_search_uri` request per card — the first full-set scan after the `processed_sets` →
-   `checked_cards` migration had to re-check ~175 cards at once and triggered a storm of 429s under the
-   old one-request-per-card design (observed in production). The oracle_id list is always deduplicated
-   before building the query: the upstream `set:spg unique=prints` search lists one row per *printing*,
-   so a card with several SPG printings appears more than once, and a query with repeated `oracleid:`
-   terms was verified live to make Scryfall silently drop some cards from the results instead of erroring.
-   Admin `/forced_rarity_refresh` triggers the same check immediately instead of waiting for the weekly
-   run.
-5. Validate mainboard ≥ 60 / sideboard ≤ 15 counts.
-6. On success, generate a showcase PNG (`DeckImageGenerator`) and post embeds to the log/deck channels.
-
-Scryfall calls are serialized through an `asyncio.Semaphore(1)` with a ~110ms delay and exponential
-backoff retry on HTTP 429. The card cache (`utils/card_cache.py`) persists to the `cached_cards` SQLite
-table with incremental UPSERT/DELETE (`save_cache()`, tracking dirty card names — not a full-table
-rewrite) every 60s via `periodic_save_loop()`; `load_cache()` is called once from
-`database/engine.py:init_db()`, not per `ArtisanService` instance. `data/card_cache.json` (the pre-Step-4
-format) is no longer read or written once the table is populated — it's migrated once automatically if
-found on an empty table, then left inert on disk (gitignored, no longer tracked). The rarity-override
-cache (`data/arena_rarity_data.json`, `utils/arena_overrides.py`) is unrelated and still file-backed with
-atomic `.tmp` + `os.replace()` writes — only the card cache moved to SQLite.
-
-### Tournament lifecycle
-
-`TournamentService` + `PairingEngine` + `StandingsCalculator` (`services/`) implement Swiss pairing:
-create → register players (`/iscriviti`, no deck required — `TournamentPlayer.deck_name` stays `None`)
-→ players submit/resubmit a validated deck separately (`/invia_deck` → `submit_deck()`, repeatable while
-the tournament is still in `REGISTRATION`) → start (`start_tournament()` refuses if any active registered
-player still has `deck_name is None`, round 1 random pairing) → submit results per round → generate next
-round (Swiss pairing, anti-rematch) → on final round, conclude and update Glicko-2 ratings
-(`services/rating.py`) for all participants. Round count is derived from player count via
-`PairingEngine.calculate_rounds()`. Covered end-to-end by `tests/tournament/test_tournament_service.py`
-against an isolated SQLite DB (no mocks) — registration and deck submission were split into two separate
-steps/commands deliberately (previously `/iscriviti` opened a deck-validation modal directly), so a
-tournament can open registration before every player has a deck ready.
-
-### Arena Event Schedule monitor
-
-`utils/arena_event_schedule.py` watches Wizards' per-set "[Set] MTG Arena Event Schedule" pages (e.g.
-`the-hobbit-event-schedule`) — distinct from the weekly "MTG Arena Announcements" posts, published once
-per expansion (~6-9 weeks) and updated in place by Wizards during the set's lifecycle rather than being a
-one-off snapshot. Wizards does not remove past sets' pages from the sitemap, so at any given time several
-of them coexist there — `check_event_schedule_updates()` only cares about the one with the most recent
-`lastmod` (`_pick_latest()`, plain lexicographic max since the timestamps are fixed-width ISO-8601), i.e.
-the currently active set; without this filter, the first run on a fresh machine (empty state) would report
-every still-listed page as "new" at once (observed in production: 4 pages flooding the log channel
-simultaneously). Since there is no official API/RSS, `check_event_schedule_updates()` fetches
-`magic.wizards.com/en/sitemap.xml` (standard XML sitemap with `<lastmod>` per URL) every 24h
-(`periodic_event_schedule_check_loop()`, cheap check — a single static-file GET), and only fetches+parses
-the latest event-schedule page when its `lastmod` changed versus `data/arena_event_schedule_state.json`
-(`{latest_url, latest_lastmod}`, not tracked in git, pure bookkeeping — contrast with
-`arena_rarity_data.json`, which holds curated data and is tracked). The 24h cadence is
-deliberately much tighter than the ~6-9 week content cadence: the sitemap check itself is nearly free, so
-polling often lowers notification latency without adding cost, while the fragile part (HTML parsing) only
-ever runs on an actual change. `parse_full_event_calendar()` extracts the page's "Full Event Calendar"
-section (real structured HTML — `<h2>/<h3>/<h4>Category</h2>` + `<ul><li>...</li></ul>` blocks, bounded
-between that heading and the next `</article>`) and returns `None` if the expected structure isn't found,
-so a site redesign produces a `WARN` Discord log asking for a manual check instead of a wrong/partial
-summary posted as if authoritative. Admin `/forced_event_schedule_check` forces an immediate re-check of
-the current latest page, ignoring the saved `lastmod`.
-
-`send_event_schedule_log()` posts a calendar **image** per month, not text: each category entry (e.g.
-`"August 11-19: Duskmourn: House of Horror"`) is parsed by `parse_event_entry()` into a date range, and
-`build_month_calendar()` groups entries into `{(year, month): {category: [(day_start, day_end, name)]}}`,
-splitting any range crossing a month boundary into one clipped segment per month it touches. Missing year
-is inferred from the current date (`_infer_start_year()` — if a range's start month is more than ~6 months
-"behind" the current month, it's assumed to be next year, to handle a page published near year-end
-referencing January). `utils/event_calendar_image_generator.py`'s `EventCalendarImageGenerator` then
-renders each `(year, month)` as a Gantt (one row per category, colored by *family* — Premier Draft/Quick
-Draft/Flashback/Sealed & Cube/Metagame/Community, a keyword heuristic on the category name in
-`_classify_family()`, not data from the Wizards page) plus a detailed text list below it (full event
-names, no truncation, category shown in parentheses) — this two-part layout is the result of several
-design iterations against real data: a plain day-grid calendar is unreadable because long-running
-categories (Premier Draft, Sealed...) repeat identically across dozens of day cells; a family-only Gantt
-(6 rows) loses the "is this really two distinct queues or one drawn twice" signal a reader wants; the
-final design keeps one row per category (so nothing is silently merged) but relies on the text list below
-for anything a bar is too narrow to show a name for. `_clean_name()` strips the redundant
-`"Magic: The Gathering | "` and `"Arena Direct for "` prefixes from event names before rendering, since
-the row's family color already conveys the category. `create_month_panel()` (an earlier per-category
-Gantt with no family grouping) and `create_multi_month_calendar()` (stitches several months' panels plus
-ONE merged detail list into a single image) both remain in the module, unused by the current flow, kept
-in case that layout is wanted again.
-
-`send_event_schedule_log()` uses this to attach one `discord.File` image per month to a single Discord
-log message (via `Logger.send_log()`'s `files` kwarg) — used by both the automatic daily check and
-`/forced_event_schedule_check`, so both now post images instead of the field-per-category embeds used
-before 3.2.0. If the page's categories were parsed but none of their entries match the expected date
-format, `build_month_calendar()` returns empty and a dedicated `WARN` (`ARENA_EVENT_SCHEDULE_NO_DATES`) is
-logged instead of generating an empty image, and stays log-channel-only (staff noise, not community
-content). When the calendar generates successfully, the same images are also posted to
-`COMUNICATION_CHANNEL_ID` with a dedicated, staff-jargon-free embed: `extract_set_name_from_url()` derives
-a readable expansion name from the page's URL slug (e.g. `the-hobbit-event-schedule` → "The Hobbit" — the
-page has no dedicated "set name" field to parse reliably, but the slug is always present and stable) and
-`format_period_covered()` computes the full date range spanned by every entry (min/max over
-`(year, month, day)` tuples across `month_calendar`, correct because the `(year, month)` keys are already
-chronologically ordered and per-month segments are pre-clipped) — together giving a title like "📅
-Calendario Eventi Arena — The Hobbit" and a body with "Periodo: 11 Agosto - 29 Settembre 2026" plus the
-source link. There used to be a separate `/preview_calendario_eventi` admin command for a manual,
-non-ephemeral preview outside the log channel; removed once `/forced_event_schedule_check` started posting
-to `COMUNICATION_CHANNEL_ID` too, making it redundant.
-
-### Banned and Restricted Announcement monitor
-
-`utils/ban_announcement.py` watches Wizards' "Banned and Restricted Announcement" posts
-(`magic.wizards.com/en/news/announcements/banned-and-restricted-*`), published on a fixed cadence
-(roughly every 6 weeks, always on a Monday) covering all official constructed formats (Standard, Pioneer,
-Modern, Legacy, Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) — notably, none of
-these is the Artisan homebrew format this community's own banlist governs (see "Sistema Banlist" above /
-`docs/banlist-system.md`), so this monitor is **notification-only**: it never writes to `banned_cards`.
-Structurally it reuses the same pattern as the Arena Event Schedule monitor — these announcement pages are
-also listed in `magic.wizards.com/en/sitemap.xml` with `<lastmod>`, Wizards doesn't remove past ones, so
-only the most recent by `lastmod` is considered (`_pick_latest()`), and the cheap sitemap check runs daily
-while the page itself is only fetched+parsed on a `lastmod` change (`check_ban_announcement_updates()`).
-
-Unlike the Event Schedule page, an announcement is free-form prose per format, not a structured date list
-— but each `<h2>Format</h2>` section is followed by a reliable one-paragraph summary
-(`<p style="padding-left: 30px;">Card X is banned.<br/>Card Y is unbanned.</p>`, or literally "No changes"
-when nothing changed in that format), verified live against the August/June/March 2026 announcements.
-`parse_ban_announcement()` extracts only that summary paragraph per format — never the surrounding
-analysis prose or sample decklists, both too unstructured to parse reliably and out of scope for a
-notify-only bot — and drops any format whose summary is "No changes", so the result dict only lists
-formats that actually changed. An announcement parsed correctly but with nothing to report (all formats
-unchanged) is a valid `{}` result (`BAN_ANNOUNCEMENT_NO_CHANGES` INFO log), distinct from `None` (no `<h2>`
-summary structure found at all — `BAN_ANNOUNCEMENT_UNPARSEABLE` WARN, same "ask for a manual check instead
-of guessing" philosophy as `parse_full_event_calendar()`). When there are real changes,
-`send_ban_announcement_log()` posts one Discord embed field per affected format (via `Logger.send_log()`'s
-`fields` kwarg), each field's value being the format's change lines. Unlike the WARN/no-changes cases,
-this one is also posted to `config.COMUNICATION_CHANNEL_ID` (via `send_log()`'s `extra_channel_id`, deferred
-import of `config.config` — same reason as `utils/permissions.py`, keeps the module importable in tests
-without a full `.env`) — a real ban change is community-relevant, not staff-only, unlike a parse failure
-or a no-op cycle. The community embed is dedicated, not a copy of the log one: title
-`"📋 Nuovo Banned and Restricted Announcement — {data e ora}"`, the date/time coming from
-`format_lastmod()` applied to the sitemap `lastmod` (the only date+time available — the page's own
-`<time>` element shows just the day, no hour; `lastmod` reflects Wizards' last edit to the page, not
-necessarily first publish, but it's the closest thing there is). Body is a plain link to the article, no
-"Controllo manuale/automatico" or invoking-user mention — those stay in the log-channel `info` only.
-Admin `/forced_ban_announcement_check` forces an immediate re-check of the current latest announcement,
-ignoring the saved `lastmod` — mirrors `/forced_event_schedule_check`.
-
-### Note on `cogs/tournament/` vs `cogs/deck_validation/`
-
-The package was renamed from `tournament` to `deck_validation` (see `CHANGELOG.md` 1.3.1) to
-disambiguate it from `cogs/tournament_system/`. `README.md`'s project-structure diagram still shows the
-old `tournament/` name — treat `deck_validation/` (actual directory) as current.
+- Refer to code by symbol name (`check_banlist()` in `validators.py`), not `file.py:line`. The one
+  exception is the "Line" column of `docs/commands.md`: recompute it whenever `cogs/` files shift.
+- Leave volatile counts (tests, commands) out of docs: they go stale with every change.
+- Write rationale and rejected alternatives as an ADR (`docs/adr/NNNN-title.md`), not in this file.
 
 ## Agent skills
 
-### Issue tracker
-
-Issues live in GitHub Issues for `Tdavide04/ClepshydraBot` (uses the `gh` CLI). See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default label vocabulary (label string equals role name): `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+- **Issue tracker:** GitHub Issues for `Tdavide04/ClepshydraBot`, through the `gh` CLI. See
+  `docs/agents/issue-tracker.md`.
+- **Triage labels:** `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See
+  `docs/agents/triage-labels.md`.
+- **Domain docs:** single-context layout, `CONTEXT.md` + `docs/adr/` at the repo root. See
+  `docs/agents/domain.md`.

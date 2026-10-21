@@ -2,7 +2,6 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass
 
-
 POINTS_WIN = 3
 POINTS_DRAW = 1
 POINTS_LOSS = 0
@@ -26,7 +25,6 @@ class Pairing:
 
 
 class PairingEngine:
-
     @staticmethod
     def calculate_rounds(player_count: int) -> int:
         return max(1, math.ceil(math.log2(player_count)))
@@ -70,9 +68,9 @@ class PairingEngine:
         def mwp(pid: int) -> float:
             total_wins = match_wins.get(pid, 0)
             total = sum(
-                1 for m in matches
-                if (m.player1_id == pid or m.player2_id == pid)
-                and m.player2_id is not None
+                1
+                for m in matches
+                if (m.player1_id == pid or m.player2_id == pid) and m.player2_id is not None
             )
             if total == 0:
                 return MWP_FLOOR
@@ -134,11 +132,12 @@ class PairingEngine:
                 key=lambda p: (
                     -standings[p.id].opponent_win_percent,
                     -(p.seed or 0),
-                )
+                ),
             )
 
             if round_number == 1:
                 import random
+
                 random.shuffle(bracket)
 
             pool = []
@@ -172,32 +171,32 @@ class PairingEngine:
                     break
 
                 if opponent is not None:
-                    pairings.append(Pairing(
-                        player1_id=pid1,
-                        player2_id=opponent,
-                        table_number=table,
-                    ))
+                    pairings.append(
+                        Pairing(
+                            player1_id=pid1,
+                            player2_id=opponent,
+                            table_number=table,
+                        )
+                    )
                     paired.add(pid1)
                     paired.add(opponent)
                     all_paired.add(pid1)
                     all_paired.add(opponent)
                     table += 1
                 else:
-                    player_obj = next(
-                        (p for p in active if (p.id if hasattr(p, "id") else p) == pid1),
-                        None
-                    )
+                    player_obj = next((p for p in active if (p.id if hasattr(p, "id") else p) == pid1), None)
                     if player_obj:
                         dropped_down = pid1
                         used.add(pid1)
 
                 i += 1
 
-        unpaired = [p for p in active if (
-            p.id if hasattr(p, "id") else p
-        ) not in all_paired and (
-            p.id if hasattr(p, "id") else p
-        ) not in used]
+        unpaired = [
+            p
+            for p in active
+            if (p.id if hasattr(p, "id") else p) not in all_paired
+            and (p.id if hasattr(p, "id") else p) not in used
+        ]
 
         if dropped_down is not None:
             dd_p = next(
@@ -217,11 +216,13 @@ class PairingEngine:
 
         for p in unpaired:
             pid = p.id if hasattr(p, "id") else p
-            pairings.append(Pairing(
-                player1_id=pid,
-                player2_id=None,
-                table_number=table,
-            ))
+            pairings.append(
+                Pairing(
+                    player1_id=pid,
+                    player2_id=None,
+                    table_number=table,
+                )
+            )
             table += 1
 
         return pairings

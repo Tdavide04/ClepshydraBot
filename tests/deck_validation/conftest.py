@@ -1,18 +1,17 @@
 import os
 
-# services/__init__.py importa eagerly TournamentService, che a sua volta
-# richiede config.config popolato (GUILD_ID, canali, ecc.). cogs/deck_validation
-# importa a sua volta database (-> database.engine -> config.config), quindi
-# qualunque test in questa cartella trascina la stessa configurazione Discord.
-# conftest.py viene caricato da pytest prima di ogni modulo di test nella
-# cartella, quindi questi valori sono garantiti in sys.environ prima che
-# qualunque `import cogs.deck_validation...` possa fallire. Devono restare
-# PRIMA di ogni import applicativo qui sotto (database.engine, utils.card_cache,
-# cogs.deck_validation...), altrimenti quegli import falliscono loro stessi
-# nel momento in cui questo conftest.py viene caricato.
-# Stesso identico contenuto di tests/tournament/conftest.py: duplicato
-# deliberatamente cosi' questa cartella resta eseguibile in isolamento
-# (`pytest tests/deck_validation -v`), non solo come parte di `pytest tests/`.
+# services/__init__.py eagerly imports TournamentService, which in turn needs
+# a populated config.config (GUILD_ID, channels, etc.). cogs/deck_validation
+# imports database (-> database.engine -> config.config) too, so any test in
+# this folder drags in the same Discord configuration. pytest loads
+# conftest.py before every test module in the folder, so these values are
+# guaranteed to be in sys.environ before any `import cogs.deck_validation...`
+# can fail. They must stay BEFORE every application import below
+# (database.engine, utils.card_cache, cogs.deck_validation...), otherwise
+# those imports fail themselves the moment this conftest.py is loaded.
+# Same content as tests/tournament/conftest.py: duplicated on purpose so this
+# folder stays runnable in isolation (`pytest tests/deck_validation -v`), not
+# only as part of `pytest tests/`.
 os.environ.setdefault("TEST_MODE", "True")
 os.environ.setdefault("DISCORD_TOKEN_TEST", "test-token")
 os.environ.setdefault("GUILD_ID_TEST", "111111111")
@@ -29,14 +28,14 @@ import database.engine as db_engine  # noqa: E402
 import utils.card_cache as card_cache  # noqa: E402
 from cogs.deck_validation.service import invalidate_banlist_cache  # noqa: E402
 
+# Fixtures shared by test_artisan_service.py and test_card_cache.py: they live
+# here in conftest.py, not duplicated in each file, because pytest makes them
+# available automatically to every module in this folder.
 
-# Fixture condivise tra test_artisan_service.py e test_card_cache.py: qui in
-# conftest.py, non duplicate nei singoli file, perche' pytest le rende
-# disponibili automaticamente a ogni modulo di questa cartella.
 
 @pytest.fixture
 def isolated_db(tmp_path, monkeypatch):
-    """Ogni test riceve un DB SQLite temporaneo e isolato (stesso pattern di
+    """Every test gets a temporary, isolated SQLite DB (same pattern as
     tests/tournament/test_tournament_service.py)."""
     monkeypatch.setattr(db_engine, "DB_PATH", str(tmp_path / "artisan_service_test.db"))
     db_engine._engine = None
@@ -46,13 +45,13 @@ def isolated_db(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_card_cache(tmp_path, monkeypatch):
-    """Resetta lo stato di modulo di utils.card_cache prima di ogni test.
+    """Resets utils.card_cache's module state before every test.
 
-    CACHE_PATH punta a un file inesistente cosi' load_cache() (chiamata da
-    init_db() dentro isolated_db/run_with_db) non tenta di migrare il vero
-    data/card_cache.json del repository. _loaded=False forza load_cache() a
-    ripartire dal DB temporaneo del test invece di saltare il caricamento
-    perche' gia' fatto da un test precedente nello stesso processo pytest.
+    CACHE_PATH points to a nonexistent file so load_cache() (called by
+    init_db() inside isolated_db/run_with_db) doesn't try to migrate the
+    repository's real data/card_cache.json. _loaded=False forces load_cache()
+    to start over from the test's temporary DB instead of skipping the load
+    because an earlier test in the same pytest process already did it.
     """
     monkeypatch.setattr(card_cache, "CACHE_PATH", str(tmp_path / "card_cache_test.json"))
     monkeypatch.setattr(card_cache, "_card_cache", {})
@@ -64,9 +63,9 @@ def isolated_card_cache(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_banlist_cache():
-    """_banlist_cache e' condivisa a livello di modulo (fix dello Step 1): senza
-    reset esplicito, il valore caricato da un test 'sopravviverebbe' al DB
-    temporaneo del test successivo."""
+    """_banlist_cache is shared at module level (the Step 1 fix): without an
+    explicit reset, the value loaded by one test would 'survive' into the
+    next test's temporary DB."""
     invalidate_banlist_cache()
     yield
     invalidate_banlist_cache()

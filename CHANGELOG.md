@@ -2,11 +2,430 @@
 
 ## Versioning
 
-A partire dalla 3.0.0: `MAJOR.MINOR.PATCH`, dove una nuova feature incrementa **MINOR** e un bug fix
-incrementa **PATCH**. `MAJOR` resta fermo salvo cambi importanti decisi esplicitamente. Le versioni
-precedenti (serie 1.x) non seguivano questa convenzione in modo rigoroso. La versione attiva è la costante
-`VERSION` in `config/config.py` (non una variabile d'ambiente) — va aggiornata a mano nello stesso commit
-che aggiorna questo file, non è derivata automaticamente da git.
+From 3.0.0: `MAJOR.MINOR.PATCH`, where a new feature bumps **MINOR** and a bug fix bumps **PATCH**. `MAJOR`
+stays put unless a major change is explicitly decided. Earlier versions (the 1.x series) didn't follow this
+convention strictly. The active version is the `VERSION` constant in `config/config.py` (not an environment
+variable) — bump it by hand in the same commit that updates this file; it isn't derived from git. The mapping
+from commit type to bump is in `CLAUDE.md` → "Conventional Commits".
+
+**Language:** from 3.6.4 onward entries are written in English (`docs/adr/0003-project-language.md`).
+Entries up to 3.6.3 stay in Italian as an archive, including the old doc file names they mention.
+
+Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
+**Unreleased** and move into the next numbered version.
+
+## 4.0.0 (2026-10-21)
+
+The bot becomes a helper only: tournaments are hosted on another platform (`docs/adr/0004-helper-only-tournaments-disabled.md`).
+**Breaking**: 15 slash commands are no longer available, hence the MAJOR bump (decided explicitly).
+
+### Changed
+- **Tournament commands disabled**: `main.py` no longer loads `cogs/tournament_system` (new `DISABLED_COGS`
+  set, with a console line at startup). The 15 commands — `/crea_torneo`, `/avvia_torneo`, `/torneo_next_turn`,
+  `/drop_giocatore`, `/concludi_torneo`, `/correggi_risultato`, `/lista_tornei`, `/iscriviti`, `/invia_deck`,
+  `/iscrizioni_torneo`, `/left_torneo`, `/risultato`, `/classifica`, `/turni`, `/leaderboard` — disappear from
+  Discord at the next startup's command sync. Code, tests and DB tables (tournaments, matches, ratings) stay;
+  re-enabling means removing one entry from `DISABLED_COGS`.
+- **Banlist commands moved** to the deck validation cog (`DeckValidationCog`, formerly the `Tournament` class
+  in `cogs/deck_validation/__init__.py`): `/banlist`, `/banlist_aggiungi`, `/banlist_rimuovi` stay active and
+  now work in any channel (they were limited to `TOURNAMENT_CHANNEL_ID`).
+
+Verified: a stubbed run of `setup_hook()` loads 7 cogs and skips `tournament_system`; the deck validation cog
+exposes `/artisan_check_deck` and the three banlist commands. Not verified live: the command sync on Discord
+(next start in production, or a `TEST_MODE` run).
+
+### Docs
+- `README.md`, `CLAUDE.md`, `docs/tournaments.md`, `docs/commands.md`, `docs/architecture.md`,
+  `docs/banlist-system.md`, `docs/technical-report.md`, `docs/infrastructure.md`, roadmap step 18; new ADR-0004.
+
+## 3.6.7 (2026-10-21)
+
+### Fixed
+- **`/iscriviti` announced refused registrations as confirmed**: the cog never checked the outcome of
+  `register_player()`, so a registration refused because the tournament was full got the public "✅ Iscrizione
+  confermata" embed (with the refusal text inside) and an INFO `REGISTRATION_CONFIRMED` log. The refusal now
+  goes to the user privately, with a WARN `REGISTRATION_REFUSED` log.
+- **`/invia_deck` treated "Torneo non trovato." as a recorded deck**: the cog only recognized "Non sei
+  iscritto"/"non accetta piu".
+
+### Refactored
+- `TournamentService.register_player`, `submit_deck`, `unregister_player`, `start_tournament`,
+  `force_drop_player`, `force_conclude_tournament` and `generate_next_round` return `ServiceResult` instead of a
+  string; `ServiceResult` gains an optional `kind` (`ResultKind.PENDING_RESULTS`, `TOURNAMENT_COMPLETED`) for
+  `generate_next_round`. The tournament cog branches on these fields and no longer matches message text.
+  Regression tests at the service seam for both bugs. Manual check in `TEST_MODE`: **not done** — the
+  tournament commands are disabled right after this release (4.0.0). Roadmap step 17.
+
+### Changed
+- `.env.example`: `DB_PATH=data/clepshydra.db` (it said `clepsydra.db`, so a copied template named the DB
+  differently from the code default). An existing `.env` is not affected and must not be renamed: it would
+  point the bot at a new, empty DB. `docs/infrastructure.md`: the production venv is `venv/`, not `.venv/`.
+  Roadmap step 20.
+- CI prints a test coverage report (`pytest-cov` 7.1.0, pinned in `requirements-dev.txt`), with no
+  threshold yet. Baseline: 73.2% on the logic layers (`services`, `utils`, `repositories`, `database`), 49%
+  overall with the cogs. Roadmap step 15.
+- Dependencies pinned (`requirements.txt`) to the versions running in production: discord.py 2.7.1,
+  python-dotenv 1.2.2, aiohttp 3.14.1, Pillow 12.3.0, SQLAlchemy 2.0.51, aiosqlite 0.22.1. `pytest` pinned
+  in `requirements-dev.txt`; `.python-version` set to 3.12. Checked on a clean Python 3.12.3 venv: install
+  and test suite green. Roadmap step 14.
+- Lint widened with `ruff` rule families `B` (bugbear) and `ASYNC`. The 5 `ASYNC230`/`ASYNC240` findings
+  are blocking file calls that run only once at startup, before the bot serves interactions, so they get a
+  `# noqa` with that reason instead of an `asyncio.to_thread` wrapper; the rules stay on to catch runtime
+  cases. One unused loop variable removed (`B007`, `start_tournament()`).
+- Rule family `UP` enabled (Python 3.12 idioms): 13 automatic fixes, `TournamentStatus`/`MatchResult` now
+  `enum.StrEnum` (still stored by name in SQLite, checked with raw SQL), `BaseRepository[T: Base]` generics.
+  Roadmap step 16.
+
+## 3.6.6 (2026-10-20)
+
+### Fixed
+- **An interrupted save could corrupt the SPG override file**: `_save_override_data()`
+  (`utils/arena_overrides.py`) wrote `data/arena_rarity_data.json` in place, so a failure mid-write (full
+  disk, crash) left a truncated JSON, and `json.load` failed on the next start until the file was restored
+  from git. It now uses the atomic `save_json_state()` (`.tmp` + `os.replace`) the monitors already used.
+  New regression test `TestOverrideFileSurvivesFailedWrite`, red on the previous code. `data/*.tmp` is now
+  git-ignored. Roadmap step 19.
+
+### Changed
+- Code formatted with `ruff format` (line length 110) and imports sorted (`ruff` rule `I`), in a single
+  mechanical commit (`24cff10`, listed in `.git-blame-ignore-revs`); identical AST in every Python file. CI
+  now also runs `ruff format --check .`, and `ruff` is pinned to 0.16.6 in `requirements-dev.txt` so a ruff
+  release can't flip that check. Roadmap step 12.
+- `pre-commit` hooks (`.pre-commit-config.yaml`): ruff check, ruff format, YAML, end-of-file,
+  trailing-whitespace, large-file and private-key checks on commit, and Conventional Commits with the
+  project's types and scopes on the commit message. CI's lint job now runs `pre-commit run --all-files`.
+  Activate once per clone: `pre-commit install --hook-type pre-commit --hook-type commit-msg`. The first
+  run only fixed whitespace (`cards.txt`, `data/arena_rarity_data.json`, `.gitignore`,
+  `cogs/__init__.py`). Roadmap step 13.
+
+### Docs
+- `docs/commands.md`: "Line" column recomputed after the reformatting.
+- `CLAUDE.md`, `README.md`, `docs/infrastructure.md`: the format check and the pre-commit hooks join the
+  gate.
+
+## 3.6.5 (2026-10-20)
+
+Project translated to English for developers (roadmap step 11, ADR-0003). Nothing changes for members: every
+command reply, modal, view and community embed is identical, verified by diffing every string literal before
+and after.
+
+### Changed
+- **Log channel and console output are in English** (e.g. `Forced manual check: ...`,
+  `[CARD CACHE] save failed, retrying in 60s: ...`). Staff reading the log channel will see English text.
+- **Two log event codes renamed**: `VERIFICA_FALLITA` → `PRESENTATION_VALIDATION_FAILED`,
+  `PRESENTAZIONE_COMPLETATA` → `PRESENTATION_COMPLETED`.
+
+### Refactored
+- Comments, docstrings and exception messages in English; 65 test names renamed (230 tests, same count).
+
+### Docs
+- `docs/` translated, file names in English (`architettura.md` → `architecture.md`, `comandi.md` →
+  `commands.md`, `infrastruttura.md` → `infrastructure.md`, `presentazioni.md` → `onboarding.md`,
+  `roadmap-miglioramenti.md` → `roadmap.md`, `tornei.md` → `tournaments.md`,
+  `ClepshydraBot_Resoconto_Tecnico.md` → `technical-report.md`); ADR-0001/0002 translated and renamed.
+- Every doc claim checked against the code while translating; statements already stale in the Italian
+  version fixed (onboarding validation and menu options, nonexistent helpers/aliases/repository methods,
+  command counts, env vars, the duplicated cache section in `banlist-system.md`, and more).
+- New `CONTEXT.md`: glossary of the domain terms, with the Italian word members see.
+- Roadmap: steps 19 (non-atomic write of `data/arena_rarity_data.json`) and 20 (`.env.example` DB name
+  typo), both found during the translation.
+- Commit scope `i18n` renamed to `lang` in `CLAUDE.md`.
+
+## 3.6.4 (2026-10-20)
+
+Docs only, no code changes.
+
+### Docs
+- New development standard (`docs/adr/0002-standard-di-sviluppo.md`): test-first for logic layers (cogs
+  exempt, with manual verification in `TEST_MODE`), Conventional Commits with project scopes, lint that
+  only grows, `pre-commit` + CI gates (not in place yet, roadmap steps 12-13)
+- Project language (`docs/adr/0003-project-language.md`): English for code, logs, docs and commits; Italian
+  for everything users see. The translation itself is roadmap step 11
+- `CLAUDE.md` rewritten: from 384 to about 200 lines. It now holds the working loop, the commit
+  conventions, an architecture map pointing to the topic docs, the invariants and the test-writing
+  notes. The historical rationale moved out:
+  - the Event Schedule calendar image design → `docs/adr/0001-layout-immagine-calendario-eventi.md`
+    (`docs/caching.md` now points there)
+  - `Logger.send_log()` details (`fields`, `files`, `extra_channel_id`) → `docs/infrastruttura.md`
+- `docs/roadmap-miglioramenti.md`: new phase 2 (steps 10-18): line endings, translation, `ruff format`,
+  `pre-commit`, pinned dependencies, coverage, wider lint, `ServiceResult` instead of message matching,
+  English slash command names (no priority)
+
+## 3.6.3 (2026-10-14)
+
+Solo documentazione: nessun cambiamento al codice.
+
+### Docs
+- `README.md`:
+  - tabella comandi completa (24 su 24, prima ne elencava 14 — mancavano `/lista_tornei`,
+    `/iscrizioni_torneo`, `/left_torneo`, `/leaderboard`, `/banlist`, `/drop_giocatore`,
+    `/concludi_torneo`, `/banlist_aggiungi`/`/banlist_rimuovi`, `/invalidate_card_cache`)
+  - schema architetturale e struttura progetto: `tournament/` → `deck_validation/` (rinominato nella
+    1.3.1); aggiunti i moduli mancanti (`services/rating.py`, `services/results.py`,
+    `repositories/banlist_repository.py`, `utils/permissions.py`, `utils/tournament_embeds.py`,
+    `utils/tournament_logic.py`) e `BanlistRepository`/`TournamentPlayerRepository` nello schema
+  - nome del DB: `data/clepshydra.db`, non `data/clepsydra.db` (stesso errore in
+    `docs/infrastruttura.md`, corretto); radice del progetto `ClepshydraBot/`
+  - `pip install sqlitebrowser` rimosso: DB Browser for SQLite e' un'applicazione desktop, non un
+    pacchetto pip
+- `docs/banlist-system.md`, `docs/deck-validation.md`, `docs/presentazioni.md`, `docs/comandi.md`: i
+  riferimenti `file.py:righe` (19, quasi tutti sfasati — es. `validators.py:82-96` puntava oltre la fine
+  di un file di 88 righe) sostituiti dal nome della funzione/classe, che non invecchia
+- `CLAUDE.md`: conteggio comandi del cog tornei (18 su 24, era "~14"), cog di manutenzione elencati; tolta
+  la nota "il README mostra ancora `tournament/`"; nuova sezione "Docs conventions" (riferirsi al codice
+  per nome di simbolo, non per riga)
+
+## 3.6.2 (2026-10-12)
+
+### Fixed
+- **`/classifica` a meta' round contava le partite non ancora giocate**: `StandingsCalculator.compute()`
+  (`services/standings.py`) trattava una partita del round in corso senza risultato come un 1-1 in game, e
+  aggiungeva l'avversario al calcolo dell'OMW/OGW — GWP e OMW risultavano alterati finche' il round non era
+  completo. Ora le partite senza risultato vengono saltate (i bye continuano a contare subito). La
+  classifica finale non ne era toccata, e nemmeno gli abbinamenti (`torneo_next_turn` richiede tutti i
+  risultati del round)
+- Test: 2 nuovi in `TestPendingMatches` (`tests/tournament/test_standings.py`): aggiungere una partita non
+  giocata non cambia la classifica (fallisce sul codice precedente), il bye conta anche se il round e' in
+  corso
+
+### Docs
+- `docs/tornei.md` (StandingsCalculator), `CLAUDE.md` (conteggio test)
+
+## 3.6.1 (2026-10-12)
+
+### Fixed
+- **Un errore di salvataggio fermava per sempre il salvataggio della cache carte**: `periodic_save_loop()`
+  (`utils/card_cache.py`) non gestiva le eccezioni, quindi un solo errore di `save_cache()` (es. DB
+  bloccato) uccideva il task in silenzio, e la cache non veniva piu' salvata fino al riavvio. Ora l'errore
+  viene loggato in console (`[CARD CACHE] salvataggio fallito, ritento tra 60s: ...`) e il ciclo continua;
+  `save_cache()` svuota le modifiche in sospeso solo dopo un commit riuscito, quindi il giro successivo
+  ritenta le stesse
+- **Alla chiusura del bot si perdevano fino a 60s di modifiche alla cache carte**: `ClepshydraBotte.close()`
+  (`main.py`) chiudeva il DB senza salvare. Ora chiama `save_cache()` un'ultima volta prima di `close_db()`
+  (un errore li' non impedisce la chiusura)
+
+### Changed
+- `log()` (console con timestamp) spostata da `utils/sitemap_monitor.py` al nuovo `utils/console.py`: con
+  questo fix era al terzo utilizzo fuori dai monitor sitemap (anche `utils/interaction_errors.py` ora la usa
+  invece di ripetere lo stesso formato). `utils/sitemap_monitor.py` la re-esporta, nessun import da cambiare
+- Test: 2 nuovi in `tests/deck_validation/test_card_cache.py` (il ciclo sopravvive a un salvataggio
+  fallito — fallisce sul codice precedente —, le modifiche in sospeso sopravvivono a un salvataggio fallito
+  e vengono scritte al tentativo successivo). La chiusura in `main.py` non e' coperta da test (`main.py`
+  avvia il bot all'import): verificata leggendo il codice
+
+### Docs
+- `docs/caching.md`, `docs/banlist-system.md` (`periodic_save_loop`), `CLAUDE.md` (salvataggio cache,
+  `utils/console.py`, conteggio test), `README.md` (struttura progetto)
+
+## 3.6.0 (2026-10-12)
+
+### Added
+- **`/correggi_risultato <tavolo> <esito> [vincitore] [turno] [torneo]`** (admin): sovrascrive il
+  risultato di una partita del torneo in corso, o lo inserisce se manca (giocatore che non l'ha mai
+  riportato). Prima un risultato sbagliato si poteva correggere solo modificando il DB a mano: vale il
+  primo dei due giocatori che lo inserisce, senza conferma dell'avversario — scelta mantenuta
+  deliberatamente, la correzione staff copre i casi sbagliati. `esito` 2-0 / 2-1 / pareggio; `vincitore`
+  obbligatorio tranne per il pareggio; `turno` di default quello in corso, ma anche round passati (la
+  classifica si ricalcola da sola, gli abbinamenti dei round successivi gia' generati restano, e il
+  messaggio lo avvisa). Rifiutato a torneo concluso: il rating Glicko-2 e' gia' stato applicato. Annuncio
+  pubblico nel canale torneo con il risultato prima → dopo, log `RESULT_CORRECTED`. Nuovo
+  `TournamentService.correct_result()`
+- `services/results.py`: `ServiceResult(ok, message)`, esito strutturato restituito da `submit_result()` e
+  `correct_result()` al posto di una stringa interpretata dal cog per confronto di testo — primo passo del
+  refactor graduale di questo pattern
+
+### Fixed
+- **Ogni risultato registrato finiva a log come `WARN` arancione**: `RisultatoView` cercava `"Registrato"`
+  con la maiuscola, mentre `submit_result()` restituiva `"Risultato registrato!"`. Ora usa `outcome.ok`
+- **Un risultato rifiutato veniva annunciato pubblicamente**: se l'avversario aveva gia' inserito il
+  risultato, il secondo invio era rifiutato ma il bot pubblicava comunque nel canale "ha registrato il
+  risultato" con il punteggio (potenzialmente diverso). Ora il giocatore vede solo il motivo in privato,
+  con l'indicazione di chiedere allo staff `/correggi_risultato`, e il log e' `MATCH_RESULT` WARN
+- Test: 6 nuovi in `TestCorrectResult` (`tests/tournament/test_tournament_service.py`: sovrascrittura con
+  classifica aggiornata, inserimento di un risultato mancante come pareggio, giocatore non al tavolo,
+  tavolo inesistente e bye, torneo concluso, avviso sugli abbinamenti per un round passato);
+  `test_submit_result_flow` aggiornato a `ServiceResult`. Verificata anche la definizione del comando
+  costruendo l'albero reale dei 24 slash command (description e opzioni entro i limiti di Discord)
+
+### Docs
+- `docs/tornei.md` (sezione "Chi inserisce il risultato"; `RisultatoView` descriveva due select per i game
+  win, in realta' e' un unico select con 5 esiti), `docs/comandi.md`, `CLAUDE.md` (lifecycle torneo,
+  `ServiceResult`, conteggio test)
+- `README.md`: aggiunto `/correggi_risultato`; corretti i nomi dei comandi admin (`/torneo crea`,
+  `/torneo avvia`, `/torneo prossimo_turno` non esistono: sono `/crea_torneo`, `/avvia_torneo`,
+  `/torneo_next_turn`) e la cadenza dei due controlli forzati, ancora "every day" invece di "every 2
+  hours" — sfuggita nella 3.5.3
+
+## 3.5.7 (2026-10-12)
+
+### Fixed
+- **Un errore temporaneo di Scryfall rendeva una carta illegale fino al riavvio del bot**:
+  `_get_with_retry()`/`_post_with_retry()` restituivano `None` sia per il 404 legittimo di `/cards/search`
+  ("nessuna stampa Arena", carta davvero illegale) sia per qualunque errore (timeout, 5xx, 429 oltre i
+  tentativi, eccezioni di rete). `_is_arena_artisan_legal()` trattava `None` come "illegale" e lo
+  salvava in `_ARENA_LEGAL_CACHE`: da li' ogni mazzo con quella carta veniva rifiutato con "Non legali in
+  Artisan Arena" fino al riavvio. Allo stesso modo un blocco `/cards/collection` fallito faceva comparire
+  le sue carte in "Carte non trovate". Ora:
+  - nuova `_request_with_retry()` (`cogs/deck_validation/service.py`, `_post_with_retry`/`_get_with_retry`
+    restano come wrapper): 404 → `{"data": []}`; 429, 5xx ed errori di rete/timeout ritentati con backoff
+    (i 5xx prima venivano abbandonati subito); dopo 5 tentativi, o su altro status inatteso, solleva la
+    nuova `ScryfallUnavailable` invece di restituire `None`
+  - `validate_deck()` la intercetta e restituisce un `DeckValidationResult` con il nuovo campo
+    `service_error` (che rende `is_valid` falso) e nessuna carta marcata non trovata/illegale; nessuna
+    cache viene toccata
+  - `/invia_deck` (`InviaDeckModal`) e `/artisan_check_deck` (`validate_and_publish()`) rispondono
+    "Scryfall non risponde, riprova tra qualche minuto" invece di un esito, e loggano `WARN`
+    `SCRYFALL_UNAVAILABLE`; l'iscrizione al torneo resta invariata
+- `ArtisanDeckCheckModal.on_submit()` aveva un `try/except Exception` che stampava solo in console e
+  aggirava la gestione globale introdotta nella 3.5.6: rimosso, un errore inatteso ora arriva a
+  `ReportingModal.on_error` (utente e staff avvisati)
+- Test: 6 nuovi in `tests/deck_validation/test_artisan_service.py` (errore sulla ricerca stampe e sul
+  blocco collection come `service_error`, stessa carta legale dopo il ripristino, 404 ancora illegale e
+  memorizzato; `_request_with_retry`: 404, retry su 503, `ScryfallUnavailable` a tentativi esauriti).
+  Verificato anche dal vivo contro Scryfall: carta senza stampe Arena (Black Lotus) illegale via 404,
+  host irraggiungibile → `service_error` dopo 5 tentativi con cache intatta
+
+### Docs
+- `docs/deck-validation.md`: nuova sezione "Scryfall non raggiungibile"; blocco "Modelli Dati" riallineato
+  al codice (descriveva campi inesistenti, es. `banned_cartes`/`card_data`)
+- `docs/caching.md` "Retry Logic": dichiarava un timeout di 10s per richiesta, in realta' e' 120s per
+  l'intera sessione di validazione; aggiunti 5xx/errori di rete e `ScryfallUnavailable`
+- `CLAUDE.md` (pipeline di validazione, conteggio test), `docs/comandi.md` (numeri di riga)
+
+## 3.5.6 (2026-10-12)
+
+### Fixed
+- **Nessuna gestione globale degli errori delle interazioni**: un'eccezione non prevista in uno slash command
+  (tipicamente dopo un `defer()`), in un modal o in una view lasciava l'utente su "sta pensando..." per
+  sempre e finiva solo in console, mai nel canale log — e' cosi' che si manifestava il crash di
+  `/classifica` corretto nella 3.5.5. Ora:
+  - nuovo `utils/interaction_errors.py`: `report_interaction_error()` risponde all'utente in ephemeral
+    ("errore inatteso, lo staff e' stato avvisato" — `followup` se l'interazione aveva gia' risposto,
+    altrimenti risposta diretta; non solleva se l'interazione e' gia' scaduta), logga `ERROR`
+    `INTERACTION_ERROR` con origine, eccezione e coda del traceback, stampa il traceback completo in console
+    con timestamp. Scompatta `CommandInvokeError` per mostrare l'eccezione reale
+  - nuovo cog `cogs/error_handler.py`: aggancia `CommandTree.on_error` (ripristinato allo scaricamento). I
+    `CheckFailure` (es. `@is_admin()`, che risponde gia' da se') non vengono loggati come errori
+  - nuove classi base `ReportingModal`/`ReportingView`, adottate da tutti gli 8 modal/view del bot
+    (`CreaTorneoModal`, `InviaDeckModal`, `RisultatoView`, `BasicPresentationModal`,
+    `OptionalPresentationModal`, `PreferencesView`, `PreviewView`, `ArtisanDeckCheckModal` — quest'ultimo
+    aveva un `on_error` proprio che stampava solo in console, rimosso)
+- `tests/utils/test_interaction_errors.py`: 9 nuovi test (risposta prima/dopo il defer, log con origine,
+  `CommandInvokeError` scompattato, interazione scaduta che logga comunque, classi base, `CheckFailure`
+  non loggato). Verificato anche l'aggancio reale su un `commands.Bot` di discord.py 2.7.1
+
+### Docs
+- `docs/architettura.md`: la sezione "Gestione Errori" dichiarava "ogni comando slash ha `try/except` con
+  log ERROR" — non era vero, sostituita con la descrizione del nuovo meccanismo. Corretta anche la riga
+  sulla CI, ferma a prima della 1.7.1 (`ruff` e' bloccante da allora, non piu' informativo)
+- `README.md` (struttura progetto), `CLAUDE.md` (nuovo cog e regola per i nuovi modal/view, conteggio test)
+- `docs/comandi.md` "Location File": numeri di riga ricalcolati dal codice per tutti i 23 comandi — sfasati
+  dagli import aggiunti qui, ma la tabella mescolava gia' riga del decoratore e riga della funzione, con
+  alcuni valori gia' errati (es. `/presentati`). Ora puntano tutti alla riga `async def`
+
+## 3.5.5 (2026-10-12)
+
+### Fixed
+- **`/classifica` andava in crash dopo qualunque `/drop_giocatore` a torneo avviato** (riprodotto:
+  `KeyError`): `get_standings()` passava a `StandingsCalculator.compute()` i soli iscritti attivi, ma le
+  partite gia' giocate dal droppato restano nel torneo, e il calcolo cercava le statistiche di un giocatore
+  assente. Il comando restava su "sta pensando..." per sempre, anche per la classifica finale. Ora:
+  - `TournamentPlayerRepository.get_by_tournament()` accetta `include_dropped` (default `False`: pairing,
+    avvio ed elenco iscrizioni restano invariati)
+  - `get_standings()` include i droppati che hanno giocato almeno una partita: restano in classifica
+    marcati _(drop)_ (nuovo `StandingsEntry.dropped`, mostrato da `build_standings_embed()`) e le loro
+    partite contano per l'OMW/OGW degli avversari, come nei tornei Wizards. Chi e' uscito durante le
+    iscrizioni non compare
+  - `compute()` tollera comunque un giocatore presente solo nelle partite (`stats.setdefault`) invece di
+    andare in errore
+- **Rating: le partite contro un giocatore poi droppato venivano ignorate** — `_update_ratings()` usava gli
+  stessi soli iscritti attivi e saltava in silenzio quelle partite, per entrambi i giocatori. Ora le conta
+- Test: 5 nuovi (`TestDroppedPlayers` in `tests/tournament/test_standings.py`; classifica dopo un drop a
+  torneo avviato, uscita in iscrizione esclusa, rating contro un droppato in
+  `test_tournament_service.py`) — i 4 di regressione falliscono sul codice precedente
+
+### Docs
+- `docs/tornei.md` (nuova sezione "Giocatori droppati", tabelle metodi/embed), `docs/database.md`
+  (`get_by_tournament`), `CLAUDE.md` (conteggio test)
+
+## 3.5.4 (2026-10-12)
+
+### Fixed
+- **Un iscritto senza mazzo poteva bloccare un torneo a tempo indeterminato**: `start_tournament()` rifiuta
+  l'avvio finche' un iscritto attivo non ha inviato il mazzo, ma durante le iscrizioni lo staff non aveva
+  modo di rimuoverlo — `force_drop_player()` (`/drop_giocatore`) accettava solo tornei `ACTIVE`, e
+  `/left_torneo` puo' usarlo solo il giocatore stesso. Unica via d'uscita era modificare il DB a mano.
+  `force_drop_player()` ora accetta anche tornei in `REGISTRATION`: marca l'iscrizione come droppata
+  (nessun match da chiudere, a differenza del caso `ACTIVE` con auto-loss). Un giocatore rimosso cosi' puo'
+  reiscriversi con `/iscriviti`, come dopo un `/left_torneo`. Description di `/drop_giocatore` aggiornata
+  ("Rimuovi un giocatore da un torneo attivo o in fase di iscrizioni")
+- `tests/tournament/test_tournament_service.py`: 2 nuovi test (drop in iscrizione che sblocca l'avvio,
+  drop rifiutato su torneo concluso)
+- **`max_players` superabile con iscrizioni simultanee**: `register_player()` contava gli iscritti e poi
+  inseriva il nuovo con query separate, con `await` in mezzo — riprodotto: torneo con massimo 2 e un
+  iscritto, due `/iscriviti` concorrenti, 3 iscritti finali. Ora la funzione e' serializzata da un
+  `asyncio.Lock` per istanza di `TournamentService` (il bot ne crea una sola; per istanza e non di modulo
+  perche' un `asyncio.Lock` si lega all'event loop alla prima contesa, e i test usano un loop per scenario)
+- **Seed duplicati dopo un'uscita**: il seed era `count(iscritti attivi) + 1`, ma il conteggio esclude i
+  droppati — A=1, B=2, A esce, C si iscrive e riceveva seed 2 come B. Ora e' il massimo seed gia' assegnato
+  nel torneo + 1, droppati inclusi (nuovo `TournamentPlayerRepository.max_seed()`). Impatto limitato: il
+  seed e' solo lo spareggio nell'ordinamento del pairing
+- `unregister_player()` (`/left_torneo`) non controllava se l'iscrizione fosse gia' droppata: un secondo
+  `/left_torneo` ripeteva "Sei uscito dal torneo", con doppio embed pubblico e doppio log
+  `PLAYER_UNREGISTERED`. Ora risponde "Non sei iscritto a questo torneo"
+- `tests/tournament/test_tournament_service.py`: 3 nuovi test di regressione (iscrizioni concorrenti con
+  limite, seed dopo un'uscita, doppia uscita). Verificati anche con lo stesso script che li aveva riprodotti
+  su un DB temporaneo
+
+### Docs
+- Aggiornati `docs/tornei.md` (ciclo di vita: `/drop_giocatore` anche in iscrizione; tabella metodi con
+  `force_drop_player`, `register_player`, `unregister_player`), `docs/comandi.md` (`/drop_giocatore`),
+  `docs/database.md` (colonna `seed`), `CLAUDE.md` (conteggio test)
+
+## 3.5.3 (2026-10-12)
+
+### Fixed
+- Console dei monitor sitemap senza orario: le righe `[EVENT SCHEDULE] ...`/`[BAN ANNOUNCEMENT] ...`
+  (e `[SITEMAP FAIL]`/`[... FETCH FAIL]`) erano semplici `print()` senza timestamp, a differenza dei log di
+  `discord.py` nello stesso `pm2 logs` — il 2026-10-12 e' stato impossibile stabilire a che ora fossero
+  girati i check rispetto alla pubblicazione del Banned and Restricted di ottobre. Nuova `log()` in
+  `utils/sitemap_monitor.py` (prefisso `[YYYY-MM-DD HH:MM:SS]`, stesso formato di `discord.py`), usata da
+  `utils/arena_event_schedule.py`, `utils/ban_announcement.py` e dal modulo condiviso stesso (nuovo test
+  `TestLog` in `tests/utils/test_sitemap_monitor.py`)
+- Banned and Restricted di ottobre (2026-10-12) non notificato: il check giornaliero (e anche un
+  `/forced_ban_announcement_check` lanciato poco dopo) e' girato quando l'annuncio era gia' pubblicato sul
+  sito ma non ancora presente sul sitemap Wizards — servito con `Cache-Control: max-age` ~1h e rigenerato
+  dopo la pubblicazione dell'articolo — e ha quindi trovato ancora l'annuncio di agosto come piu' recente
+  (il forzato l'ha riletto e ripostato). Il codice di discovery e parsing era corretto: verificato dal vivo
+  che, una volta comparso sul sitemap, l'annuncio di ottobre viene rilevato e interpretato (13 modifiche
+  in Competitive Brawl, nessuna negli altri 10 formati). Il problema era la latenza: il giro successivo
+  sarebbe arrivato quasi 24h dopo. `_CHECK_INTERVAL_SECONDS` (`utils/sitemap_monitor.py`, condiviso con il
+  monitor Event Schedule) ridotto da 24h a 2h — ritardo massimo ~3h, al costo di una GET da ~660 KB ogni 2
+  ore per monitor. Aggiornate di conseguenza anche le description di `/forced_ban_announcement_check` e
+  `/forced_event_schedule_check` ("gira anche da solo ogni 2 ore", entrambe sotto i 100 caratteri)
+- Banned and Restricted gia' notificato ripubblicato nel canale community: il
+  `/forced_ban_announcement_check` del 2026-10-12, girato quando il sitemap elencava ancora agosto come
+  annuncio piu' recente, ha ripostato quello di agosto nel canale community come "Nuovo Banned and
+  Restricted Announcement". Stesso effetto avrebbe avuto un semplice ritocco della pagina da parte di
+  Wizards (nuovo `lastmod`, stessa URL — l'annuncio del 10 agosto ha `lastmod` 21 agosto). Lo stato
+  `data/ban_announcement_state.json` ora salva anche `notified_url` (ultimo annuncio le cui modifiche sono
+  state postate alla community, aggiornato solo se ci sono modifiche reali) e
+  `check_ban_announcement_updates()` restituisce `already_notified`: se True, `send_ban_announcement_log()`
+  posta i campi solo nel canale log. Una URL nuova resta sempre notificata. Stato pre-3.5.3 senza il campo:
+  `_notified_url()` assume notificato `latest_url`, cosi' l'aggiornamento non ripubblica l'ultimo annuncio
+  gia' processato. Il monitor Event Schedule non cambia: li' un aggiornamento in place della stessa pagina
+  e' contenuto nuovo reale. Verificato dal vivo partendo dallo stato di produzione (agosto, formato
+  vecchio): ottobre risulta `already_notified=False`, un controllo forzato subito dopo `True`
+- `tests/utils/test_ban_announcement.py`: 7 nuovi test (`already_notified` su primo annuncio, controllo
+  forzato, ritocco `lastmod`, URL nuova, annuncio senza modifiche, stato legacy; invio solo nel canale log)
+
+### Docs
+- `docs/infrastruttura.md`: il processo pm2 in produzione si chiama `ClepshydraBotte`, non `clepshydrabot`
+  come riportato nei comandi (`pm2 start/logs/restart`) — `pm2 logs clepshydrabot | grep ...` restituiva
+  output vuoto senza errori. Aggiunto il comando per filtrare lo storico dei controlli dei monitor sitemap
+- Aggiornati `CLAUDE.md` (cadenza 2h dei monitor, `log()` con timestamp, `notified_url`/`already_notified`
+  nella sezione "Banned and Restricted Announcement monitor", conteggio test), `docs/caching.md` (sezioni
+  3/3b e tabella riepilogo), `docs/comandi.md` (cadenza e comportamento di `/forced_ban_announcement_check`)
 
 ## 3.5.2 (2026-09-21)
 

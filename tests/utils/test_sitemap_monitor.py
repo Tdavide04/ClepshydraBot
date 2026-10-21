@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 
 import utils.sitemap_monitor as sitemap_monitor
 
@@ -24,8 +25,8 @@ class FakeResponse:
 
 
 class FakeSession:
-    """Fake minimale di aiohttp.ClientSession: solo il metodo get(), usato
-    come context manager asincrono - riproduce la sola interfaccia usata da
+    """Minimal fake of aiohttp.ClientSession: only the get() method, used as
+    an async context manager - reproduces just the interface used by
     fetch_sitemap_xml()/fetch_page_html()."""
 
     def __init__(self, status: int = 200, text: str = ""):
@@ -39,7 +40,6 @@ class FakeSession:
 
 
 class TestLoadJsonState:
-
     def test_returns_a_copy_of_default_when_file_missing(self, tmp_path):
         default = {"latest_url": None, "latest_lastmod": None}
         path = str(tmp_path / "state.json")
@@ -47,11 +47,13 @@ class TestLoadJsonState:
         result = sitemap_monitor.load_json_state(path, default)
 
         assert result == default
-        assert result is not default, "non deve ritornare lo stesso oggetto default (mutabile e condiviso)"
+        assert result is not default, "must not return the same default object (mutable and shared)"
 
     def test_loads_existing_file_content(self, tmp_path):
         path = tmp_path / "state.json"
-        path.write_text(json.dumps({"latest_url": "https://x", "latest_lastmod": "2026-01-01"}), encoding="utf-8")
+        path.write_text(
+            json.dumps({"latest_url": "https://x", "latest_lastmod": "2026-01-01"}), encoding="utf-8"
+        )
 
         result = sitemap_monitor.load_json_state(str(path), {})
 
@@ -59,7 +61,6 @@ class TestLoadJsonState:
 
 
 class TestSaveJsonState:
-
     def test_writes_a_file_that_can_be_reloaded(self, tmp_path):
         path = str(tmp_path / "state.json")
 
@@ -91,7 +92,6 @@ class TestSaveJsonState:
 
 
 class TestPickLatestByLastmod:
-
     def test_returns_the_entry_with_the_most_recent_lastmod(self):
         entries = {
             "https://a": "2026-08-03T00:00:00Z",
@@ -104,7 +104,6 @@ class TestPickLatestByLastmod:
 
 
 class TestFetchSitemapXml:
-
     def test_returns_the_body_on_200(self):
         session = FakeSession(status=200, text="<urlset></urlset>")
         assert run(sitemap_monitor.fetch_sitemap_xml(session)) == "<urlset></urlset>"
@@ -115,7 +114,6 @@ class TestFetchSitemapXml:
 
 
 class TestFetchPageHtml:
-
     def test_returns_the_body_on_200(self):
         session = FakeSession(status=200, text="<html></html>")
         body = run(sitemap_monitor.fetch_page_html(session, "https://example.com/page", log_prefix="TEST"))
@@ -125,3 +123,10 @@ class TestFetchPageHtml:
         session = FakeSession(status=404, text="")
         body = run(sitemap_monitor.fetch_page_html(session, "https://example.com/page", log_prefix="TEST"))
         assert body is None
+
+
+class TestLog:
+    def test_prefixes_the_message_with_a_timestamp(self, capsys):
+        sitemap_monitor.log("[BAN ANNOUNCEMENT] no change")
+        out = capsys.readouterr().out.strip()
+        assert re.fullmatch(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[BAN ANNOUNCEMENT\] no change", out)

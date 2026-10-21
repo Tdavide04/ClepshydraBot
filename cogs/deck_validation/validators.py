@@ -3,7 +3,6 @@ import re
 
 from cogs.deck_validation.models import DeckEntry
 
-
 BANLIST_PATH = "cards.txt"
 
 
@@ -11,7 +10,7 @@ def load_banlist(path: str = BANLIST_PATH) -> set[str]:
     banned: set[str] = set()
     if not os.path.exists(path):
         return banned
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             name = line.strip()
             if not name:
@@ -53,12 +52,7 @@ def parse_decklist(raw: str) -> tuple[list[DeckEntry], int, str]:
         qta = int(m.group(1))
         raw_nome = m.group(2).strip()
         raw_nome = re.sub(r"\s+\([A-Z0-9]+\)\s+\d+$", "", raw_nome).strip()
-        nome = (
-            raw_nome
-            .replace("\u2019", "'")
-            .replace("\u201c", '"')
-            .replace("\u201d", '"')
-        )
+        nome = raw_nome.replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
 
         if " // " in nome:
             nome = nome.split(" // ")[0].strip()

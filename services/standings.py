@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-
 POINTS_WIN = 3
 POINTS_DRAW = 1
 POINTS_LOSS = 0
@@ -22,6 +21,7 @@ class StandingsEntry:
     opponent_win_percent: float
     game_win_percent: float = 0.0
     opponent_game_win_percent: float = 0.0
+    dropped: bool = False
 
 
 @dataclass
@@ -37,7 +37,6 @@ class _PlayerStats:
 
 
 class StandingsCalculator:
-
     @staticmethod
     def _get_game_wins(m, pid: int) -> tuple[int, int]:
         if m.player1_id == pid:
@@ -68,10 +67,13 @@ class StandingsCalculator:
             pid = p.id if hasattr(p, "id") else p
             stats[pid] = _PlayerStats()
 
+        # setdefault rather than stats[...]: a player can appear in matches
+        # without being in `players` (e.g. dropped, if the caller passes only
+        # active players) - this used to be a KeyError on /classifica.
         for m in matches:
             if m.player2_id is None:
                 if m.player1_id is not None:
-                    s = stats[m.player1_id]
+                    s = stats.setdefault(m.player1_id, _PlayerStats())
                     s.match_points += POINTS_BYE
                     s.match_wins += 1
                     s.game_wins += 2
@@ -80,8 +82,13 @@ class StandingsCalculator:
             if m.player1_id is None or m.player2_id is None:
                 continue
 
-            s1 = stats[m.player1_id]
-            s2 = stats[m.player2_id]
+            # A current-round match not played yet: it must count neither as
+            # games (it used to count as 1-1) nor toward the opponent's OMW.
+            if m.result is None:
+                continue
+
+            s1 = stats.setdefault(m.player1_id, _PlayerStats())
+            s2 = stats.setdefault(m.player2_id, _PlayerStats())
             s1.opponents.append(m.player2_id)
             s2.opponents.append(m.player1_id)
 
@@ -136,19 +143,22 @@ class StandingsCalculator:
             if opps:
                 ogw = sum(gwp(oid) for oid in opps) / len(opps)
 
-            entries.append(StandingsEntry(
-                rank=0,
-                player_id=pid,
-                player_name=get_player_name(pid),
-                deck_name=get_deck_name(pid),
-                points=s.match_points,
-                wins=s.match_wins,
-                losses=s.match_losses,
-                draws=s.match_draws,
-                opponent_win_percent=round(omw, 4),
-                game_win_percent=round(gwp(pid), 4),
-                opponent_game_win_percent=round(ogw, 4),
-            ))
+            entries.append(
+                StandingsEntry(
+                    rank=0,
+                    player_id=pid,
+                    player_name=get_player_name(pid),
+                    deck_name=get_deck_name(pid),
+                    points=s.match_points,
+                    wins=s.match_wins,
+                    losses=s.match_losses,
+                    draws=s.match_draws,
+                    opponent_win_percent=round(omw, 4),
+                    game_win_percent=round(gwp(pid), 4),
+                    opponent_game_win_percent=round(ogw, 4),
+                    dropped=bool(getattr(p, "dropped", False)),
+                )
+            )
 
         entries.sort(
             key=lambda e: (

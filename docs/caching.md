@@ -1,125 +1,125 @@
-# Cache e API Esterne
+# Caching and External APIs
 
-## Panoramica
+## Overview
 
-ClepshydraBot interagisce con **Scryfall API** per la validazione dei mazzi Artisan. Per minimizzare le chiamate HTTP e rispettare i rate limit, implementa un sistema di caching a tre livelli.
+ClepshydraBot calls the **Scryfall API** to validate Artisan decks. To minimize HTTP calls and respect rate
+limits, it implements a three-level caching system. It also watches two kinds of Wizards pages through the
+`magic.wizards.com` sitemap (sections 3 and 3b).
 
 ---
 
-## Architettura Cache
+## Cache Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     Richiesta Carta                           │
+│                     Card request                              │
 └────────────────────────┬─────────────────────────────────────┘
                          │
                          ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  Livello 1: Override Rarità (arena_overrides.py)              │
-│  • Cache in-memory (_override_cache)                          │
-│  • arena_rarity_data.json (persistente)                       │
-│  • Solo per SPG / carte con discrepanza Arena-Paper           │
+│  Level 1: Rarity overrides (arena_overrides.py)               │
+│  • In-memory cache (_override_cache)                          │
+│  • arena_rarity_data.json (persistent)                        │
+│  • Only for SPG / cards with an Arena-paper mismatch          │
 └────────────────────────┬─────────────────────────────────────┘
                          │
                     ┌────┴────┐
-                    ▼         ▼ (override non trovato)
-              RETURN        CONTINUA
+                    ▼         ▼ (no override found)
+              RETURN        CONTINUE
               (legal)           │
                                 ▼
               ┌────────────────────────────────────────────────┐
-              │  Livello 2: Cache Scryfall (card_cache.py)     │
-              │  • Cache in-memory (_card_cache dict)          │
-              │  • Persistita su SQLite (tabella cached_cards) │
-              │    con UPSERT/DELETE incrementali, non su un   │
-              │    JSON riscritto per intero ogni volta        │
-              │  • artisan_legal field già calcolato (con TTL) │
+              │  Level 2: Scryfall cache (card_cache.py)       │
+              │  • In-memory cache (_card_cache dict)          │
+              │  • Persisted to SQLite (cached_cards table)    │
+              │    with incremental UPSERT/DELETE, not to a    │
+              │    JSON rewritten in full every time           │
+              │  • artisan_legal field already computed (TTL)  │
               └──────────────────┬─────────────────────────────┘
                                  │
                             ┌────┴────┐
                             ▼         ▼ (cache miss)
-                      RETURN        CONTINUA
+                      RETURN        CONTINUE
                       (legal/            │
                        illegal)          ▼
                       ┌────────────────────────────────────────┐
-                      │  Livello 3: API Scryfall Live          │
+                      │  Level 3: live Scryfall API            │
                       │  • POST /cards/collection (batch 75)   │
                       │  • GET prints_search_uri + game:arena  │
                       │  • Rate limiting + retry               │
-                      │  • Risultato salvato in cache          │
+                      │  • Result stored in cache              │
                       └────────────────────────────────────────┘
 ```
 
 ---
 
-## 1. Cache Carte Scryfall (`utils/card_cache.py`)
+## 1. Scryfall Card Cache (`utils/card_cache.py`)
 
-Fino a Settembre 2026 la cache era persistita su `data/card_cache.json`, riscritto per intero ogni 60
-secondi se qualcosa era cambiato — anche per una singola carta modificata su migliaia. Il file era
-inoltre tracciato in git, crescendo senza pulizia ad ogni commit (2.2MB, zero valore come storico
-versionato). Dalla migrazione (Step 4 di `docs/roadmap-miglioramenti.md`), la cache vive nella tabella
-SQLite `cached_cards` (`database/models.py:CachedCard`), con scritture incrementali (UPSERT/DELETE solo
-sulle entry cambiate). `data/card_cache.json` non è più tracciato in git (resta come file locale inerte,
-utile solo per la migrazione una tantum descritta sotto) e non viene più scritto dal bot.
+Until September 2026 the cache was persisted to `data/card_cache.json`, rewritten in full every 60 seconds if
+anything had changed — even for a single modified card out of thousands. The file was also tracked in git,
+growing with no cleanup on every commit (2.2MB, zero value as versioned history). Since the migration (Step 4
+of `docs/roadmap.md`), the cache lives in the SQLite table `cached_cards` (`database/models.py:CachedCard`),
+with incremental writes (UPSERT/DELETE on the changed entries only). `data/card_cache.json` is no longer
+tracked in git (it stays as an inert local file, useful only for the one-off migration described below) and
+the bot no longer writes it.
 
-### Funzioni
+### Functions
 
-| Funzione | Descrizione |
+| Function | Description |
 |---|---|
-| `load_cache()` (async) | Carica `cached_cards` in `_card_cache`; se la tabella è vuota e `data/card_cache.json` esiste ancora, migra il JSON legacy una tantum |
-| `save_cache()` (async) | UPSERT/DELETE solo delle entry in `_dirty_upserts`/`_dirty_deletes`, non l'intera cache |
-| `get_cached_card(name)` | Restituisce dati Scryfall di una carta o `None` (legge solo `_card_cache`, sincrono) |
-| `set_cached_card(name, data)` | Aggiunge/aggiorna carta in memoria; la segna per il prossimo `save_cache()` |
-| `mark_artisan_legal(name, entry, legal)` | Imposta `artisan_legal` + `artisan_legal_checked_at` e salva la entry |
-| `is_artisan_legal_stale(entry)` | `True` se manca il timestamp o è oltre `ARTISAN_LEGAL_TTL_DAYS` (30 giorni) |
-| `invalidate_card(name)` | Rimuove una carta dalla cache, in memoria e (al prossimo save) dal DB (usato da `/invalidate_card_cache`) |
-| `periodic_save_loop(delay=60)` | Task asincrono che chiama `save_cache()` ogni 60s |
+| `load_cache()` (async) | Loads `cached_cards` into `_card_cache`; if the table is empty and `data/card_cache.json` still exists, migrates the legacy JSON once |
+| `save_cache()` (async) | UPSERT/DELETE of the entries in `_dirty_upserts`/`_dirty_deletes` only, not the whole cache |
+| `get_cached_card(name)` | Returns a card's Scryfall data or `None` (reads `_card_cache` only, synchronous) |
+| `set_cached_card(name, data)` | Adds/updates a card in memory; marks it for the next `save_cache()` |
+| `mark_artisan_legal(name, entry, legal)` | Sets `artisan_legal` + `artisan_legal_checked_at` and stores the entry |
+| `is_artisan_legal_stale(entry)` | `True` if the timestamp is missing or older than `ARTISAN_LEGAL_TTL_DAYS` (30 days) |
+| `invalidate_card(name)` | Removes a card from the cache, in memory and (on the next save) from the DB (used by `/invalidate_card_cache`) |
+| `periodic_save_loop(interval_seconds=60)` | Async task calling `save_cache()` every 60s. A failure (e.g. a locked DB) is logged to the console (`[CARD CACHE] save failed, retrying in 60s: ...`) and the loop goes on: the changes stay in `_dirty_upserts`/`_dirty_deletes` (cleared only after a successful commit) and are retried on the next run. Until 3.6.0 a single failure silently killed the task until restart. When the bot shuts down (`ClepshydraBotte.close()` in `main.py`, e.g. `pm2 restart`), `save_cache()` is called one last time before `close_db()`, so the last minute of changes isn't lost |
 
-### Dettagli Implementativi
+### Implementation Details
 
-- `_dirty_upserts` / `_dirty_deletes`: due `set[str]` di nomi carta invece di un flag booleano globale —
-  `save_cache()` sa esattamente quali righe scrivere/cancellare, senza toccare quelle invariate
-- `_save_lock`: `asyncio.Lock()` per prevenire race-condition su scritture concorrenti
-- `_loaded`: flag che garantisce un solo caricamento per avvio del bot; `load_cache()` viene chiamata da
-  `database/engine.py:init_db()` (non più da `ArtisanService.__init__()` — il caricamento è un concern di
-  avvio, non di istanza del service)
-- Import di `database`/`database.models` **locali alle funzioni** (non a livello di modulo) per evitare
-  un import circolare: `database/engine.py` chiama `card_cache.load_cache()`, che a sua volta ha bisogno
-  di `database.get_session` — stesso pattern già usato da `database/engine.py:_migrate_banlist()` per
+- `_dirty_upserts` / `_dirty_deletes`: two `set[str]` of card names instead of a global boolean flag —
+  `save_cache()` knows exactly which rows to write/delete, without touching the unchanged ones
+- `_save_lock`: `asyncio.Lock()` to prevent race conditions on concurrent writes
+- `_loaded`: flag guaranteeing a single load per bot start; `load_cache()` is called by
+  `database/engine.py:init_db()` (no longer by `ArtisanService.__init__()` — loading is a startup concern,
+  not a per-service-instance one)
+- `database`/`database.models` are imported **inside the functions** (not at module level) to avoid a
+  circular import: `database/engine.py` calls `card_cache.load_cache()`, which in turn needs
+  `database.get_session` — the same pattern `database/engine.py:_migrate_banlist()` already uses for
   `repositories.banlist_repository`
 
-### Migrazione da JSON a SQLite
+### Migration from JSON to SQLite
 
-Se all'avvio la tabella `cached_cards` è vuota e `data/card_cache.json` esiste ancora, `load_cache()`
-importa tutte le entry nel DB in un'unica transazione e stampa `Cache carte: migrate N entry da
-data/card_cache.json a SQLite`. Da quel momento il file JSON non viene più letto né scritto — verificato
-manualmente contro il file reale del repository (407 entry, incluse carte double-faced): migrazione
-completa, dati identici byte-per-byte, nessuna riga duplicata su un secondo "riavvio" simulato.
+If at startup the `cached_cards` table is empty and `data/card_cache.json` still exists, `load_cache()`
+imports every entry into the DB in a single transaction and prints `Card cache: migrated N entries from
+data/card_cache.json to SQLite`. From then on the JSON file is neither read nor written — verified by hand
+against the repository's real file (407 entries, double-faced cards included): complete migration, data
+identical byte for byte, no duplicate rows on a second simulated "restart".
 
-### TTL su `artisan_legal`
+### TTL on `artisan_legal`
 
-Il flag `artisan_legal` non è più considerato valido a tempo indeterminato. Ogni volta che
-`_is_arena_artisan_legal()` (`cogs/deck_validation/service.py`) lo calcola, chiama
-`mark_artisan_legal()` che salva anche `artisan_legal_checked_at` (timestamp ISO, UTC). Al check
-successivo, se la entry cacheata ha `artisan_legal_checked_at` più vecchio di `ARTISAN_LEGAL_TTL_DAYS`
-(30 giorni) o non ce l'ha affatto (entry cacheata prima dell'introduzione del TTL), il flag viene
-considerato scaduto e la carta viene ri-verificata via Scryfall invece di fidarsi ciecamente della
-cache — copre il caso di una carta la cui legalità Artisan cambia dopo una nuova stampa su Arena.
+The `artisan_legal` flag is no longer considered valid forever. Every time `_is_arena_artisan_legal()`
+(`cogs/deck_validation/service.py`) computes it, it calls `mark_artisan_legal()`, which also stores
+`artisan_legal_checked_at` (ISO timestamp, UTC). On the next check, if the cached entry's
+`artisan_legal_checked_at` is older than `ARTISAN_LEGAL_TTL_DAYS` (30 days) or missing altogether (entry
+cached before the TTL existed), the flag counts as stale and the card is re-checked against Scryfall instead
+of blindly trusting the cache — covers a card whose Artisan legality changes after a new Arena printing.
 
-Per correggere una singola carta senza aspettare il TTL, l'admin può usare `/invalidate_card_cache
-<carta>`, che rimuove l'intera entry (non solo `artisan_legal`): la prossima validazione rifà anche il
-fetch dei dati base da Scryfall.
+To fix a single card without waiting for the TTL, an admin can use `/invalidate_card_cache <carta>`, which
+removes the whole entry (not just `artisan_legal`): the next validation also re-fetches the base data from
+Scryfall.
 
-### Struttura (tabella `cached_cards`)
+### Structure (`cached_cards` table)
 
-| Colonna | Tipo | Descrizione |
+| Column | Type | Description |
 |---|---|---|
-| `card_name` | String(200), PK | Nome carta lowercase — stesso key format del vecchio JSON |
-| `data` | Text | L'intero dizionario Scryfall (dati base + `artisan_legal` + `artisan_legal_checked_at`) serializzato come JSON |
+| `card_name` | String(200), PK | Lowercase card name — the same key format as the old JSON |
+| `data` | Text | The whole Scryfall dict (base data + `artisan_legal` + `artisan_legal_checked_at`) serialized as JSON |
 
-Un unico blob JSON per riga invece di colonne dedicate per `artisan_legal`/`cmc`/ecc.: nessuna query SQL
-li filtra oggi, e tenerli come blob evita di duplicare la forma variabile dei dati Scryfall (le carte
-double-faced hanno `card_faces` invece di `image_uris` diretto) in due posti. Contenuto tipico del blob
-per `"lightning bolt"`:
+A single JSON blob per row instead of dedicated columns for `artisan_legal`/`cmc`/etc.: no SQL query filters
+on them today, and a blob avoids duplicating the variable shape of Scryfall data (double-faced cards have
+`card_faces` instead of a direct `image_uris`) in two places. Typical blob content for `"lightning bolt"`:
 
 ```json
 {
@@ -135,59 +135,66 @@ per `"lightning bolt"`:
 
 ---
 
-## 2. Override Rarità SPG (`utils/arena_overrides.py`)
+## 2. SPG Rarity Overrides (`utils/arena_overrides.py`)
 
-### Problema
+### Problem
 
-Carte del set **SPG (Special Guests)** stampate su carta a rarità common/uncommon, ma apparse su Arena solo a rarità rare/mythic. Scryfall le vedrebbe come illegali per Artisan, ma dovrebbero essere legali in base alla rarità paper più bassa.
+Cards of the **SPG (Special Guests)** set printed on paper at common/uncommon rarity, but shown on Arena only
+at rare/mythic. Scryfall would see them as illegal for Artisan, but they should be legal based on their lowest
+paper rarity.
 
-`SPG` non è un set che esce una volta e si chiude: Scryfall usa un unico set code che cresce nel tempo — nuove Special Guests vengono aggiunte con quasi ogni nuovo set principale (~4-8 settimane in media).
+`SPG` isn't a set that comes out once and closes: Scryfall uses a single set code that grows over time — new
+Special Guests are added with almost every new main set (~4-8 weeks on average).
 
-### Soluzione
+### Solution
 
-Dizionario di override che forza una rarità più bassa per queste carte, aggiornato **automaticamente ogni settimana** da un task in background (`periodic_spg_refresh_loop()`, avviato da `main.py` insieme a `periodic_save_loop()`), oltre che manualmente via `/forced_rarity_refresh` (admin).
+A dictionary of overrides forcing a lower rarity for these cards, refreshed **automatically every week** by a
+background task (`periodic_spg_refresh_loop()`, started by `main.py` together with `periodic_save_loop()`), and
+by hand via `/forced_rarity_refresh` (admin).
 
-| Funzione | Descrizione |
+| Function | Description |
 |---|---|
-| `get_override_rarity(card_name)` | Restituisce `"common"`, `"uncommon"` o `None` |
-| `update_spg_overrides(set_code="spg")` | Scansiona solo le carte **non ancora valutate** del set, aggiorna JSON — incrementale, sicuro da chiamare ripetutamente |
-| `_fetch_prints_by_oracle_ids(session, oracle_ids)` | Recupera le stampe di più carte in una query combinata (`oracleid:X or oracleid:Y or ...`, paginata), a gruppi di `_PRINTS_BATCH_SIZE` (25) invece di una `prints_search_uri` per carta |
-| `periodic_spg_refresh_loop(bot)` | Task in background: chiama `update_spg_overrides()` ogni 7 giorni (primo giro subito all'avvio), logga su Discord se trova qualcosa di nuovo |
-| `invalidate_override_cache()` | Forza ricarica del JSON al prossimo accesso |
+| `get_override_rarity(card_name)` | Returns `"common"`, `"uncommon"` or `None` |
+| `update_spg_overrides(set_code="spg")` | Scans only the set's cards **not evaluated yet**, updates the JSON — incremental, safe to call repeatedly |
+| `_fetch_prints_by_oracle_ids(session, oracle_ids)` | Fetches the printings of several cards in one combined query (`oracleid:X or oracleid:Y or ...`, paginated), in groups of `_PRINTS_BATCH_SIZE` (25) instead of one `prints_search_uri` per card |
+| `periodic_spg_refresh_loop(bot)` | Background task: calls `update_spg_overrides()` every 7 days (first run right at startup), logs to Discord if it finds anything new |
+| `invalidate_override_cache()` | Forces the JSON to be reloaded on the next access |
 
-### Cache In-Memory
+### In-Memory Cache
 
-`_override_cache`: variabile globale popolata al primo accesso, invalidabile esplicitamente. `_update_lock`
-(`asyncio.Lock()`) evita che il task automatico e un `/forced_rarity_refresh` manuale sovrascrivano il
-JSON contemporaneamente se capitano nello stesso momento.
+`_override_cache`: global variable filled on first access, explicitly invalidatable. `_update_lock`
+(`asyncio.Lock()`) keeps the automatic task and a manual `/forced_rarity_refresh` from overwriting the JSON at
+the same time if they coincide. The JSON is written atomically with `save_json_state()` (`.tmp` +
+`os.replace`, the same helper the monitors use): a failure mid-write leaves the previous file intact. Until
+3.6.6 it was written in place with `open(..., "w")`, so an interrupted write left a truncated JSON that broke
+`json.load` on the next start.
 
-### Batching delle richieste Scryfall
+### Batching the Scryfall Requests
 
-Fino a Settembre 2026 `update_spg_overrides()` faceva una richiesta `prints_search_uri` per OGNI carta non
-ancora valutata (pattern N+1) — innocuo per i run incrementali settimanali (poche carte nuove), ma il
-primo run dopo la migrazione da `processed_sets` a `checked_cards` deve ricontrollare l'intero set in un
-colpo solo: osservato in produzione, ~175 carte da valutare hanno prodotto decine di risposte 429
-consecutive, ogni scan rallentato dal backoff esponenziale (`_scryfall_get`).
+Until September 2026 `update_spg_overrides()` made one `prints_search_uri` request for EVERY card not evaluated
+yet (N+1 pattern) — harmless for the weekly incremental runs (few new cards), but the first run after the
+`processed_sets` → `checked_cards` migration has to re-check the whole set at once: observed in production,
+~175 cards to evaluate produced dozens of consecutive 429 responses, every scan slowed down by exponential
+backoff (`_scryfall_get`).
 
-Sostituito con `_fetch_prints_by_oracle_ids()`: raggruppa le carte non valutate in blocchi di 25
-(`_PRINTS_BATCH_SIZE`) e recupera le stampe di tutto il blocco con un'unica query combinata
-(`q=oracleid:X or oracleid:Y or ...&unique=prints`, paginata se il blocco produce più risultati di una
-pagina). 175 carte: da 175 richieste individuali a 7 batch, da ~diversi minuti (con retry su 429) a ~12
-secondi, verificato dal vivo contro Scryfall.
+Replaced by `_fetch_prints_by_oracle_ids()`: it groups the unevaluated cards into blocks of 25
+(`_PRINTS_BATCH_SIZE`) and fetches the whole block's printings with one combined query
+(`q=oracleid:X or oracleid:Y or ...&unique=prints`, paginated if the block yields more than one page). 175
+cards: from 175 individual requests to 7 batches, from several minutes (with 429 retries) to ~12 seconds,
+verified live against Scryfall.
 
-**Deduplicazione obbligatoria, non solo ottimizzazione**: la ricerca `set:spg unique=prints` a monte
-elenca una riga per **stampa**, non per carta — una carta con più stampe SPG appare più volte, quindi
-l'elenco di `oracle_id` da raggruppare contiene sempre duplicati. Verificato dal vivo che una query
-Scryfall con termini `oracleid:` ripetuti (`oracleid:X or oracleid:X`) restituisce risultati
-**incompleti** (alcune carte mancanti dal risultato, senza errore esplicito) invece di un errore o di un
-risultato corretto — `_fetch_prints_by_oracle_ids()` deduplica sempre la lista prima di costruire la
-query (`list(dict.fromkeys(oracle_ids))`).
+**Deduplication is required, not just an optimization**: the upstream `set:spg unique=prints` search lists one
+row per **printing**, not per card — a card with several SPG printings appears more than once, so the list of
+`oracle_id`s to group always contains duplicates. Verified live that a Scryfall query with repeated
+`oracleid:` terms (`oracleid:X or oracleid:X`) returns **incomplete** results (some cards missing, with no
+explicit error) instead of an error or a correct result — `_fetch_prints_by_oracle_ids()` always deduplicates
+the list before building the query (`list(dict.fromkeys(oracle_ids))`).
 
-Un batch fallito (query Scryfall senza risposta valida) non segna nessuna delle sue carte come
-controllata — vengono ritentate tutte insieme al prossimo giro, stesso principio di "non perdere una
-carta per sempre" già in uso per i singoli fallimenti prima del redesign.
+A failed batch (Scryfall query without a valid answer) marks none of its cards as checked — they are all
+retried together on the next run, the same "never lose a card forever" principle already used for single
+failures before the redesign.
 
-### Struttura JSON (`data/arena_rarity_data.json`)
+### JSON Structure (`data/arena_rarity_data.json`)
 
 ```json
 {
@@ -202,82 +209,88 @@ carta per sempre" già in uso per i singoli fallimenti prima del redesign.
 }
 ```
 
-`checked_cards[set_code]` elenca **ogni** carta già valutata in quel set, con o senza override aggiunto
-(non solo quelle che ne hanno ottenuto uno). Una nuova scansione salta solo le carte già presenti qui —
-i giri successivi al primo costano solo le carte apparse dall'ultimo controllo, non l'intero set.
+`checked_cards[set_code]` lists **every** card already evaluated in that set, with or without an override
+(not only those that got one). A new scan skips only the cards already listed here — runs after the first
+cost only the cards that appeared since the last check, not the whole set.
 
-**Storia**: fino a Settembre 2026 il campo era `processed_sets: ["SPG"]`, un flag "tutto il set fatto per
-sempre" — corretto per un set che esce una volta, sbagliato per uno che cresce nel tempo. Dopo la prima
-scansione riuscita, ogni run successivo (anche manuale) diventava un no-op permanente, senza modo di
-sbloccarlo se non editando il JSON a mano. Un file nel vecchio formato non blocca più nulla: viene
-semplicemente trattato come "nessuna carta ancora controllata" e riscansionato una volta per intero.
+**History**: until September 2026 the field was `processed_sets: ["SPG"]`, a "whole set done forever" flag —
+right for a set that comes out once, wrong for one that grows over time. After the first successful scan,
+every later run (manual ones included) became a permanent no-op, with no way to unblock it short of editing
+the JSON by hand. A file in the old format no longer blocks anything: it is simply treated as "no card checked
+yet" and rescanned once in full.
 
 ---
 
-## 3. Monitoraggio Event Schedule Arena (`utils/arena_event_schedule.py`)
+## 3. Arena Event Schedule Monitor (`utils/arena_event_schedule.py`)
 
-### Problema
+### Problem
 
-Wizards pubblica una pagina dedicata "**[Set] MTG Arena Event Schedule**" (URL tipo
-`magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule`) una volta per espansione — non
-settimanalmente come i post "MTG Arena Announcements". Contiene una sezione "Full Event Calendar" con la
-rotazione Quick Draft e tutti gli altri eventi ricorrenti, organizzata per categoria. Non esiste
-un'API/RSS ufficiale per sapere quando una nuova pagina viene pubblicata o quando una esistente viene
-aggiornata (Wizards la modifica **in place** durante il ciclo di vita del set, non solo alla
-pubblicazione).
+Wizards publishes a dedicated "**[Set] MTG Arena Event Schedule**" page (URL like
+`magic.wizards.com/en/news/mtg-arena/the-hobbit-event-schedule`) once per expansion — not weekly like the "MTG
+Arena Announcements" posts. It contains a "Full Event Calendar" section with the Quick Draft rotation and every
+other recurring event, organized by category. There is no official API/RSS to know when a new page is
+published or when an existing one is updated (Wizards edits it **in place** during the set's lifecycle, not
+only at publication).
 
-### Soluzione
+### Solution
 
-`magic.wizards.com/en/sitemap.xml` è un sitemap XML standard con `<lastmod>` per ogni pagina del sito.
-Un task in background scarica quotidianamente il sitemap (richiesta economica, file statico), filtra le
-URL `*-event-schedule` sotto `/en/news/mtg-arena/` e individua quella con il `lastmod` **più recente** —
-il set attualmente attivo. Wizards non rimuove dal sitemap le pagine dei set passati: senza questo filtro,
-a un dato momento il sitemap ne contiene sempre diverse (osservato in produzione: 4 pagine
-contemporaneamente), e la prima esecuzione su una macchina con stato vuoto le segnalerebbe tutte come
-"nuove" in un colpo solo, producendo un flood di notifiche per eventi ormai conclusi. Solo se quella più
-recente è nuova o ha un `lastmod` cambiato rispetto allo stato salvato viene scaricata e interpretata la
-pagina vera e propria (fetch + parsing HTML, più costoso e fragile) — la maggior parte dei check
-giornalieri non fa nulla oltre alla GET sul sitemap, perché il contenuto reale cambia solo ogni 6-9
-settimane.
+`magic.wizards.com/en/sitemap.xml` is a standard XML sitemap with a `<lastmod>` for every page of the site. A
+background task fetches the sitemap every 2 hours (a cheap request on a static file), filters the
+`*-event-schedule` URLs under `/en/news/mtg-arena/` and picks the one with the **newest** `lastmod` — the
+currently active set. Wizards doesn't remove past sets' pages from the sitemap: without this filter, at any
+given time the sitemap always holds several (observed in production: 4 pages at once), and the first run on a
+machine with an empty state would report them all as "new" at once, flooding notifications for events long
+over. Only if the newest one is new or has a changed `lastmod` versus the saved state is the page itself
+downloaded and parsed (fetch + HTML parsing, more expensive and fragile) — most checks do nothing beyond the
+sitemap GET, because the real content only changes every 6-9 weeks.
 
-| Funzione | Descrizione |
+The cadence (`_CHECK_INTERVAL_SECONDS` in `utils/sitemap_monitor.py`, shared by both monitors) is 2 hours.
+Until 3.5.3 it was 24 hours: Wizards serves the sitemap with a `Cache-Control: max-age` of about 1 hour and
+regenerates it *after* the article is published, so a page just out may not show up there for a while. On
+2026-10-12 the daily check ran before the October Banned and Restricted appeared in the sitemap, and the next
+run would have come almost 24 hours later. With 2 hours the maximum delay drops to about 3 hours, at the cost
+of one extra ~660 KB GET every 2 hours per monitor.
+
+| Function | Description |
 |---|---|
-| `check_event_schedule_updates(force=False)` | Individua la pagina più recente sul sitemap; se nuova/cambiata (o sempre, se `force=True`) la scarica+interpreta; ritorna `[]` o `[{url, lastmod, categories}]` |
-| `_pick_latest(entries)` | Alias locale di `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (condivisa con il monitor Ban Announcement) — tra le pagine trovate, seleziona quella col `lastmod` più alto |
-| `parse_full_event_calendar(html)` | Estrae `{categoria: [voci]}` dalla sezione "Full Event Calendar"; `None` se la sezione non viene trovata (drift strutturale del sito) |
-| `periodic_event_schedule_check_loop(bot)` | Task in background: chiama `check_event_schedule_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se la pagina più recente è nuova/aggiornata |
-| `parse_event_entry(text)` | Estrae mese/giorno di inizio e fine da una voce testuale ("Mese Giorno[-Mese] Giorno: Nome evento"); `None` se il formato non è riconosciuto |
-| `build_month_calendar(categories)` | Raggruppa le voci per `(anno, mese)`, spezzando i range multi-mese ai confini del mese; anno mancante inferito dalla data corrente |
-| `send_event_schedule_log(logger, result, user, forced)` | Posta il risultato su Discord: un'immagine calendario per mese (Gantt per categoria colorato per famiglia + elenco dettagliato, generata da `EventCalendarImageGenerator`), allegata allo stesso messaggio invece di descrivere gli eventi a parole — vedi `CLAUDE.md` "Arena Event Schedule monitor" per il design completo |
-| `extract_set_name_from_url(url)` | Deriva un nome leggibile dell'espansione dallo slug URL (es. `the-hobbit-event-schedule` → "The Hobbit"), usato nel titolo dell'embed community |
-| `format_period_covered(month_calendar)` | Calcola il periodo complessivo coperto da tutte le voci (min/max su `(anno, mese, giorno)`), es. "11 Agosto - 29 Settembre 2026" |
-| `get_latest_known_event_schedule()` | Legge (senza rete) l'ultima pagina nota dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
+| `check_event_schedule_updates(force=False)` | Finds the newest page in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, categories}]` |
+| `_pick_latest(entries)` | Local alias of `pick_latest_by_lastmod()` in `utils/sitemap_monitor.py` (shared with the Ban Announcement monitor) — picks the page with the highest `lastmod` |
+| `parse_full_event_calendar(html)` | Extracts `{category: [entries]}` from the "Full Event Calendar" section; `None` if the section isn't found (structural site drift) |
+| `periodic_event_schedule_check_loop(bot)` | Background task: calls `check_event_schedule_updates()` every 2 hours (first run right at startup), logs to Discord if the newest page is new/updated |
+| `parse_event_entry(text)` | Extracts start and end month/day from a text entry ("Month Day[-Month] Day: Event name"); `None` if the format isn't recognized |
+| `build_month_calendar(categories)` | Groups the entries by `(year, month)`, splitting multi-month ranges at month boundaries; the missing year is inferred from the current date |
+| `send_event_schedule_log(logger, result, user, forced)` | Posts the result to Discord: one calendar image per month (Gantt per category colored by family + detailed list, generated by `EventCalendarImageGenerator`), attached to the same message instead of describing events in words — see `docs/adr/0001-event-calendar-image-layout.md` for the full design and the rejected alternatives |
+| `extract_set_name_from_url(url)` | Derives a readable expansion name from the URL slug (e.g. `the-hobbit-event-schedule` → "The Hobbit"), used in the community embed title |
+| `format_period_covered(month_calendar)` | Computes the overall period covered by every entry (min/max over `(year, month, day)`), in Italian, e.g. "11 Agosto - 29 Settembre 2026" |
+| `get_latest_known_event_schedule()` | Reads (no network) the latest known page from the saved state — used by the `STARTUP_STATUS` log at bot startup |
 
-`check_event_schedule_updates()` stampa sempre un esito in console (`[EVENT SCHEDULE] ...`) — nessun
-cambiamento, pagina nuova/aggiornata, fetch fallito, sezione non riconosciuta — anche quando non c'è nulla
-da postare su Discord. Senza questo log, un giro che non trova cambiamenti (l'esito più comune, dato che
-il contenuto reale cambia solo ogni 6-9 settimane) è indistinguibile in console da un task che non è mai
-partito — origine di una confusione reale in produzione, dove sembrava che il check non girasse mentre in
-realtà girava e correttamente non trovava nulla di nuovo.
+`check_event_schedule_updates()` always prints an outcome to the console (`[EVENT SCHEDULE] ...`) — no
+change, new/updated page, failed fetch, section not recognized — even when there is nothing to post to
+Discord. Without this log, a run that finds no change (the most common outcome, since the real content only
+changes every 6-9 weeks) is indistinguishable in the console from a task that never started — the source of
+real confusion in production, where it looked like the check didn't run while it actually ran and correctly
+found nothing new. Every line starts with a timestamp (`[2026-10-12 15:20:04] [EVENT SCHEDULE] ...`, the same
+format as `discord.py`'s logs) via `log()` in `utils/console.py` (re-exported by `utils/sitemap_monitor.py`),
+shared with the Ban Announcement monitor and the rest of the bot — without it, `pm2 logs` gave no way to tell
+*when* a check ran relative to a page appearing in the sitemap.
 
-### Parsing e gestione dei fallimenti
+### Parsing and Failure Handling
 
-La sezione "Full Event Calendar" di queste pagine è HTML realmente strutturato (non prosa libera come i
-post Announcements settimanali): blocchi `<h2>/<h3>/<h4>Categoria</h2>` seguiti da
-`<ul><li>intervallo date: descrizione</li></ul>`, delimitati tra l'heading "Full Event Calendar" e la
-prima chiusura `</article>` successiva — è questo confine (`</article>`), non gli attributi dell'heading,
-a escludere le card di navigazione laterale (che vivono fuori dall'`<article>`). L'heading "Full Event
-Calendar" stesso può avere attributi (`<h2 id="FRACalendar" style="...">`, osservato su
-`reality-fracture-event-schedule`, Settembre 2026) — `_CALENDAR_HEADING_RE` li tollera; solo gli heading
-di categoria (`<h3>Premier Draft</h3>` ecc.) restano bare su tutte le pagine osservate finora.
+The "Full Event Calendar" section of these pages is genuinely structured HTML (not free prose like the weekly
+Announcements posts): `<h2>/<h3>/<h4>Category</h2>` blocks followed by
+`<ul><li>date range: description</li></ul>`, bounded between the "Full Event Calendar" heading and the next
+`</article>` — this boundary (`</article>`), not the heading attributes, is what keeps out the side navigation
+cards (which live outside the `<article>`). The "Full Event Calendar" heading itself can carry attributes
+(`<h2 id="FRACalendar" style="...">`, seen on `reality-fracture-event-schedule`, September 2026) —
+`_CALENDAR_HEADING_RE` tolerates them; only the category headings (`<h3>Premier Draft</h3>` etc.) stay bare on
+every page observed so far.
 
-Se la struttura attesa non viene trovata, `parse_full_event_calendar()` ritorna `None` invece di un
-riassunto parziale o sbagliato — il chiamante logga un `WARN` ("controllo manuale consigliato") invece di
-postare dati potenzialmente inaffidabili come se fossero autorevoli. Un fetch di rete fallito (pagina non
-raggiungibile) non aggiorna lo stato salvato: viene ritentato al giro successivo invece di essere marcato
-come "già visto".
+If the expected structure isn't found, `parse_full_event_calendar()` returns `None` instead of a partial or
+wrong summary — the caller logs a `WARN` ("a manual check is recommended") instead of posting potentially
+unreliable data as if it were authoritative. A failed network fetch (page unreachable) doesn't update the
+saved state: it is retried on the next run instead of being marked as "already seen".
 
-### Stato (`data/arena_event_schedule_state.json`, non tracciato in git)
+### State (`data/arena_event_schedule_state.json`, not tracked in git)
 
 ```json
 {
@@ -286,132 +299,145 @@ come "già visto".
 }
 ```
 
-Traccia solo l'ultima pagina (più recente) effettivamente processata, non l'intero storico — puro
-bookkeeping operativo, a differenza di `arena_rarity_data.json` non contiene dati curati/editoriali,
-quindi non è tracciato in git (vedi `.gitignore`).
+Tracks only the latest (newest) page actually processed, not the whole history — pure operational
+bookkeeping; unlike `arena_rarity_data.json` it holds no curated/editorial data, so it isn't tracked in git
+(see `.gitignore`). Written atomically (`save_json_state()`: `.tmp` + `os.replace`).
 
-Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
-confronto `lastmod`, ricontrolla comunque la pagina più recente sul sitemap): `/forced_event_schedule_check`.
-Quando il calendario viene generato con successo, le immagini vengono postate sia nel canale log sia in
-`COMUNICATION_CHANNEL_ID` (canale pubblico, con embed dedicato senza gergo da staff — titolo con il nome
-dell'espansione, corpo con il periodo coperto e la fonte, vedi `CLAUDE.md`); i due casi WARN (pagina non
-interpretabile o senza date) restano solo nel canale log. Esisteva un comando separato
-`/preview_calendario_eventi` per un'anteprima manuale fuori dal canale log — rimosso una volta che
-`/forced_event_schedule_check` ha iniziato a postare anche nel canale community, rendendolo ridondante.
+Admin command (`ADMIN_ROLE` role, default `Staff`) to force an immediate check (ignores the `lastmod`
+comparison, re-checks the newest page in the sitemap anyway): `/forced_event_schedule_check`. When the
+calendar is generated successfully, the images are posted both to the log channel and to
+`COMUNICATION_CHANNEL_ID` (public channel, with a dedicated Italian embed without staff jargon — title with the
+expansion name "📅 Calendario Eventi Arena — <set>", body with the period covered and the source link); the two
+WARN cases (unparseable page or no dates) stay in the log channel only. There used to be a separate
+`/preview_calendario_eventi` command for a manual preview outside the log channel — removed once
+`/forced_event_schedule_check` started posting to the community channel too, making it redundant.
 
 ---
 
-## 3b. Monitoraggio Banned and Restricted Announcement (`utils/ban_announcement.py`)
+## 3b. Banned and Restricted Announcement Monitor (`utils/ban_announcement.py`)
 
-### Problema
+### Problem
 
-Wizards pubblica un "**Banned and Restricted Announcement**" a cadenza fissa (circa ogni 6 settimane,
-sempre di lunedì — URL tipo `magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026`)
-che copre tutti i formati costruito ufficiali (Standard, Pioneer, Modern, Legacy, Vintage, Pauper, Alchemy,
-Historic, Timeless, Brawl, Competitive Brawl). Nessuno di questi è l'**Artisan** homebrew di questa
-community: la banlist del bot (`banned_cards`, vedi `docs/banlist-system.md`) è un elenco curato a mano,
-indipendente dalle decisioni ufficiali Wizards. Questo monitor serve solo a **notificare** che è uscito un
-nuovo annuncio — non scrive mai sulla banlist.
+Wizards publishes a "**Banned and Restricted Announcement**" on a fixed cadence (roughly every 6 weeks, always
+on a Monday — URL like `magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026`) covering
+every official constructed format (Standard, Pioneer, Modern, Legacy, Vintage, Pauper, Alchemy, Historic,
+Timeless, Brawl, Competitive Brawl). None of them is this community's homebrew **Artisan**: the bot's banlist
+(`banned_cards`, see `docs/banlist-system.md`) is a hand-curated list, independent of Wizards' official
+decisions. This monitor only **notifies** that a new announcement is out — it never writes to the banlist.
 
-### Soluzione
+### Solution
 
-Stesso schema del monitor Event Schedule: queste pagine sono anch'esse elencate in
-`magic.wizards.com/en/sitemap.xml` con `<lastmod>`, e Wizards non rimuove gli annunci passati dal sitemap,
-quindi si considera solo quello con `lastmod` più recente (`_pick_latest()`). Il check del sitemap gira
-quotidianamente (economico); il fetch+parsing della pagina vera e propria scatta solo se il `lastmod`
-dell'annuncio più recente è cambiato.
+Same scheme as the Event Schedule monitor: these pages are also listed in `magic.wizards.com/en/sitemap.xml`
+with `<lastmod>`, and Wizards doesn't remove past announcements from the sitemap, so only the one with the
+newest `lastmod` is considered (`_pick_latest()`). The sitemap check runs every 2 hours (cheap, same shared
+cadence); fetching+parsing the page itself only happens if the newest announcement's `lastmod` changed. As for
+the Event Schedule, every run prints a timestamped outcome to the console
+(`[2026-10-12 15:20:04] [BAN ANNOUNCEMENT] ...`).
 
-A differenza dell'Event Schedule, la pagina non ha una sezione a elenco date ma prosa libera per formato.
-Ogni sezione `<h2>Formato</h2>` è però seguita da un riepilogo affidabile e strutturato:
-`<p style="padding-left: 30px;">Carta X è bannata.<br/>Carta Y è sbannata.</p>` (oppure letteralmente
-`"No changes"` quando il formato non cambia) — verificato dal vivo sugli annunci di agosto/giugno/marzo
-2026. `parse_ban_announcement()` estrae solo questo riepilogo, mai la prosa di analisi circostante o le
-decklist di esempio (troppo poco strutturate per un'estrazione affidabile, e comunque fuori scopo per un
-bot che deve solo notificare).
+Unlike the Event Schedule, the page has no date-list section, just free prose per format. Every
+`<h2>Format</h2>` section is, however, followed by a reliable, structured summary:
+`<p style="padding-left: 30px;">Card X is banned.<br/>Card Y is unbanned.</p>` (or literally `"No changes"`
+when the format doesn't change) — verified live on the August/June/March 2026 announcements.
+`parse_ban_announcement()` extracts only this summary, never the surrounding analysis prose or the sample
+decklists (too unstructured for reliable extraction, and out of scope anyway for a bot that only notifies).
 
-| Funzione | Descrizione |
+| Function | Description |
 |---|---|
-| `check_ban_announcement_updates(force=False)` | Individua l'annuncio più recente sul sitemap; se nuovo/cambiato (o sempre, se `force=True`) lo scarica+interpreta; ritorna `[]` o `[{url, lastmod, changes}]` |
-| `_pick_latest(entries)` | Stesso alias di `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) usato dal monitor Event Schedule |
-| `parse_ban_announcement(html)` | Estrae `{formato: [voci di cambiamento]}` dal riepilogo di ogni sezione; formati con `"No changes"` vengono esclusi dal risultato; `{}` se l'annuncio è interpretato ma nessun formato è cambiato (esito valido), `None` se non si trova nemmeno un riepilogo strutturato (drift del sito) |
-| `periodic_ban_announcement_check_loop(bot)` | Task in background: chiama `check_ban_announcement_updates()` ogni 24 ore (primo giro subito all'avvio), logga su Discord se l'annuncio più recente è nuovo |
-| `send_ban_announcement_log(logger, result, user, forced)` | Posta il risultato su Discord: un campo embed per formato modificato (`Logger.send_log()`'s `fields`). Se ci sono modifiche reali, va anche in `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) con un embed dedicato (titolo con data/ora dell'annuncio, corpo solo link — niente gergo da staff) oltre al canale log; WARN/nessuna modifica restano solo nel canale log |
-| `format_lastmod(lastmod)` | Formatta il timestamp ISO-8601 del sitemap in italiano (es. "21 Agosto 2026, 18:02 UTC"), usato nel titolo dell'embed community — unico dato data+ora disponibile, la pagina mostra solo il giorno |
-| `get_latest_known_ban_announcement()` | Legge (senza rete) l'ultimo annuncio noto dallo stato salvato — usata dal log `STARTUP_STATUS` all'avvio del bot |
+| `check_ban_announcement_updates(force=False)` | Finds the newest announcement in the sitemap; if new/changed (or always, with `force=True`) downloads+parses it; returns `[]` or `[{url, lastmod, changes, already_notified}]` — `already_notified` is `True` if that same URL's changes were already posted to the community channel |
+| `_pick_latest(entries)` | Same alias of `pick_latest_by_lastmod()` (`utils/sitemap_monitor.py`) as the Event Schedule monitor |
+| `parse_ban_announcement(html)` | Extracts `{format: [change lines]}` from each section's summary; formats with `"No changes"` are left out; `{}` if the announcement is parsed but no format changed (a valid outcome), `None` if not even one structured summary is found (site drift) |
+| `periodic_ban_announcement_check_loop(bot)` | Background task: calls `check_ban_announcement_updates()` every 2 hours (first run right at startup), logs to Discord if the newest announcement is new |
+| `send_ban_announcement_log(logger, result, user, forced)` | Posts the result to Discord: one embed field per changed format (`Logger.send_log()`'s `fields`). If there are real changes and the announcement isn't `already_notified`, it also goes to `COMUNICATION_CHANNEL_ID` (`extra_channel_id`) with a dedicated Italian embed (title with the announcement's date/time, body with just the link — no staff jargon) besides the log channel; WARN/no-change cases stay in the log channel only |
+| `format_lastmod(lastmod)` | Formats the sitemap's ISO-8601 timestamp in Italian (e.g. "21 Agosto 2026, 18:02 UTC"), used in the community embed title — the only date+time available, the page shows just the day |
+| `get_latest_known_ban_announcement()` | Reads (no network) the latest known announcement from the saved state — used by the `STARTUP_STATUS` log at bot startup |
 
-### Stato (`data/ban_announcement_state.json`, non tracciato in git)
+### State (`data/ban_announcement_state.json`, not tracked in git)
 
 ```json
 {
   "latest_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026",
-  "latest_lastmod": "2026-08-21T18:02:33.573Z"
+  "latest_lastmod": "2026-08-21T18:02:33.573Z",
+  "notified_url": "https://magic.wizards.com/en/news/announcements/banned-and-restricted-august-10-2026"
 }
 ```
 
-Stesso bookkeeping operativo (non dati curati) dello stato Event Schedule — non tracciato in git.
+The same operational bookkeeping (not curated data) as the Event Schedule state — not tracked in git.
 
-Comando admin (ruolo `ADMIN_ROLE`, default `Staff`) per forzare un controllo immediato (ignora il
-confronto `lastmod`): `/forced_ban_announcement_check`.
+`notified_url` (since 3.5.3) is the latest announcement whose changes were posted to the community channel. It
+is needed because, unlike the Event Schedule, a new `lastmod` on the *same* URL is not new content for the
+community: Wizards touches these announcements days later (the August 10 one has `lastmod` August 21), and a
+`/forced_ban_announcement_check` on the already known announcement would repost it as "Nuovo" (observed on
+2026-10-12, when the forced check ran before the October announcement appeared in the sitemap and reposted the
+August one). In these cases the result is still re-read and posted to the log channel, but not to the
+community channel. `notified_url` is updated only when there are real changes: an all-"No changes"
+announcement later edited with real changes is still announced. A state saved before 3.5.3 has no such field:
+`latest_url` counts as notified, so the upgrade doesn't repost the last announcement already processed.
 
-### Log di stato all'avvio (`STARTUP_STATUS`)
+Admin command (`ADMIN_ROLE` role, default `Staff`) to force an immediate check (ignores the `lastmod`
+comparison): `/forced_ban_announcement_check`. If the newest announcement was already notified to the
+community, the re-check posts to the log channel only.
 
-Subito dopo `SYSTEM_STARTUP`, `main.py` posta un secondo log `STARTUP_STATUS` (solo canale log, nessun
-`extra_channel_id`) che riporta l'ultima pagina Event Schedule e l'ultimo Banned and Restricted
-Announcement già noti al bot — letti da `get_latest_known_event_schedule()`/
-`get_latest_known_ban_announcement()`, puri accessi allo stato salvato su disco, **senza alcuna richiesta
-di rete**. È un colpo d'occhio ad ogni riavvio, distinto dal check periodico vero e proprio (che scatta
-poco dopo, quando i quattro `periodic_*_loop()` partono, e interroga davvero il sitemap).
+### Startup Status Log (`STARTUP_STATUS`)
+
+Right after `SYSTEM_STARTUP`, `main.py` posts a second `STARTUP_STATUS` log (log channel only, no
+`extra_channel_id`) reporting the latest Event Schedule page and the latest Banned and Restricted
+Announcement already known to the bot — read by `get_latest_known_event_schedule()`/
+`get_latest_known_ban_announcement()`, plain reads of the state saved on disk, **with no network request**.
+It is an at-a-glance check on every restart, distinct from the real periodic check (which runs shortly after,
+when the four `periodic_*_loop()` tasks start, and actually queries the sitemap).
 
 ---
 
-## 4. Scryfall API — Strategia
+## 4. Scryfall API — Strategy
 
-### Endpoint
+### Endpoints
 
-| Endpoint | Utilizzo | Limite |
+| Endpoint | Use | Limit |
 |---|---|---|
-| `POST /cards/collection` | Fetch batch di carte (max 75 per chunk) | 100ms tra richieste |
-| `GET prints_search_uri + game:arena` | Verifica stampe Arena per singola carta | — |
+| `POST /cards/collection` | Batch card fetch (max 75 per chunk) | 100ms between requests |
+| `GET prints_search_uri + game:arena` | Checks a single card's Arena printings | — |
 
 ### Rate Limiting
 
 ```python
-_semaphore = asyncio.Semaphore(1)  # 1 richiesta alla volta
-_min_delay = 0.11  # 110ms tra richieste (supera il limite 100ms)
+_SCRYFALL_SEMAPHORE = asyncio.Semaphore(1)  # 1 request at a time
+_MIN_REQUEST_INTERVAL = 0.11  # 110ms between requests (above the 100ms limit)
 ```
 
 ### Retry Logic
 
-- Backoff esponenziale su status 429 (leggendo header `Retry-After`)
-- Timeout: 10s per richiesta
-- Massimo 5 tentativi per richiesta
+- Exponential backoff on status 429 (reading the `Retry-After` header), on 5xx and on network errors/timeouts
+- Timeout: 120s overall for one validation's session (`aiohttp.ClientTimeout(total=120)`)
+- At most 5 attempts per request, then `ScryfallUnavailable` — never cached as an "illegal card"; a 404 (no
+  Arena printings) is instead a valid outcome. See `docs/deck-validation.md` "Scryfall Unreachable"
 
 ### Alchemy Filter
 
-Le carte con `set_type=alchemy` sono escluse esplicitamente (non ammesse in Artisan). Il filtro viene applicato nella query `game:arena` ai risultati di `prints_search_uri`.
+Alchemy printings are not allowed in Artisan: when evaluating the `prints_search_uri` + `game:arena` results,
+`_is_arena_artisan_legal()` skips printings with `set_type=alchemy` whose name starts with `A-`.
 
 ---
 
-## 5. Cache Banlist
+## 5. Banlist Cache
 
-La banlist (`BannedCard` in SQLite) è cacheata in memoria nella variabile di modulo
-`_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, condivisa da tutte le istanze
-di `ArtisanService`.
+The banlist (`BannedCard` in SQLite) is cached in memory in the module variable
+`_banlist_cache: set[str] | None` in `cogs/deck_validation/service.py`, shared by every `ArtisanService`
+instance.
 
-| Aspetto | Dettaglio |
+| Aspect | Detail |
 |---|---|
-| Caricamento | Prima validazione dopo l'avvio (o dopo un'invalidazione): `await BanlistRepository.get_all_for_format()`, poi espansa con `_expand_double_faced()` (aggiunge la sola metà fronte delle carte double-faced — vedi `docs/banlist-system.md` "Problemi Noti") |
-| Validità | Fino alla prossima invalidazione esplicita |
-| Invalida | `ArtisanService.reload_banlist()` (wrapper su `invalidate_banlist_cache()`), chiamato da `/banlist_aggiungi` e `/banlist_rimuovi` subito dopo la scrittura sul DB — l'effetto è visibile da tutte le istanze, non solo da quella su cui è chiamato |
+| Loading | First validation after startup (or after an invalidation): `await BanlistRepository.get_all_for_format()`, then expanded with `_expand_double_faced()` (adds the front half alone of double-faced cards — see `docs/banlist-system.md` "Known Issues") |
+| Validity | Until the next explicit invalidation |
+| Invalidation | `ArtisanService.reload_banlist()` (wrapper over `invalidate_banlist_cache()`), called by `/banlist_aggiungi` and `/banlist_rimuovi` right after writing to the DB — the effect is visible from every instance, not only the one it is called on |
 
 ---
 
-## Riepilogo Cache
+## Cache Summary
 
-| Cache | Location | Persistenza | Invalidation |
+| Cache | Location | Persistence | Invalidation |
 |---|---|---|---|
-| Carte Scryfall | Tabella SQLite `cached_cards` | 60s, incrementale (solo entry cambiate) | `artisan_legal` con TTL 30gg; `/invalidate_card_cache` per singola carta |
-| Override rarità | `arena_rarity_data.json` | Su aggiornamento | Esplicita (`invalidate_override_cache()`) |
-| Event Schedule Arena | `arena_event_schedule_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_event_schedule_check` (ignora `lastmod`) |
-| Banned and Restricted | `ban_announcement_state.json` | Check giornaliero (parsing solo su `lastmod` cambiato) | `/forced_ban_announcement_check` (ignora `lastmod`) |
-| Banlist | `_banlist_cache` (modulo) | Condivisa tra istanze | Esplicita (`reload_banlist()` dopo add/remove) |
+| Scryfall cards | SQLite table `cached_cards` | Every 60s + at shutdown, incremental (changed entries only) | `artisan_legal` with a 30-day TTL; `/invalidate_card_cache` for a single card |
+| Rarity overrides | `arena_rarity_data.json` | On update | Explicit (`invalidate_override_cache()`) |
+| Arena Event Schedule | `arena_event_schedule_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_event_schedule_check` (ignores `lastmod`) |
+| Banned and Restricted | `ban_announcement_state.json` | Check every 2 hours (parsing only on a changed `lastmod`) | `/forced_ban_announcement_check` (ignores `lastmod`) |
+| Banlist | `_banlist_cache` (module) | Shared across instances | Explicit (`reload_banlist()` after add/remove) |

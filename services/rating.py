@@ -1,7 +1,6 @@
 import math
 from dataclasses import dataclass
 
-
 RATING_INITIAL = 1500.0
 RD_INITIAL = 350.0
 VOLATILITY_INITIAL = 0.06

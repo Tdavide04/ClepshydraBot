@@ -1,13 +1,14 @@
 import os
+
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
     AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
 )
-from database.models import Base
-from config.config import DB_PATH
 
+from config.config import DB_PATH
+from database.models import Base
 
 _engine = None
 _async_session_maker = None
@@ -47,11 +48,13 @@ async def init_db():
     await _migrate_schema()
 
     from utils.card_cache import load_cache
+
     await load_cache()
 
 
 async def _migrate_banlist():
-    if not os.path.exists(BANLIST_FILE):
+    # Blocking os.path call is fine here: init_db() runs once at startup, before the bot serves interactions.
+    if not os.path.exists(BANLIST_FILE):  # noqa: ASYNC240
         return
 
     from repositories.banlist_repository import BanlistRepository
@@ -63,13 +66,13 @@ async def _migrate_banlist():
         repo = BanlistRepository(session)
         imported = await repo.import_from_file(BANLIST_FILE)
         if imported:
-            print(f"Banlist: importate {imported} carte da {BANLIST_FILE}")
+            print(f"Banlist: imported {imported} cards from {BANLIST_FILE}")
     finally:
         await session.close()
 
 
-# (tabella, colonna, DDL): ogni voce aggiunge una colonna mancante a uno schema
-# esistente. Elenco cumulativo, mai rimosso — vedi database.md "Migrazioni Automatiche".
+# (table, column, DDL): each entry adds a missing column to an existing schema.
+# Cumulative list, entries are never removed - see docs/database.md "Automatic Migrations".
 _SCHEMA_MIGRATIONS: list[tuple[str, str, str]] = [
     ("tournament_players", "deck_name", "ALTER TABLE tournament_players ADD COLUMN deck_name VARCHAR(200)"),
     ("matches", "p1_game_wins", "ALTER TABLE matches ADD COLUMN p1_game_wins INTEGER"),
@@ -95,11 +98,9 @@ async def _migrate_schema():
                 continue
             try:
                 await conn.execute(sa_text(ddl))
-                print(f"Migrazione: aggiunta colonna {column} a {table}")
+                print(f"Migration: added column {column} to {table}")
             except Exception as exc:
-                print(
-                    f"ERRORE migrazione: impossibile aggiungere {column} a {table}: {exc}"
-                )
+                print(f"MIGRATION ERROR: could not add {column} to {table}: {exc}")
 
 
 async def close_db():

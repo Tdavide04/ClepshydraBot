@@ -1,63 +1,76 @@
-import discord
-from discord.ext import commands
 from datetime import datetime
 
+import discord
+from discord.ext import commands
+
 from config.config import LOG_CHANNEL_ID
+
 
 class Logger(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log_channel_id = LOG_CHANNEL_ID
-        
+
         self.levels = {
             "INFO": ("🟢", discord.Color.green()),
             "WARN": ("🟡", discord.Color.gold()),
             "ERROR": ("🔴", discord.Color.red()),
-            "DEBUG": ("🔵", discord.Color.blue())
+            "DEBUG": ("🔵", discord.Color.blue()),
         }
 
     @staticmethod
     def _add_fields(embed, fields):
-        for field in (fields or []):
+        for field in fields or []:
             embed.add_field(
                 name=field["name"],
                 value=field["value"],
                 inline=field.get("inline", False),
             )
 
-    async def send_log(self, level, event, user=None, channel=None, info=None, fields=None, files=None,
-                        extra_channel_id=None, community_title=None, community_info=None):
-        """Metodo universale per inviare log con pattern specifico.
+    async def send_log(
+        self,
+        level,
+        event,
+        user=None,
+        channel=None,
+        info=None,
+        fields=None,
+        files=None,
+        extra_channel_id=None,
+        community_title=None,
+        community_info=None,
+    ):
+        """Single entry point for posting a log embed to the log channel.
 
-        fields: lista opzionale di dict {"name", "value", "inline"} aggiunti
-        come campi embed separati (nome in grassetto/risalto, distinto dal
-        corpo della description) invece che infilati come altro testo nella
-        description - usato per contenuti a sezioni dove il solo grassetto
-        markdown in un paragrafo unico risultava poco leggibile.
+        fields: optional list of {"name", "value", "inline"} dicts, added as
+        separate embed fields (name highlighted, distinct from the
+        description body) instead of being stuffed into the description as
+        more text - used for sectioned content where markdown bold alone in a
+        single paragraph read poorly.
 
-        files: lista opzionale di discord.File allegati allo stesso messaggio
-        dell'embed - usata dal calendario eventi Arena
-        (utils/arena_event_schedule.py) per allegare le immagini calendario
-        generate invece di descrivere gli eventi solo a parole.
+        files: optional list of discord.File attached to the same message as
+        the embed - used by the Arena event calendar
+        (utils/arena_event_schedule.py) to attach the generated calendar
+        images instead of describing events in words only.
 
-        extra_channel_id: se impostato (e diverso da 0/None), lo stesso
-        aggiornamento viene postato anche in questo canale oltre al canale
-        log - usato dal monitor Banned and Restricted e dal monitor Event
-        Schedule per rendere pubblico un aggiornamento che riguarda tutta la
-        community, non solo lo staff. NON riusa l'embed del canale log: quel
-        titolo/description contengono dettagli da staff ("Controllo manuale
-        forzato", l'utente che ha invocato il comando, il livello/nome
-        evento tecnico) che non hanno senso in un canale pubblico dove si fa
-        anche @everyone. Viene invece costruito un embed indipendente da
-        `community_title`/`community_info` (stesso colore, stessi `fields` e
-        `files` - quei due sono contenuto genuino anche per la community,
-        solo la cornice cambia). Un discord.File e' uno stream single-use:
-        prima del secondo invio viene richiamato `File.reset()` su ciascuno
-        (riporta il cursore del file a 0) per poterli ri-allegare senza
-        dover ricreare gli oggetti.
+        extra_channel_id: if set (and not 0/None), the same update is also
+        posted to this channel besides the log channel - used by the Banned
+        and Restricted and Event Schedule monitors to make public an update
+        that concerns the whole community, not just staff. It does NOT reuse
+        the log-channel embed: that title/description carry staff detail
+        ("Forced manual check", the user who invoked the command, the
+        technical level/event name) that makes no sense in a public channel
+        where @everyone gets pinged. A separate embed is built from
+        `community_title`/`community_info` instead (same color, same `fields`
+        and `files` - those two are genuine content for the community too,
+        only the frame changes). A discord.File is a single-use stream:
+        before the second send, `File.reset()` is called on each one (it
+        rewinds the file cursor to 0) so they can be attached again without
+        recreating the objects.
 
-        community_title / community_info: titolo e testo dedicati
-        all'embed pubblico, usati solo se `extra_channel_id` e' impostato.
+        community_title / community_info: title and text for the public
+        embed, used only if `extra_channel_id` is set (written in Italian,
+        since the community reads them).
         """
         emoji, color = self.levels.get(level.upper(), self.levels["INFO"])
 
@@ -79,7 +92,7 @@ class Logger(commands.Cog):
                 title=f"{emoji} [{level.upper()}] | {event.upper()}",
                 description=description.strip(),
                 color=color,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             self._add_fields(embed, fields)
             embed.set_footer(text=f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -88,7 +101,7 @@ class Logger(commands.Cog):
 
             if extra_channel_id:
                 try:
-                    for f in (files or []):
+                    for f in files or []:
                         f.reset()
 
                     community_embed = discord.Embed(
@@ -101,24 +114,24 @@ class Logger(commands.Cog):
                     extra_channel = await self.bot.fetch_channel(extra_channel_id)
                     await extra_channel.send(embed=community_embed, files=files or None)
                 except Exception as e:
-                    print(f"⚠️ Errore logger (canale extra): {e}")
+                    print(f"⚠️ Logger error (extra channel): {e}")
 
         except Exception as e:
-            print(f"⚠️ Errore logger: {e}")
+            print(f"⚠️ Logger error: {e}")
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        """Esempio di log INFO al nuovo ingresso."""
+        """Assigns the initial role to a new member and logs the join."""
         role = discord.utils.get(member.guild.roles, name="Viandante")
-        status = "❌ Ruolo non trovato"
-        
+        status = "❌ Role not found"
+
         if role:
             try:
                 await member.add_roles(role)
-                status = "✅ Ruolo 'Viandante' assegnato"
+                status = "✅ Role 'Viandante' assigned"
                 level = "INFO"
             except discord.Forbidden:
-                status = "⚠️ Errore permessi"
+                status = "⚠️ Missing permissions"
                 level = "ERROR"
         else:
             level = "WARN"
@@ -127,8 +140,9 @@ class Logger(commands.Cog):
             level=level,
             event="MEMBER_JOIN",
             user=member,
-            info=f"Nuovo ingresso nel server.\n**Stato:** {status}"
+            info=f"New member joined the server.\n**Status:** {status}",
         )
+
 
 async def setup(bot):
     await bot.add_cog(Logger(bot))

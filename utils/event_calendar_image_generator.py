@@ -1,46 +1,45 @@
 """
 event_calendar_image_generator.py
 
-Disegna, per un singolo mese, l'immagine del calendario eventi Arena a
-partire dai dati gia' strutturati da
-`utils.arena_event_schedule.build_month_calendar()`
-({categoria: [(giorno_inizio, giorno_fine, nome_evento), ...]}).
+Draws, for a single month, the Arena event calendar image from the data
+already structured by `utils.arena_event_schedule.build_month_calendar()`
+({category: [(start_day, end_day, event_name), ...]}). Rendered text is in
+Italian, since the image is posted to the community.
 
-`create_month_calendar()` (usata in produzione) e' un Gantt con una riga per
-SINGOLA CATEGORIA (come le pagine Wizards le elencano, 13-15 righe - non
-fuse per famiglia), colorato per famiglia e con nomi puliti nelle barre,
-seguito da un elenco testuale dettagliato sotto, raggruppato per famiglia,
-con il nome completo di ogni evento e la categoria originale tra parentesi.
-E' il risultato di tre giri di iterazione con mock-up sui dati reali:
-- una griglia calendario classica (un blocco di testo per categoria attiva
-  in ogni cella giorno) e' illeggibile perche' 4-6 categorie restano attive
-  per settimane e si ripetono identiche in ogni cella, spingendo fuori
-  vista (dietro un "+N altri") gli eventi che cambiano giorno per giorno;
-- un tentativo con fascia "always-on" + griglia per il resto migliorava ma
-  il testo restava troncato nelle celle strette (~160px) per i nomi lunghi;
-- uno swimlane con una riga per FAMIGLIA (6 righe, niente testo nelle
-  barre, dettaglio in un elenco sotto) risolveva il troncamento ma perdeva
-  la granularita' per singola categoria (es. non si vedeva piu' a colpo
-  d'occhio che "Pick-Two Draft" e "Traditional Draft" sono davvero due code
-  distinte, non la stessa cosa disegnata due volte) - il design finale
-  riporta una riga per categoria nel Gantt (come nel primo tentativo,
-  create_month_panel) ma ne eredita le lezioni successive: colore per
-  famiglia invece che ciclico, nomi puliti (_clean_name) invece che grezzi,
-  e l'elenco dettagliato sotto (ispirato a arpgseasons.com/en/calendar, un
-  calendario di stagioni di giochi ARPG concorrenti con lo stesso problema
-  di serie temporali sovrapposte) per i casi in cui anche con nomi puliti
-  il testo non entra nella barra;
-- i colori sono raggruppati per famiglia (non un colore per singola
-  categoria) perche' con 13-15 categorie una palette 1:1 non da' un pattern
-  riconoscibile a colpo d'occhio; la classificazione per famiglia e'
-  un'euristica su parole chiave nel nome categoria (_classify_family), non
-  un dato che arriva dalla pagina Wizards. Colori scelti a mano su richiesta
-  esplicita (non ciclici).
+`create_month_calendar()` (used in production) is a Gantt with one row per
+SINGLE CATEGORY (as the Wizards pages list them, 13-15 rows - not merged by
+family), colored by family and with cleaned names in the bars, followed by a
+detailed text list below, grouped by family, with each event's full name and
+the original category in parentheses. It is the result of three rounds of
+iteration with mock-ups on real data (see also
+docs/adr/0001-event-calendar-image-layout.md):
+- a classic calendar grid (one text block per active category in every day
+  cell) is unreadable because 4-6 categories stay active for weeks and
+  repeat identically in every cell, pushing out of view (behind a "+N more")
+  the events that change day by day;
+- an attempt with an "always-on" band + a grid for the rest was better, but
+  text stayed truncated in the narrow cells (~160px) for long names;
+- a swimlane with one row per FAMILY (6 rows, no text in the bars, details
+  in a list below) solved the truncation but lost per-category granularity
+  (e.g. it was no longer obvious at a glance that "Pick-Two Draft" and
+  "Traditional Draft" are really two distinct queues, not the same thing
+  drawn twice) - the final design brings back one row per category in the
+  Gantt (as in the first attempt, create_month_panel) but keeps the later
+  lessons: family colors instead of cyclic ones, cleaned names
+  (_clean_name) instead of raw ones, and the detailed list below (inspired
+  by arpgseasons.com/en/calendar, a season calendar for competing ARPG games
+  with the same overlapping-time-series problem) for the cases where text
+  doesn't fit in the bar even with cleaned names;
+- colors are grouped by family (not one color per category) because with
+  13-15 categories a 1:1 palette gives no pattern recognizable at a glance;
+  the family classification is a keyword heuristic on the category name
+  (_classify_family), not data coming from the Wizards page. Colors chosen
+  by hand on explicit request (not cyclic).
 
-`create_month_panel()` (il design originario, palette ciclica per categoria
-e nomi grezzi) resta nel modulo com'e' - nessun comando lo richiama piu', ma
-nessuna ragione per buttare via del codice funzionante nel caso serva di
-nuovo un confronto.
+`create_month_panel()` (the original design, cyclic palette per category and
+raw names) stays in the module as is - no command calls it anymore, but
+there is no reason to throw away working code in case a comparison is
+needed again.
 """
 
 import calendar as calendar_module
@@ -52,19 +51,18 @@ from utils.arena_event_schedule import MONTHS_IT
 
 
 class EventCalendarImageGenerator:
-
     PADDING_X = 40
     PADDING_TOP = 74
     PADDING_BOTTOM = 24
 
     ROW_LABEL_WIDTH = 190
     DAY_COL_WIDTH = 32
-    # Altezza di una singola "corsia" all'interno di una riga categoria. Una
-    # categoria con eventi che si sovrappongono in data (es. "Other Events",
-    # che nella pagina reale ospita piu' esibizioni parallele nello stesso
-    # periodo) occupa piu' corsie impilate verticalmente invece di comprimere
-    # le barre una sopra l'altra - senza questo, testi ed etichette di eventi
-    # diversi si sovrappongono nello stesso spazio, illeggibili.
+    # Height of a single "lane" within a category row. A category whose
+    # events overlap in time (e.g. "Other Events", which on the real page
+    # hosts several parallel exhibitions in the same period) takes several
+    # lanes stacked vertically instead of squeezing the bars on top of each
+    # other - without this, texts and labels of different events overlap in
+    # the same space, unreadable.
     LANE_HEIGHT = 38
     BAR_HEIGHT = 26
 
@@ -83,9 +81,9 @@ class EventCalendarImageGenerator:
     ROW_LABEL_FONT_SIZE = 14
     BAR_FONT_SIZE = 12
 
-    # Palette ciclica per categoria - assegnata per indice, non per hash del
-    # nome, cosi' l'ordine (stabile: viene da un dict Python) resta coerente
-    # tra un rendering e il successivo per lo stesso set di categorie.
+    # Cyclic palette per category - assigned by index, not by name hash, so
+    # the order (stable: it comes from a Python dict) stays consistent from
+    # one render to the next for the same set of categories.
     CATEGORY_COLORS = [
         (99, 179, 237),
         (246, 173, 85),
@@ -97,7 +95,7 @@ class EventCalendarImageGenerator:
         (252, 129, 192),
     ]
 
-    # ── Costanti elenco dettagliato (sotto il Gantt) ──
+    # ── Detailed list constants (below the Gantt) ──
     DETAIL_LINE_HEIGHT = 20
     DETAIL_HEADING_HEIGHT = 24
     DETAIL_GROUP_GAP = 10
@@ -106,11 +104,11 @@ class EventCalendarImageGenerator:
     DETAIL_ITEM_COLOR = (170, 172, 185)
     DETAIL_CATEGORY_MAX_CHARS = 40
 
-    # Raggruppamento colore per famiglia (non per singola categoria): con
-    # 13-15 categorie una palette 1:1 non da' un pattern riconoscibile a
-    # colpo d'occhio. Euristica su parole chiave nel nome, non un dato che
-    # arriva dalla pagina Wizards - vedi _classify_family(). Colori scelti a
-    # mano (non ciclici) su richiesta esplicita.
+    # Color grouping by family (not per category): with 13-15 categories a
+    # 1:1 palette gives no pattern recognizable at a glance. Keyword
+    # heuristic on the name, not data coming from the Wizards page - see
+    # _classify_family(). Colors chosen by hand (not cyclic) on explicit
+    # request.
     FAMILY_COLORS = {
         "Premier Draft": (66, 133, 220),
         "Quick Draft": (67, 176, 108),
@@ -120,37 +118,53 @@ class EventCalendarImageGenerator:
         "Community": (222, 68, 68),
     }
 
-    # Ordine fisso per righe fascia e legenda, cosi' non dipende dall'ordine
-    # (non deterministico ai fini nostri) con cui le categorie compaiono
-    # nella pagina Wizards.
+    # Fixed order for band rows and legend, so it doesn't depend on the order
+    # (non-deterministic for our purposes) in which categories appear on the
+    # Wizards page.
     FAMILY_ORDER = [
-        "Premier Draft", "Quick Draft", "Flashback",
-        "Sealed & Cube", "Metagame", "Community",
+        "Premier Draft",
+        "Quick Draft",
+        "Flashback",
+        "Sealed & Cube",
+        "Metagame",
+        "Community",
     ]
 
-    # Prefissi da rimuovere dal nome evento mostrato in barre/pillole: la
-    # categoria (colore) gia' comunica "che tipo di evento e'", quindi
-    # ripetere "Magic: The Gathering" o "Arena Direct for" nel testo e'
-    # rumore puro - vedi _clean_name().
+    # Prefixes to strip from the event name shown in bars/pills: the
+    # category (color) already says "what kind of event it is", so repeating
+    # "Magic: The Gathering" or "Arena Direct for" in the text is pure noise
+    # - see _clean_name().
     _ARENA_DIRECT_PREFIX = "arena direct for "
     _MTG_PREFIX = "magic: the gathering | "
 
-    # Usata nell'elenco dettagliato quando piu' mesi condividono lo stesso
-    # elenco (create_multi_month_calendar) - senza il mese, "11-19" di
-    # agosto e "11-19" di settembre sarebbero indistinguibili una volta
-    # unite nella stessa sezione famiglia.
+    # Used in the detailed list when several months share the same list
+    # (create_multi_month_calendar) - without the month, August "11-19" and
+    # September "11-19" would be indistinguishable once merged into the same
+    # family section.
     MONTH_ABBR_IT = {
-        1: "gen", 2: "feb", 3: "mar", 4: "apr", 5: "mag", 6: "giu",
-        7: "lug", 8: "ago", 9: "set", 10: "ott", 11: "nov", 12: "dic",
+        1: "gen",
+        2: "feb",
+        3: "mar",
+        4: "apr",
+        5: "mag",
+        6: "giu",
+        7: "lug",
+        8: "ago",
+        9: "set",
+        10: "ott",
+        11: "nov",
+        12: "dic",
     }
 
     @classmethod
     def _try_font(cls, size, bold=False):
         names = [
             "arialbd.ttf" if bold else "arial.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+            if bold
             else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+            if bold
             else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         ]
         for name in names:
@@ -168,15 +182,15 @@ class EventCalendarImageGenerator:
         last_day: int,
         category_entries: dict[str, list[tuple[int, int, str]]],
     ) -> BytesIO:
-        """Disegna il pannello Gantt di un mese. `category_entries` e' gia'
-        ritagliato ai limiti del mese da build_month_calendar() - questa
-        funzione si limita a posizionare barre/testo, senza logica di date."""
+        """Draws a month's Gantt panel. `category_entries` is already clipped
+        to the month's bounds by build_month_calendar() - this function only
+        places bars/text, with no date logic."""
 
         categories = list(category_entries.keys())
 
-        # Pre-pass: per ogni categoria calcola su quale corsia va ciascun
-        # evento (interval scheduling greedy) e quante corsie servono in
-        # totale - determina l'altezza della riga PRIMA di disegnare.
+        # Pre-pass: for each category, compute which lane each event goes on
+        # (greedy interval scheduling) and how many lanes are needed in total
+        # - this sets the row height BEFORE drawing.
         lanes_by_category: dict[str, list[int]] = {}
         lane_count_by_category: dict[str, int] = {}
         for category, entries in category_entries.items():
@@ -199,14 +213,14 @@ class EventCalendarImageGenerator:
         font_label = cls._try_font(cls.ROW_LABEL_FONT_SIZE, bold=True)
         font_bar = cls._try_font(cls.BAR_FONT_SIZE)
 
-        # ── Titolo ──────────────────────────────────────────────
+        # ── Title ───────────────────────────────────────────────
         title = f"{MONTHS_IT.get(month, month)} {year}"
         draw.text((cls.PADDING_X, 20), title, fill=cls.TEXT_PRIMARY, font=font_title)
 
         chart_x = cls.PADDING_X + cls.ROW_LABEL_WIDTH
         chart_y = cls.PADDING_TOP + cls.HEADER_HEIGHT
 
-        # ── Header giorni ───────────────────────────────────────
+        # ── Day header ──────────────────────────────────────────
         for day in range(1, last_day + 1):
             x = chart_x + (day - 1) * cls.DAY_COL_WIDTH
             draw.text(
@@ -229,7 +243,7 @@ class EventCalendarImageGenerator:
             width=1,
         )
 
-        # ── Righe categoria + barre ─────────────────────────────
+        # ── Category rows + bars ────────────────────────────────
         row_y = chart_y
         for row_idx, category in enumerate(categories):
             row_height = row_heights[row_idx]
@@ -284,8 +298,8 @@ class EventCalendarImageGenerator:
         output.seek(0)
         return output
 
-    # Spazio verticale tra un pannello mese e il successivo quando piu' mesi
-    # vengono composti in una sola immagine (create_multi_month_calendar).
+    # Vertical space between one month panel and the next when several
+    # months are composed into a single image (create_multi_month_calendar).
     MULTI_MONTH_GAP = 40
 
     @classmethod
@@ -293,11 +307,11 @@ class EventCalendarImageGenerator:
         cls,
         months: list[tuple[int, int, dict[str, list[tuple[int, int, str]]]]],
     ) -> BytesIO:
-        """Compone in un'unica immagine un Gantt per ciascun mese, seguiti da
-        UN SOLO elenco dettagliato che unisce le entry di tutti i mesi
-        (raggruppato per famiglia, con il mese indicato su ogni riga per
-        distinguere "11-19 ago" da "11-19 set") - invece di ripetere un
-        elenco identico in struttura sotto ogni singolo pannello."""
+        """Composes into a single image one Gantt per month, followed by ONE
+        detailed list merging every month's entries (grouped by family, with
+        the month shown on each line to tell "11-19 ago" from "11-19 set") -
+        instead of repeating a structurally identical list under each
+        panel."""
 
         gantt_imgs = []
         combined_family_detail: dict[str, list[tuple[int, int, int, str, str]]] = {}
@@ -323,10 +337,10 @@ class EventCalendarImageGenerator:
 
     @classmethod
     def _assign_lanes(cls, entries: list[tuple[int, int, str]]) -> tuple[list[int], int]:
-        """Interval scheduling greedy: assegna a ciascun evento (per indice
-        originale, non riordinato) la prima corsia libera - una corsia e'
-        libera se il suo ultimo evento piazzato finisce prima che questo
-        inizi. Restituisce (corsia_per_indice, numero_corsie_totali)."""
+        """Greedy interval scheduling: assigns each event (by original index,
+        not reordered) the first free lane - a lane is free if its last
+        placed event ends before this one starts. Returns (lane_per_index,
+        total_lane_count)."""
 
         order = sorted(range(len(entries)), key=lambda i: entries[i][0])
         lane_last_end: list[int] = []
@@ -350,7 +364,7 @@ class EventCalendarImageGenerator:
 
     @classmethod
     def _fit_text(cls, draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> str:
-        """Troncamento con ellissi se il nome evento non entra nella barra."""
+        """Truncates with an ellipsis if the event name doesn't fit in the bar."""
         if max_width <= 0:
             return ""
         if draw.textlength(text, font=font) <= max_width:
@@ -361,22 +375,21 @@ class EventCalendarImageGenerator:
         return f"{truncated}…" if truncated else ""
 
     # ==========================================
-    # GRIGLIA SETTIMANALE + FASCIA "ALWAYS-ON"
+    # WEEKLY GRID + "ALWAYS-ON" BAND
     # ==========================================
 
     @classmethod
     def _classify_family(cls, category: str) -> str:
-        """Euristica su parole chiave nel nome categoria - non un dato che
-        arriva dalla pagina Wizards. L'ordine dei controlli conta:
-        - "Flashback Premier Draft" contiene sia "flashback" che "draft":
-          Flashback va controllato prima, altrimenti finirebbe in Draft.
-        - "September Format: ... Sealed" contiene sia "format" che
-          "sealed": e' un evento a tempo/metagame (come Arena Direct), non
-          un Sealed vero e proprio, quindi Metagame va controllato prima di
-          Sealed & Cube.
-        - "Quick Draft" contiene "draft": va controllato prima del
-          catch-all generico "draft" (Premier/Pick-Two/Traditional/
-          Contender Draft)."""
+        """Keyword heuristic on the category name - not data coming from the
+        Wizards page. The order of the checks matters:
+        - "Flashback Premier Draft" contains both "flashback" and "draft":
+          Flashback must be checked first, otherwise it would land in Draft.
+        - "September Format: ... Sealed" contains both "format" and
+          "sealed": it is a timed/metagame event (like Arena Direct), not a
+          real Sealed, so Metagame must be checked before Sealed & Cube.
+        - "Quick Draft" contains "draft": it must be checked before the
+          generic "draft" catch-all (Premier/Pick-Two/Traditional/Contender
+          Draft)."""
 
         lowered = category.lower()
         if "flashback" in lowered:
@@ -393,17 +406,17 @@ class EventCalendarImageGenerator:
 
     @classmethod
     def _clean_name(cls, name: str) -> str:
-        """Rimuove i prefissi "Arena Direct for " e "Magic: The Gathering | "
-        dal nome evento - il colore (famiglia) gia' comunica il tipo, quindi
-        ripeterlo nel testo (es. "Arena Direct for Magic: The Gathering | The
-        Hobbit") era solo rumore rispetto a mostrare la sola espansione
-        ("The Hobbit")."""
+        """Strips the "Arena Direct for " and "Magic: The Gathering | "
+        prefixes from the event name - the color (family) already conveys the
+        type, so repeating it in the text (e.g. "Arena Direct for Magic: The
+        Gathering | The Hobbit") was just noise compared with showing only the
+        expansion ("The Hobbit")."""
 
         text = name.strip()
         if text.lower().startswith(cls._ARENA_DIRECT_PREFIX):
-            text = text[len(cls._ARENA_DIRECT_PREFIX):]
+            text = text[len(cls._ARENA_DIRECT_PREFIX) :]
         if text.lower().startswith(cls._MTG_PREFIX):
-            text = text[len(cls._MTG_PREFIX):]
+            text = text[len(cls._MTG_PREFIX) :]
         return text.strip()
 
     @classmethod
@@ -422,10 +435,10 @@ class EventCalendarImageGenerator:
         month: int,
         cleaned_entries: dict[str, list[tuple[int, int, str]]],
     ) -> Image.Image:
-        """Disegna il solo Gantt di un mese (titolo + una riga per
-        categoria, colorata per famiglia, nomi puliti) - senza elenco
-        dettagliato, cosi' puo' essere composto con quello di altri mesi
-        prima di aggiungere un'unica sezione dettaglio in fondo."""
+        """Draws only a month's Gantt (title + one row per category, colored
+        by family, cleaned names) - without the detailed list, so it can be
+        composed with other months' Gantts before adding a single detail
+        section at the bottom."""
 
         last_day = calendar_module.monthrange(year, month)[1]
         categories = list(cleaned_entries.keys())
@@ -457,7 +470,7 @@ class EventCalendarImageGenerator:
         chart_x = cls.PADDING_X + cls.ROW_LABEL_WIDTH
         chart_y = cls.PADDING_TOP + cls.HEADER_HEIGHT
 
-        # ── Header giorni + griglia verticale ──
+        # ── Day header + vertical grid ──
         for day in range(1, last_day + 1):
             x = chart_x + (day - 1) * cls.DAY_COL_WIDTH
             draw.text(
@@ -476,7 +489,7 @@ class EventCalendarImageGenerator:
             width=1,
         )
 
-        # ── Righe categoria + barre (colore per famiglia, nomi puliti) ──
+        # ── Category rows + bars (family color, cleaned names) ──
         row_y = chart_y
         for row_idx, category in enumerate(categories):
             row_height = row_heights[row_idx]
@@ -527,22 +540,22 @@ class EventCalendarImageGenerator:
         month: int,
         cleaned_entries: dict[str, list[tuple[int, int, str]]],
     ) -> dict[str, list[tuple[int, int, int, str, str]]]:
-        """Raggruppa le entry (gia' pulite) per famiglia, per l'elenco
-        dettagliato. Ogni entry porta con se' il mese (anche per un singolo
-        mese) cosi' _render_detail_section puo' unire piu' mesi senza dover
-        rifare il lavoro di classificazione/pulizia categoria."""
+        """Groups the (already cleaned) entries by family, for the detailed
+        list. Each entry carries its month (even for a single month) so
+        _render_detail_section can merge several months without redoing the
+        category classification/cleaning."""
 
         family_detail: dict[str, list[tuple[int, int, int, str, str]]] = {}
         for category, entries in cleaned_entries.items():
             family = cls._classify_family(category)
             clean_category = cls._clean_name(category)
-            # Alcuni nomi categoria (es. "September Format: Magic: The
-            # Gathering | The Hobbit Sealed") non iniziano col prefisso che
-            # _clean_name() rimuove, quindi restano lunghi - troncamento
-            # difensivo a carattere (non a pixel: e' testo secondario tra
-            # parentesi nell'elenco dettagliato, non serve precisione).
+            # Some category names (e.g. "September Format: Magic: The
+            # Gathering | The Hobbit Sealed") don't start with the prefix
+            # _clean_name() strips, so they stay long - defensive truncation
+            # by character (not by pixel: it is secondary text in parentheses
+            # in the detailed list, no precision needed).
             if len(clean_category) > cls.DETAIL_CATEGORY_MAX_CHARS:
-                clean_category = clean_category[:cls.DETAIL_CATEGORY_MAX_CHARS - 1].rstrip() + "…"
+                clean_category = clean_category[: cls.DETAIL_CATEGORY_MAX_CHARS - 1].rstrip() + "…"
 
             bucket = family_detail.setdefault(family, [])
             for day_start, day_end, name in entries:
@@ -557,14 +570,14 @@ class EventCalendarImageGenerator:
         width: int,
         show_month: bool,
     ) -> Image.Image:
-        """Disegna l'elenco dettagliato (nomi completi, nessun troncamento),
-        raggruppato per famiglia. `show_month` va a True quando la sezione
-        unisce piu' mesi (create_multi_month_calendar) - senza, "11-19" di
-        mesi diversi sarebbero indistinguibili una volta unite le liste."""
+        """Draws the detailed list (full names, no truncation), grouped by
+        family. `show_month` is True when the section merges several months
+        (create_multi_month_calendar) - without it, "11-19" of different
+        months would be indistinguishable once the lists are merged."""
 
         families_present = [f for f in cls.FAMILY_ORDER if f in family_detail]
 
-        detail_rows: list[tuple[str, str]] = []  # ("heading"|"item", testo)
+        detail_rows: list[tuple[str, str]] = []  # ("heading"|"item", text)
         for family in families_present:
             detail_rows.append(("heading", family))
             for month, day_start, day_end, name, clean_category in sorted(family_detail[family]):
@@ -588,7 +601,9 @@ class EventCalendarImageGenerator:
         for kind, text in detail_rows:
             if kind == "heading":
                 color = cls.FAMILY_COLORS[text]
-                draw.rounded_rectangle([cls.PADDING_X, y + 4, cls.PADDING_X + 12, y + 16], radius=3, fill=color)
+                draw.rounded_rectangle(
+                    [cls.PADDING_X, y + 4, cls.PADDING_X + 12, y + 16], radius=3, fill=color
+                )
                 draw.text((cls.PADDING_X + 20, y), text, fill=cls.TEXT_PRIMARY, font=font_heading)
                 y += cls.DETAIL_HEADING_HEIGHT
             else:
@@ -615,10 +630,9 @@ class EventCalendarImageGenerator:
         month: int,
         category_entries: dict[str, list[tuple[int, int, str]]],
     ) -> BytesIO:
-        """Gantt una riga per categoria (colorata per famiglia, nomi puliti)
-        + elenco dettagliato sotto (nomi completi, categoria tra parentesi) -
-        vedi il docstring di modulo per il percorso di iterazione che ha
-        portato a questo design."""
+        """Gantt with one row per category (colored by family, cleaned names)
+        + detailed list below (full names, category in parentheses) - see the
+        module docstring for the iterations that led to this design."""
 
         cleaned_entries = cls._clean_category_entries(category_entries)
 

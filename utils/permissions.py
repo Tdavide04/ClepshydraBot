@@ -8,17 +8,14 @@ def is_admin():
 
         if not interaction.guild:
             await interaction.response.send_message(
-                "Questo comando può essere usato solo in un server.",
-                ephemeral=True
+                "Questo comando può essere usato solo in un server.", ephemeral=True
             )
             return False
 
         role = discord.utils.get(interaction.guild.roles, name=ADMIN_ROLE)
         if role is None:
             await interaction.response.send_message(
-                f"Ruolo **{ADMIN_ROLE}** non trovato. "
-                "Contatta l'amministratore.",
-                ephemeral=True
+                f"Ruolo **{ADMIN_ROLE}** non trovato. Contatta l'amministratore.", ephemeral=True
             )
             return False
 
@@ -26,8 +23,7 @@ def is_admin():
             return True
 
         await interaction.response.send_message(
-            f"Devi avere il ruolo **{ADMIN_ROLE}** per usare questo comando.",
-            ephemeral=True
+            f"Devi avere il ruolo **{ADMIN_ROLE}** per usare questo comando.", ephemeral=True
         )
         return False
 

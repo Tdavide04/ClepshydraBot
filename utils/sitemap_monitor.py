@@ -1,17 +1,16 @@
 """
 sitemap_monitor.py
 
-Logica condivisa dai monitor che seguono pagine Wizards via il sitemap XML
-standard di magic.wizards.com (utils/arena_event_schedule.py e
-utils/ban_announcement.py): entrambi scaricano quotidianamente lo stesso
-sitemap.xml, scelgono la pagina di interesse piu' recente per `lastmod`
-(Wizards non rimuove mai le pagine passate dal sitemap, quindi ne convivono
-sempre diverse) e tengono lo stato "ultima pagina vista" su un JSON locale
-con scrittura atomica. Estratto qui dopo che il secondo monitor
-(ban_announcement.py) ha duplicato byte-per-byte questa parte dal primo -
-il filtro delle URL di interesse e il parsing del contenuto della pagina
-restano invece in ciascun modulo, e' l'unica parte davvero diversa tra i due
-(pattern di URL, e struttura HTML, differenti).
+Logic shared by the monitors that follow Wizards pages through the standard
+XML sitemap of magic.wizards.com (utils/arena_event_schedule.py and
+utils/ban_announcement.py): both fetch the same sitemap.xml every 2 hours,
+pick the newest page of interest by `lastmod` (Wizards never removes past
+pages from the sitemap, so several always coexist) and keep a "last page
+seen" state in a local JSON file with atomic writes. Extracted here after the
+second monitor (ban_announcement.py) duplicated this part byte for byte from
+the first - URL filtering and page content parsing stay in each module, the
+only part that genuinely differs between the two (different URL patterns and
+HTML structure).
 """
 
 import json
@@ -19,33 +18,39 @@ import os
 
 import aiohttp
 
+# Re-exported: both monitors import it from here (see utils/console.py).
+from utils.console import log  # noqa: F401
+
 SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
 
 _SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 
-# Entrambi i monitor controllano il sitemap ogni 24h: e' una GET economica
-# su un file statico, mentre il contenuto reale che interessa (una nuova
-# pagina Event Schedule o un nuovo Banned and Restricted Announcement)
-# cambia molto piu' di rado - girare spesso costa pochissimo e riduce la
-# latenza con cui la community viene informata.
-_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
+# Both monitors check the sitemap every 2 hours: a cheap GET on a static
+# file (~660 KB), while the content that matters (a new Event Schedule page
+# or a new Banned and Restricted Announcement) changes far less often -
+# polling often costs almost nothing and lowers the latency with which the
+# community is informed. It was 24h until 3.5.3: on 2026-10-12 the October
+# Banned and Restricted was not in the sitemap yet (Wizards serves it with
+# Cache-Control max-age ~1h and regenerates it after the article is
+# published) at the time of the daily check, and the next run would have
+# come almost 24h later.
+_CHECK_INTERVAL_SECONDS = 2 * 60 * 60
 
 
 def load_json_state(path: str, default: dict) -> dict:
-    """Carica un dict JSON da disco, o una copia di `default` se il file
-    non esiste ancora (primo avvio su una macchina nuova)."""
+    """Loads a JSON dict from disk, or a copy of `default` if the file
+    doesn't exist yet (first run on a new machine)."""
 
     if not os.path.exists(path):
         return dict(default)
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_json_state(path: str, data: dict) -> None:
-    """Scrittura atomica (file `.tmp` + `os.replace`): un crash a meta'
-    salvataggio lascia lo stato precedente intatto invece di un JSON
-    corrotto/troncato."""
+    """Atomic write (`.tmp` file + `os.replace`): a crash mid-save leaves
+    the previous state intact instead of a corrupted/truncated JSON."""
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -56,11 +61,10 @@ def save_json_state(path: str, data: dict) -> None:
 
 
 def pick_latest_by_lastmod(entries: dict[str, str]) -> tuple[str, str] | None:
-    """Tra le pagine trovate sul sitemap, individua quella con il `lastmod`
-    piu' recente. I lastmod sono timestamp ISO-8601 a larghezza fissa (es.
-    '2026-09-02T16:05:08.364Z'), quindi il confronto lessicografico tra
-    stringhe coincide con l'ordine cronologico, senza dover fare parsing di
-    date."""
+    """Among the pages found in the sitemap, returns the one with the newest
+    `lastmod`. lastmod values are fixed-width ISO-8601 timestamps (e.g.
+    '2026-09-02T16:05:08.364Z'), so lexicographic string comparison matches
+    chronological order, with no date parsing needed."""
 
     if not entries:
         return None
@@ -69,24 +73,24 @@ def pick_latest_by_lastmod(entries: dict[str, str]) -> tuple[str, str] | None:
 
 
 async def fetch_sitemap_xml(session: aiohttp.ClientSession) -> str | None:
-    """Scarica il body XML di sitemap.xml, o None se la richiesta fallisce -
-    il chiamante decide come trattare l'assenza (i due monitor la trattano
-    come 'nessuna pagina trovata', non come errore fatale)."""
+    """Fetches the XML body of sitemap.xml, or None if the request fails -
+    the caller decides how to treat its absence (both monitors treat it as
+    'no page found', not as a fatal error)."""
 
     async with session.get(SITEMAP_URL) as response:
         if response.status != 200:
-            print(f"[SITEMAP FAIL] {SITEMAP_URL} -> {response.status}")
+            log(f"[SITEMAP FAIL] {SITEMAP_URL} -> {response.status}")
             return None
         return await response.text()
 
 
 async def fetch_page_html(session: aiohttp.ClientSession, url: str, log_prefix: str) -> str | None:
-    """GET generica di una singola pagina. `log_prefix` distingue in
-    console quale monitor ha generato l'eventuale fallimento (es.
-    'EVENT SCHEDULE', 'BAN ANNOUNCEMENT')."""
+    """Generic GET of a single page. `log_prefix` tells apart, in the
+    console, which monitor produced a failure (e.g. 'EVENT SCHEDULE',
+    'BAN ANNOUNCEMENT')."""
 
     async with session.get(url) as response:
         if response.status != 200:
-            print(f"[{log_prefix} FETCH FAIL] {url} -> {response.status}")
+            log(f"[{log_prefix} FETCH FAIL] {url} -> {response.status}")
             return None
         return await response.text()

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from services.pairing_engine import PairingEngine
 
 
@@ -20,26 +21,24 @@ class MockMatch:
 
 
 class TestCalculateRounds:
-
-    def test_un_giocatore(self):
+    def test_one_player(self):
         assert PairingEngine.calculate_rounds(1) == 1
 
-    def test_due_giocatori(self):
+    def test_two_players(self):
         assert PairingEngine.calculate_rounds(2) == 1
 
-    def test_quattro_giocatori(self):
+    def test_four_players(self):
         assert PairingEngine.calculate_rounds(4) == 2
 
-    def test_otto_giocatori(self):
+    def test_eight_players(self):
         assert PairingEngine.calculate_rounds(8) == 3
 
-    def test_nove_giocatori(self):
+    def test_nine_players(self):
         assert PairingEngine.calculate_rounds(9) == 4
 
 
 class TestScoreboard:
-
-    def test_vittoria_e_sconfitta(self):
+    def test_win_and_loss(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1),
@@ -48,7 +47,7 @@ class TestScoreboard:
         assert standings[1].score == 3.0
         assert standings[2].score == 0.0
 
-    def test_pareggio(self):
+    def test_draw(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, result="draw"),
@@ -66,7 +65,7 @@ class TestScoreboard:
         assert standings[1].score == 3.0
         assert standings[2].score == 0.0
 
-    def test_omw_floor_al_33(self):
+    def test_omw_floor_at_33(self):
         players = [MockPlayer(1), MockPlayer(2)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1),
@@ -77,8 +76,7 @@ class TestScoreboard:
 
 
 class TestExistingPairs:
-
-    def test_coppia_ordinata(self):
+    def test_pair_is_ordered(self):
         matches = [
             MockMatch(player1_id=5, player2_id=3),
         ]
@@ -86,7 +84,7 @@ class TestExistingPairs:
         assert (3, 5) in pairs
         assert (5, 3) not in pairs
 
-    def test_bye_non_incluso(self):
+    def test_bye_not_included(self):
         matches = [
             MockMatch(player1_id=1, player2_id=None),
         ]
@@ -95,7 +93,6 @@ class TestExistingPairs:
 
 
 class TestByeHistory:
-
     def test_bye_tracking(self):
         matches = [
             MockMatch(player1_id=1, player2_id=None),
@@ -115,8 +112,7 @@ class TestByeHistory:
 
 
 class TestGenerateRound:
-
-    def test_round1_quattro_giocatori(self):
+    def test_round1_four_players(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         matches = []
         pairings = PairingEngine.generate_round(players, matches, round_number=1)
@@ -124,7 +120,7 @@ class TestGenerateRound:
         paired_ids = {p.player1_id for p in pairings} | {p.player2_id for p in pairings}
         assert paired_ids == {1, 2, 3, 4}
 
-    def test_round2_evita_rematch(self):
+    def test_round2_avoids_rematch(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3), MockPlayer(4)]
         matches = [
             MockMatch(player1_id=1, player2_id=2, winner_id=1),
@@ -133,10 +129,12 @@ class TestGenerateRound:
         pairings = PairingEngine.generate_round(players, matches, round_number=2)
         assert len(pairings) == 2
         for p in pairings:
-            a, b = (p.player1_id, p.player2_id) if p.player1_id < p.player2_id else (p.player2_id, p.player1_id)
+            a, b = (
+                (p.player1_id, p.player2_id) if p.player1_id < p.player2_id else (p.player2_id, p.player1_id)
+            )
             assert (a, b) not in {(1, 2), (3, 4)}
 
-    def test_numero_dispari_da_bye(self):
+    def test_odd_player_count_gives_a_bye(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3)]
         matches = []
         pairings = PairingEngine.generate_round(players, matches, round_number=1)
@@ -145,7 +143,7 @@ class TestGenerateRound:
         assert len(bye_pairings) == 1
         assert len(normal_pairings) == 1
 
-    def test_giocatori_droppati_esclusi(self):
+    def test_dropped_players_excluded(self):
         players = [
             MockPlayer(1, dropped=False),
             MockPlayer(2, dropped=False),
@@ -160,7 +158,7 @@ class TestGenerateRound:
                 paired_ids.add(p.player2_id)
         assert 3 not in paired_ids
 
-    def test_stesso_giocatore_non_ha_bye_ripetuto(self):
+    def test_same_player_does_not_get_a_second_bye(self):
         players = [MockPlayer(1), MockPlayer(2), MockPlayer(3)]
         matches = [
             MockMatch(player1_id=1, player2_id=None, winner_id=1),

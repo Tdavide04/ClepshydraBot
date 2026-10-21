@@ -1,22 +1,33 @@
+import enum
 from datetime import datetime
+
 from sqlalchemy import (
-    Column, Integer, Float, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
-import enum
 
 
 class Base(DeclarativeBase):
     pass
 
 
-class TournamentStatus(str, enum.Enum):
+class TournamentStatus(enum.StrEnum):
     REGISTRATION = "registration"
     ACTIVE = "active"
     COMPLETED = "completed"
 
 
-class MatchResult(str, enum.Enum):
+class MatchResult(enum.StrEnum):
     WIN = "win"
     LOSS = "loss"
     DRAW = "draw"
@@ -111,13 +122,13 @@ class BannedCard(Base):
 class CachedCard(Base):
     __tablename__ = "cached_cards"
 
-    # card_name e' gia' normalizzato a lowercase dal chiamante (utils/card_cache.py),
-    # stesso key format usato da sempre nel dict in memoria e nel JSON legacy.
+    # card_name is already lowercased by the caller (utils/card_cache.py), the
+    # same key format the in-memory dict and the legacy JSON have always used.
     card_name = Column(String(200), primary_key=True)
-    # Dati Scryfall grezzi (form variabile: card_faces per le doppie facce, ecc.)
-    # piu' artisan_legal/artisan_legal_checked_at, serializzati come un unico blob
-    # JSON invece di colonne dedicate: nessuna query SQL li filtra oggi, e tenerli
-    # come blob evita di duplicare la forma del dizionario in due posti.
+    # Raw Scryfall data (variable shape: card_faces for double-faced cards, etc.)
+    # plus artisan_legal/artisan_legal_checked_at, serialized as a single JSON
+    # blob instead of dedicated columns: no SQL query filters on them today, and
+    # a blob avoids duplicating the dict's shape in two places.
     data = Column(Text, nullable=False)
 
     def __repr__(self):
@@ -130,15 +141,9 @@ class Match(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tournament_id = Column(Integer, ForeignKey("tournaments.id"), nullable=False)
     round_number = Column(Integer, nullable=False)
-    player1_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=False
-    )
-    player2_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=True
-    )
-    winner_id = Column(
-        Integer, ForeignKey("tournament_players.id"), nullable=True
-    )
+    player1_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=False)
+    player2_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=True)
+    winner_id = Column(Integer, ForeignKey("tournament_players.id"), nullable=True)
     result = Column(SAEnum(MatchResult), nullable=True)
     table_number = Column(Integer, nullable=True)
     p1_game_wins = Column(Integer, nullable=True)
@@ -157,7 +162,4 @@ class Match(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<Match id={self.id} round={self.round_number} "
-            f"tournament={self.tournament_id}>"
-        )
+        return f"<Match id={self.id} round={self.round_number} tournament={self.tournament_id}>"

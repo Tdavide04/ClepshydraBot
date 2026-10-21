@@ -1,12 +1,12 @@
 import os
 
-# services/__init__.py importa eagerly TournamentService, che a sua volta
-# richiede config.config popolato (GUILD_ID, canali, ecc.). Qualunque test
-# in questa cartella che importi ANCHE solo services.pairing_engine o
-# services.rating (moduli puramente algoritmici) trascina quindi l'intera
-# configurazione Discord. conftest.py viene caricato da pytest prima di
-# ogni modulo di test nella cartella, quindi questi valori sono garantiti
-# in sys.environ prima che qualunque `import services...` possa fallire.
+# services/__init__.py eagerly imports TournamentService, which in turn needs
+# a populated config.config (GUILD_ID, channels, etc.). Any test in this
+# folder that imports EVEN just services.pairing_engine or services.rating
+# (purely algorithmic modules) therefore drags in the whole Discord
+# configuration. pytest loads conftest.py before every test module in the
+# folder, so these values are guaranteed to be in sys.environ before any
+# `import services...` can fail.
 os.environ.setdefault("TEST_MODE", "True")
 os.environ.setdefault("DISCORD_TOKEN_TEST", "test-token")
 os.environ.setdefault("GUILD_ID_TEST", "111111111")

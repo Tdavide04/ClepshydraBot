@@ -1,14 +1,13 @@
 import os
 
-# send_ban_announcement_log() (utils/ban_announcement.py) fa un import
-# differito di COMUNICATION_CHANNEL_ID da config.config quando l'annuncio
-# contiene modifiche reali - stesso motivo del deferred import in
-# utils/permissions.py: eseguire questo test file da solo (senza passare
-# prima da tests/tournament o tests/deck_validation, che popolano queste
-# stesse variabili nei loro conftest.py) farebbe fallire config.config al
-# primo accesso. Duplicato apposta invece che condiviso, come gli altri
-# conftest.py di questo repo, cosi' tests/utils/ resta eseguibile in
-# isolamento.
+# send_ban_announcement_log() (utils/ban_announcement.py) lazily imports
+# COMUNICATION_CHANNEL_ID from config.config when the announcement has real
+# changes - same reason as the lazy import in utils/permissions.py: running
+# this test file alone (without going through tests/tournament or
+# tests/deck_validation first, whose conftest.py files populate these same
+# variables) would make config.config fail on first access. Duplicated on
+# purpose rather than shared, like the other conftest.py files in this repo,
+# so tests/utils/ stays runnable in isolation.
 os.environ.setdefault("TEST_MODE", "True")
 os.environ.setdefault("DISCORD_TOKEN_TEST", "test-token")
 os.environ.setdefault("GUILD_ID_TEST", "111111111")

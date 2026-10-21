@@ -1,40 +1,39 @@
 """
 ban_announcement.py
 
-Rileva la pubblicazione di un nuovo "Banned and Restricted Announcement" di
-Wizards (magic.wizards.com/en/news/announcements/banned-and-restricted-*),
-pubblicato a cadenza fissa (circa ogni 6 settimane, sempre di lunedi') per
-notificare la community - senza toccare la banlist Artisan del bot, che
-resta un elenco curato a mano (vedi docs/banlist-system.md): nessuno dei
-formati ufficiali Wizards elencati in questi annunci (Standard, Pioneer,
-Modern, Legacy, Vintage, Pauper, Alchemy, Historic, Timeless, Brawl,
-Competitive Brawl) e' l'Artisan homebrew di questa community, quindi non
-esiste un modo corretto di applicare questi cambi al bot in automatico.
+Detects the publication of a new Wizards "Banned and Restricted Announcement"
+(magic.wizards.com/en/news/announcements/banned-and-restricted-*), published
+on a fixed cadence (roughly every 6 weeks, always on a Monday), to notify the
+community - without touching the bot's Artisan banlist, which stays a
+hand-curated list (see docs/banlist-system.md): none of the official Wizards
+formats listed in these announcements (Standard, Pioneer, Modern, Legacy,
+Vintage, Pauper, Alchemy, Historic, Timeless, Brawl, Competitive Brawl) is
+this community's homebrew Artisan, so there is no correct way to apply these
+changes to the bot automatically.
 
-Approccio (stesso schema di arena_event_schedule.py):
-- Il sitemap magic.wizards.com/en/sitemap.xml elenca anche questi annunci con
-  <lastmod>. Come per le pagine Event Schedule, Wizards non rimuove gli
-  annunci passati dal sitemap, quindi ne convivono sempre diversi - interessa
-  solo quello con il lastmod piu' recente (_pick_latest), altrimenti il primo
-  avvio su una macchina nuova segnalerebbe come "nuovo" tutto lo storico in
-  una volta.
-- Il check del sitemap gira quotidianamente (una GET economica su un file
-  statico); il fetch+parsing della singola pagina (piu' fragile, HTML non
-  dati strutturati) scatta solo se il lastmod dell'annuncio piu' recente e'
-  cambiato rispetto allo stato salvato.
-- A differenza dell'Event Schedule, qui non c'e' una sezione a elenco date
-  ma prosa libera per formato. Osservato dal vivo pero' che ogni sezione ha
-  un riepilogo affidabile e strutturato subito sotto l'heading del formato:
-  <h2>Formato</h2> ... <p style="padding-left: 30px;">Carta X e' bannata.
-  <br/>Carta Y e' sbannata.</p> (oppure letteralmente "No changes" quando
-  nulla cambia in quel formato). E' solo questo riepilogo che viene estratto
-  - il resto dell'articolo (analisi del metagame, decklist di esempio) non
-  viene toccato: parsing troppo fragile per essere affidabile, e comunque
-  fuori scopo per un bot che deve solo notificare, non riassumere l'articolo.
-- Se non si trova nemmeno un heading di formato con il riepilogo atteso, la
-  pagina viene segnalata come non interpretabile (drift del sito) invece di
-  pubblicare un riassunto vuoto o sbagliato - stessa filosofia di
-  parse_full_event_calendar() in arena_event_schedule.py.
+Approach (same scheme as arena_event_schedule.py):
+- The magic.wizards.com/en/sitemap.xml sitemap lists these announcements too,
+  with <lastmod>. As with the Event Schedule pages, Wizards doesn't remove
+  past announcements from the sitemap, so several always coexist - only the
+  one with the newest lastmod matters (_pick_latest), otherwise the first run
+  on a new machine would report the whole history as "new" at once.
+- The sitemap check runs every 2 hours (a cheap GET on a static file);
+  fetching+parsing the page itself (more fragile, HTML rather than
+  structured data) only happens if the newest announcement's lastmod changed
+  versus the saved state.
+- Unlike the Event Schedule, there is no date-list section here, just free
+  prose per format. Observed live, though, that every section has a
+  reliable, structured summary right below the format heading:
+  <h2>Format</h2> ... <p style="padding-left: 30px;">Card X is banned.
+  <br/>Card Y is unbanned.</p> (or literally "No changes" when nothing
+  changes in that format). Only this summary is extracted - the rest of the
+  article (metagame analysis, sample decklists) is left alone: parsing it
+  would be too fragile to be reliable, and it is out of scope anyway for a
+  bot that only notifies rather than summarizing the article.
+- If not even one format heading with the expected summary is found, the
+  page is reported as unparseable (site drift) instead of publishing an
+  empty or wrong summary - same philosophy as parse_full_event_calendar() in
+  arena_event_schedule.py.
 """
 
 import asyncio
@@ -52,6 +51,7 @@ from utils.sitemap_monitor import (
     fetch_page_html,
     fetch_sitemap_xml,
     load_json_state,
+    log,
     pick_latest_by_lastmod,
     save_json_state,
 )
@@ -60,15 +60,13 @@ STATE_PATH = "data/ban_announcement_state.json"
 
 _ANNOUNCEMENTS_URL_PREFIX = "https://magic.wizards.com/en/news/announcements/banned-and-restricted-"
 
-_BAN_ANNOUNCEMENT_URL_RE = re.compile(
-    re.escape(_ANNOUNCEMENTS_URL_PREFIX) + r"[a-z0-9-]+$"
-)
+_BAN_ANNOUNCEMENT_URL_RE = re.compile(re.escape(_ANNOUNCEMENTS_URL_PREFIX) + r"[a-z0-9-]+$")
 
 _H2_RE = re.compile(r"<h2[^>]*>\s*([^<]+?)\s*</h2>")
 
-# Il riepilogo di ogni formato e' l'unico <p> con questo stile inline
-# osservato sulle pagine reali - non un markup semantico dedicato, ma stabile
-# su tutti gli annunci controllati (agosto/giugno/marzo 2026).
+# Each format's summary is the only <p> with this inline style seen on the
+# real pages - not dedicated semantic markup, but stable across every
+# announcement checked (August/June/March 2026).
 _SUMMARY_P_RE = re.compile(
     r'<p[^>]*style="[^"]*padding-left:\s*30px[^"]*"[^>]*>(.*?)</p>',
     re.DOTALL,
@@ -80,8 +78,9 @@ _state_cache: dict | None = None
 
 
 # ==========================================
-# LOAD / SAVE STATO
+# LOAD / SAVE STATE
 # ==========================================
+
 
 def _load_state() -> dict:
     global _state_cache
@@ -89,7 +88,9 @@ def _load_state() -> dict:
     if _state_cache is not None:
         return _state_cache
 
-    _state_cache = load_json_state(STATE_PATH, {"latest_url": None, "latest_lastmod": None})
+    _state_cache = load_json_state(
+        STATE_PATH, {"latest_url": None, "latest_lastmod": None, "notified_url": None}
+    )
     return _state_cache
 
 
@@ -106,28 +107,40 @@ def invalidate_state_cache() -> None:
 
 
 def get_latest_known_ban_announcement() -> dict:
-    """Ritorna l'ultimo Banned and Restricted Announcement noto da stato
-    salvato su disco - {"url": str | None, "lastmod": str | None} - senza
-    alcuna richiesta di rete. Stesso ruolo di get_latest_known_event_schedule()
-    in arena_event_schedule.py: usata dal log di stato all'avvio del bot."""
+    """Returns the latest Banned and Restricted Announcement known from the
+    state saved on disk - {"url": str | None, "lastmod": str | None} - with
+    no network request. Same role as get_latest_known_event_schedule() in
+    arena_event_schedule.py: used by the startup status log."""
 
     state = _load_state()
     return {"url": state.get("latest_url"), "lastmod": state.get("latest_lastmod")}
+
+
+def _notified_url(state: dict) -> str | None:
+    """URL of the latest announcement whose changes were posted to the
+    community channel. A state saved before 3.5.3 has no such field: in that
+    case the last processed announcement (latest_url) counts as notified, so
+    the upgrade doesn't repost it, while a new one still gets notified."""
+
+    if "notified_url" in state:
+        return state["notified_url"]
+    return state.get("latest_url")
 
 
 # ==========================================
 # SITEMAP
 # ==========================================
 
+
 def _parse_sitemap_xml(body: str) -> dict[str, str]:
-    """Estrae {url: lastmod} per le sole pagine
-    'banned-and-restricted-*' sotto /en/news/announcements/. Separata dal
-    fetch HTTP per essere testabile senza mockare aiohttp."""
+    """Extracts {url: lastmod} for the 'banned-and-restricted-*' pages
+    under /en/news/announcements/ only. Kept separate from the HTTP fetch so
+    it can be tested without mocking aiohttp."""
 
     try:
         root = ET.fromstring(body)
     except ET.ParseError as e:
-        print(f"[SITEMAP PARSE ERROR] {e}")
+        log(f"[SITEMAP PARSE ERROR] {e}")
         return {}
 
     found: dict[str, str] = {}
@@ -148,8 +161,8 @@ def _parse_sitemap_xml(body: str) -> dict[str, str]:
 
 
 async def _fetch_sitemap_ban_urls(session: aiohttp.ClientSession) -> dict[str, str]:
-    """Scarica il sitemap e restituisce {url: lastmod} per le sole pagine
-    'banned-and-restricted-*' sotto /en/news/announcements/."""
+    """Fetches the sitemap and returns {url: lastmod} for the
+    'banned-and-restricted-*' pages under /en/news/announcements/ only."""
 
     body = await fetch_sitemap_xml(session)
     if body is None:
@@ -159,21 +172,22 @@ async def _fetch_sitemap_ban_urls(session: aiohttp.ClientSession) -> dict[str, s
 
 
 # ==========================================
-# PARSING PAGINA ANNUNCIO
+# PARSING THE ANNOUNCEMENT PAGE
 # ==========================================
+
 
 def _strip_tags(text: str) -> str:
     return html_module.unescape(_TAG_RE.sub("", text)).strip()
 
 
 def parse_ban_announcement(page_html: str) -> dict[str, list[str]] | None:
-    """Estrae {formato: [voci di cambiamento]} dal riepilogo di ogni sezione
-    <h2>Formato</h2> di un annuncio Banned and Restricted. I formati senza
-    modifiche ("No changes") vengono esclusi dal risultato - un dict vuoto
-    e' quindi un esito valido (nessun formato toccato in questo giro), non
-    un errore. Restituisce None solo se non si trova nemmeno un riepilogo
-    strutturato (drift del sito) - il chiamante deve trattarlo come "non
-    interpretabile", non come "nessuna modifica"."""
+    """Extracts {format: [change lines]} from the summary of every
+    <h2>Format</h2> section of a Banned and Restricted announcement. Formats
+    with no changes ("No changes") are left out of the result - an empty
+    dict is therefore a valid outcome (no format touched this time), not an
+    error. Returns None only if not even one structured summary is found
+    (site drift) - the caller must treat it as "unparseable", not as "no
+    changes"."""
 
     headings = list(_H2_RE.finditer(page_html))
     if not headings:
@@ -208,14 +222,14 @@ def parse_ban_announcement(page_html: str) -> dict[str, list[str]] | None:
 
 
 def format_lastmod(lastmod: str) -> str:
-    """Formatta in italiano il timestamp ISO-8601 del sitemap (es.
-    '2026-08-21T18:02:33.573Z' -> '21 Agosto 2026, 18:02 UTC'). E' l'unico
-    dato data+ora disponibile per l'annuncio: la pagina mostra un <time> con
-    solo il giorno (es. 'Aug 10, 2026'), senza orario, e comunque riflette
-    l'ultima modifica della pagina secondo Wizards, non necessariamente
-    l'istante di prima pubblicazione. Ritorna la stringa originale invariata
-    se il formato non è quello atteso, invece di far fallire la notifica per
-    un dettaglio cosmetico."""
+    """Formats the sitemap's ISO-8601 timestamp in Italian, since it goes
+    into the community embed (e.g. '2026-08-21T18:02:33.573Z' -> '21 Agosto
+    2026, 18:02 UTC'). It is the only date+time available for the
+    announcement: the page shows a <time> with the day only (e.g. 'Aug 10,
+    2026'), no time of day, and it reflects Wizards' last edit to the page
+    anyway, not necessarily the moment of first publication. Returns the
+    original string unchanged if the format isn't the expected one, instead
+    of failing the notification over a cosmetic detail."""
 
     try:
         dt = datetime.fromisoformat(lastmod.replace("Z", "+00:00"))
@@ -225,8 +239,8 @@ def format_lastmod(lastmod: str) -> str:
     return f"{dt.day} {MONTHS_IT[dt.month]} {dt.year}, {dt.strftime('%H:%M')} UTC"
 
 
-# Stessa selezione per lastmod piu' recente di arena_event_schedule.py -
-# vedi pick_latest_by_lastmod() in utils/sitemap_monitor.py.
+# Same newest-lastmod selection as arena_event_schedule.py - see
+# pick_latest_by_lastmod() in utils/sitemap_monitor.py.
 _pick_latest = pick_latest_by_lastmod
 
 
@@ -235,21 +249,29 @@ async def _fetch_page_html(session: aiohttp.ClientSession, url: str) -> str | No
 
 
 # ==========================================
-# CHECK (API pubblica)
+# CHECK (public API)
 # ==========================================
 
-async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
-    """Individua l'annuncio Banned and Restricted PIU' RECENTE (per lastmod)
-    sul sitemap e, se e' nuovo rispetto all'ultimo noto (o comunque se
-    force=True), lo scarica e prova a interpretarne il riepilogo per
-    formato. Gli annunci passati ancora presenti sul sitemap vengono
-    ignorati (vedi _pick_latest).
 
-    Ritorna una lista con zero o un elemento {url, lastmod, changes}
-    (changes None se il parsing e' fallito, {} se interpretato ma senza
-    formati modificati) - la forma a lista resta per coerenza con
-    check_event_schedule_updates(). Aggiorna e salva lo stato solo se la
-    pagina e' stata effettivamente processata in questa chiamata.
+async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
+    """Finds the NEWEST Banned and Restricted announcement (by lastmod) in
+    the sitemap and, if it is new versus the last known one (or anyway if
+    force=True), fetches it and tries to parse its per-format summary. Past
+    announcements still listed in the sitemap are ignored (see _pick_latest).
+
+    Returns a list with zero or one {url, lastmod, changes, already_notified}
+    item (changes None if parsing failed, {} if parsed but with no format
+    changed) - the list shape stays for consistency with
+    check_event_schedule_updates(). Updates and saves the state only if the
+    page was actually processed in this call.
+
+    already_notified is True if this same URL's changes were already posted
+    to the community channel: that happens with a forced check on the
+    already known announcement, or when Wizards touches the page days later
+    (new lastmod, same URL - e.g. August 10 -> lastmod August 21). In that
+    case send_ban_announcement_log() posts to the log channel only. A
+    different URL is always "new", unlike the Event Schedule, where an
+    in-place update of the same page is genuinely new content.
     """
 
     headers = {"User-Agent": "ClepshydraBot/1.0 (Discord Tournament Bot)"}
@@ -262,48 +284,53 @@ async def check_ban_announcement_updates(force: bool = False) -> list[dict]:
 
         latest = _pick_latest(current)
         if latest is None:
-            print("[BAN ANNOUNCEMENT] nessun annuncio trovato sul sitemap")
+            log("[BAN ANNOUNCEMENT] no announcement found in the sitemap")
             return []
 
         url, lastmod = latest
 
-        already_seen = (
-            state.get("latest_url") == url
-            and state.get("latest_lastmod") == lastmod
-        )
+        already_seen = state.get("latest_url") == url and state.get("latest_lastmod") == lastmod
         if already_seen and not force:
-            print(f"[BAN ANNOUNCEMENT] nessun cambiamento (piu' recente: {url})")
+            log(f"[BAN ANNOUNCEMENT] no change (latest: {url})")
             return []
 
-        print(f"[BAN ANNOUNCEMENT] annuncio nuovo/aggiornato: {url}")
+        log(f"[BAN ANNOUNCEMENT] new/updated announcement: {url}")
 
         page_html = await _fetch_page_html(session, url)
 
         if page_html is None:
-            # Fetch fallito: non aggiorniamo lo stato, ci riproviamo al
-            # prossimo giro invece di marcarlo come visto.
-            print(f"[BAN ANNOUNCEMENT] fetch fallito per {url}, ritento al prossimo giro")
+            # Fetch failed: leave the state untouched and retry on the next
+            # run instead of marking it as seen.
+            log(f"[BAN ANNOUNCEMENT] fetch failed for {url}, retrying on the next run")
             return []
 
         changes = parse_ban_announcement(page_html)
 
-    _save_state({"latest_url": url, "latest_lastmod": lastmod})
+    notified_url = _notified_url(state)
+    already_notified = notified_url == url
+    if changes and not already_notified:
+        # Marked as notified here already, before sending: same trade-off as
+        # latest_url - a state saved before the Discord post doesn't resend
+        # it if the post fails, but it can't repost it in a loop either.
+        notified_url = url
+
+    _save_state({"latest_url": url, "latest_lastmod": lastmod, "notified_url": notified_url})
 
     if changes is None:
-        print(f"[BAN ANNOUNCEMENT] {url}: struttura riepilogo non riconosciuta")
+        log(f"[BAN ANNOUNCEMENT] {url}: summary structure not recognized")
     else:
-        print(f"[BAN ANNOUNCEMENT] {url}: {len(changes)} formati con modifiche")
+        log(f"[BAN ANNOUNCEMENT] {url}: {len(changes)} formats with changes")
 
-    return [{"url": url, "lastmod": lastmod, "changes": changes}]
+    return [{"url": url, "lastmod": lastmod, "changes": changes, "already_notified": already_notified}]
 
 
 async def periodic_ban_announcement_check_loop(
     bot=None,
     interval_seconds: int = _CHECK_INTERVAL_SECONDS,
 ) -> None:
-    """Task in background: controlla quotidianamente il sitemap e notifica su
-    Discord ogni nuovo annuncio Banned and Restricted. Il primo giro parte
-    subito all'avvio, come gli altri periodic_*_loop di main.py."""
+    """Background task: checks the sitemap every 2 hours and notifies
+    Discord of every new Banned and Restricted announcement. The first run
+    starts right at startup, like the other periodic_*_loop in main.py."""
 
     while True:
         try:
@@ -316,37 +343,39 @@ async def periodic_ban_announcement_check_loop(
                         await send_ban_announcement_log(logger, result, user=None, forced=False)
 
         except Exception as e:
-            print(f"[BAN ANNOUNCEMENT AUTO-CHECK] errore: {e}")
+            log(f"[BAN ANNOUNCEMENT AUTO-CHECK] error: {e}")
 
         await asyncio.sleep(interval_seconds)
 
 
-_FIELD_VALUE_LIMIT = 1024  # limite Discord per il valore di un campo embed
+_FIELD_VALUE_LIMIT = 1024  # Discord limit for an embed field value
 
 
 async def send_ban_announcement_log(logger, result: dict, user, forced: bool) -> None:
-    """Posta su Discord (via Logger cog) l'esito del controllo di un singolo
-    annuncio Banned and Restricted. Esposta come funzione pubblica perche'
-    usata sia dal loop automatico sia dal comando admin manuale.
+    """Posts to Discord (via the Logger cog) the outcome of checking a single
+    Banned and Restricted announcement. Public because both the automatic
+    loop and the manual admin command use it.
 
-    Solo notifica: non scrive mai su banned_cards (vedi docs/banlist-system.md
-    - nessuno dei formati ufficiali Wizards in questi annunci corrisponde
-    all'Artisan homebrew di questa community, quindi non c'e' un messaggio
-    da comunicare a riguardo). Quando l'annuncio contiene modifiche reali,
-    l'embed viene postato anche in COMUNICATION_CHANNEL_ID (import differito,
-    come utils/permissions.py, per restare importabile nei test senza un
-    .env completo) oltre che nel canale log - riguarda tutta la community,
-    non solo lo staff. Il canale community e' un canale pubblico dove si fa
-    anche @everyone: usa `community_title`/`community_info` di
-    Logger.send_log() per un embed dedicato senza il gergo da staff
-    ("Controllo manuale forzato", l'utente che ha invocato il comando) che
-    invece resta nell'`info` del canale log - solo i `fields` (le carte
-    bannate/sbannate per formato) sono condivisi tra i due, sono contenuto
-    genuino anche per la community."""
+    Notify-only: it never writes to banned_cards (see docs/banlist-system.md
+    - none of the official Wizards formats in these announcements matches
+    this community's homebrew Artisan, so there is nothing to communicate
+    about it). When the announcement has real changes, the embed is also
+    posted to COMUNICATION_CHANNEL_ID (lazy import, like
+    utils/permissions.py, to stay importable in tests without a full .env)
+    besides the log channel - it concerns the whole community, not just
+    staff. The community channel is public and @everyone gets pinged there:
+    Logger.send_log()'s `community_title`/`community_info` build a
+    dedicated Italian embed without the staff jargon ("Forced manual check",
+    the user who invoked the command), which stays in the log channel's
+    `info` - only the `fields` (cards banned/unbanned per format) are shared
+    between the two, being genuine content for the community too. If
+    result["already_notified"] is True (announcement already shared with the
+    community, re-checked by hand or touched by Wizards) the post goes to the
+    log channel only - see check_ban_announcement_updates()."""
 
     url = result["url"]
     changes = result["changes"]
-    prefix = "Controllo manuale forzato" if forced else "Controllo automatico"
+    prefix = "Forced manual check" if forced else "Automatic check"
 
     if changes is None:
         await logger.send_log(
@@ -354,9 +383,9 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
             event="BAN_ANNOUNCEMENT_UNPARSEABLE",
             user=user,
             info=(
-                f"{prefix}: trovato un nuovo Banned and Restricted Announcement su {url} ma "
-                f"il riepilogo per formato non e' stato riconosciuto (possibile cambio di "
-                f"struttura del sito). Controllo manuale consigliato."
+                f"{prefix}: found a new Banned and Restricted Announcement on {url} but "
+                f"the per-format summary was not recognized (the site structure may have "
+                f"changed). A manual check is recommended."
             ),
         )
         return
@@ -366,10 +395,7 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
             level="INFO",
             event="BAN_ANNOUNCEMENT_NO_CHANGES",
             user=user,
-            info=(
-                f"{prefix}: nuovo Banned and Restricted Announcement su {url}, nessun formato "
-                f"modificato in questo giro."
-            ),
+            info=(f"{prefix}: new Banned and Restricted Announcement on {url}, no format changed this time."),
         )
         return
 
@@ -380,6 +406,19 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
             value = value[: _FIELD_VALUE_LIMIT - 1] + "…"
         fields.append({"name": format_name, "value": value, "inline": False})
 
+    if result.get("already_notified", False):
+        await logger.send_log(
+            level="INFO",
+            event="BAN_ANNOUNCEMENT_UPDATED",
+            user=user,
+            info=(
+                f"{prefix}: Banned and Restricted Announcement re-checked — {url} "
+                f"(already notified to the community, not reposted to the community channel)"
+            ),
+            fields=fields,
+        )
+        return
+
     from config.config import COMUNICATION_CHANNEL_ID
 
     lastmod_text = format_lastmod(result["lastmod"])
@@ -388,7 +427,7 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
         level="INFO",
         event="BAN_ANNOUNCEMENT_UPDATED",
         user=user,
-        info=f"{prefix}: nuovo Banned and Restricted Announcement — {url}",
+        info=f"{prefix}: new Banned and Restricted Announcement — {url}",
         fields=fields,
         extra_channel_id=COMUNICATION_CHANNEL_ID,
         community_title=f"📋 Nuovo Banned and Restricted Announcement — {lastmod_text}",
