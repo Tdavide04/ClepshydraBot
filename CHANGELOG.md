@@ -21,6 +21,13 @@ Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running
   so the coming move to `features/` and `core/` (`docs/roadmap.md`, phase 2) doesn't change what loads.
   `DISABLED_COGS` now holds full module paths (`"cogs.tournament_system"`). The bot starts from `main()`
   behind `if __name__ == "__main__"`, so tests can import `main.py`. Released with the phase 2 bump.
+- New `core/` package for the cross-cutting code: `console.py`, `permissions.py`, `interaction_errors.py`
+  (from `utils/`), `results.py` (from `services/`), `repository_base.py` (`repositories/base.py`),
+  `error_handler.py` and `logger.py` (from `cogs/`, now the extensions `core.error_handler` and
+  `core.logger`), and `json_state.py` (`load_json_state`/`save_json_state`, split out of
+  `utils/sitemap_monitor.py`, which no longer re-exports `log`). Moves and import rewrites only; CI coverage
+  now includes `core`. Verified: pytest (292 passed), ruff; a stubbed `setup_hook()` loads the same 7 cogs
+  and 9 slash commands.
 
 ### Added
 - `tests/core/test_extensions.py`: imports every application module and checks that every module with a

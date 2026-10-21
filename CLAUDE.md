@@ -27,7 +27,7 @@ Decided in `docs/adr/0002-development-standard.md`. Every change follows this lo
    it. Use the terms defined in `CONTEXT.md`. Check `git log` on `main` and on open `feature/*` branches,
    since parallel work may already have touched the area. Done when you can name the files you will change
    and the behaviour you will change.
-2. **Red.** Write the test first for logic in `services/`, `utils/`, `repositories/` or `database/`. A
+2. **Red.** Write the test first for logic in `services/`, `utils/`, `core/`, `repositories/` or `database/`. A
    bug fix starts from a regression test that fails on the current code, and fails on an assertion about
    behaviour rather than on an import error. Use the `tdd` skill. Done when the new test is red for the
    reason you expect.
@@ -61,7 +61,7 @@ in the CHANGELOG entry.
   repository → test. Then widen it.
 - **Programming by coincidence is banned.** Verify external behaviour (Scryfall queries, Wizards HTML,
   Discord limits) live before relying on it, and record the evidence in the topic doc.
-- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`services/results.py`),
+- **Explicit contracts.** Services return `ServiceResult(ok, message, kind=None)` (`core/results.py`),
   and cogs branch on its fields, never on the message text. Add a `ResultKind` member only when `ok` alone
   can't tell the caller's cases apart.
 - **Fail loud.** On unexpected input, return `None`, raise, or log a `WARN` that asks for a manual check,
@@ -126,7 +126,7 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per cl
 python main.py                                # needs .env (see .env.example)
 TEST_MODE=True python main.py                 # _TEST-suffixed token/guild/channels/db
 python -m pytest                              # CI runs `pytest tests/ -v` plus a coverage report
-python -m pytest --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
+python -m pytest --cov=core --cov=services --cov=utils --cov=repositories --cov=database --cov-report=term-missing
 python -m pytest tests/tournament/test_pairing_engine.py::TestCalculateRounds -v
 python -m ruff check .                        # blocking CI gate
 python -m ruff format .                       # CI runs `ruff format --check .`
@@ -137,7 +137,9 @@ Target Python is 3.12 (CI, `ruff.toml`, production venv).
 
 ## Architecture map
 
-Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `utils/`. Each layer calls only
+Layering: **Cogs → Services → Repositories → Database**, plus cross-cutting `core/` (logging, error
+handling, `ServiceResult`, JSON state, permissions) and `utils/` (feature code still waiting to move,
+`docs/roadmap.md` phase 2). Each layer calls only
 the layer below it, and repositories hold no business logic. Overview: `docs/architecture.md`.
 
 | Area | Code | Topic doc |
@@ -148,7 +150,7 @@ the layer below it, and repositories hold no business logic. Overview: `docs/arc
 | Scryfall card cache, SPG overrides, Wizards monitors | `utils/card_cache.py`, `utils/arena_overrides.py`, `utils/sitemap_monitor.py`, `utils/arena_event_schedule.py`, `utils/ban_announcement.py` | `docs/caching.md` |
 | Onboarding | `cogs/presentation/` | `docs/onboarding.md` |
 | Schema and migrations | `database/` | `docs/database.md` |
-| Config, logging, deploy | `config/config.py`, `cogs/logger.py`, `main.py` | `docs/infrastructure.md` |
+| Config, logging, deploy | `config/config.py`, `core/logger.py`, `main.py` | `docs/infrastructure.md` |
 | Slash command list | `cogs/` | `docs/commands.md` |
 | Roadmap (project structure refactor) | | `docs/roadmap.md` |
 | Decisions and rationale | | `docs/adr/` |
@@ -163,8 +165,8 @@ listed in the map.
 
 - **A new extension goes into `EXTENSIONS` in `main.py`.** Nothing discovers cogs from the folder; the
   `tests/core/test_extensions.py` check fails until the module is listed.
-- **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`utils/interaction_errors.py`).
-  Slash commands are covered by `bot.tree.on_error` (`cogs/error_handler.py`); modals and views are not.
+- **Every modal and view subclasses `ReportingModal` or `ReportingView`** (`core/interaction_errors.py`).
+  Slash commands are covered by `bot.tree.on_error` (`core/error_handler.py`); modals and views are not.
 - **A Scryfall failure is not an "illegal card" verdict.** Any non-200 response after retries raises
   `ScryfallUnavailable`, and `validate_deck()` then sets `service_error` and marks no card. A 404 on
   `/cards/search` is a real answer ("no Arena prints"). Keep the two cases separate.
@@ -181,9 +183,9 @@ listed in the map.
   which logs a `WARN`.
 - **Anything posted to `COMUNICATION_CHANNEL_ID` is a dedicated community embed** with no staff detail.
   Note the spelling of the constant. `LOG_CHANNEL_ID` has no `_TEST` variant.
-- **Inside `utils/`, `config.config` is imported inside the function that uses it**, never at module
-  top, so these modules stay importable in tests without a `.env`. Examples: `utils/permissions.py` and
-  the two monitors.
+- **Inside `utils/` and `core/` (except the `core/logger.py` extension), `config.config` is imported inside
+  the function that uses it**, never at module top, so these modules stay importable in tests without a
+  `.env`. Examples: `core/permissions.py` and the two monitors.
 - **Production runs under `pm2`** on an Oracle VM (1 OCPU / 1 GB), started at boot by the `pm2-ubuntu`
   systemd service from the list saved with `pm2 save`. pm2 is the only deployment method (ADR-0005).
 

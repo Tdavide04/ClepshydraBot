@@ -75,12 +75,19 @@ Full details (parameters, behaviour, source location) in `docs/commands.md`.
 
 ```
 ClepshydraBot/
+├── core/                    # Cross-cutting, used by every feature
+│   ├── logger.py            # Log channel (extension)
+│   ├── error_handler.py     # Global slash command error handler (extension)
+│   ├── interaction_errors.py  # ReportingModal / ReportingView
+│   ├── results.py           # ServiceResult (structured service outcome)
+│   ├── repository_base.py   # BaseRepository
+│   ├── json_state.py        # Atomic JSON state files
+│   ├── console.py           # Timestamped console log()
+│   └── permissions.py       # @is_admin() check
 ├── cogs/
 │   ├── presentation/        # User presentation wizard
 │   ├── deck_validation/     # Artisan deck validation
 │   ├── tournament_system/   # Swiss tournaments (disabled, not loaded)
-│   ├── logger.py            # Centralized logging
-│   ├── error_handler.py     # Global slash command error handler
 │   ├── spg_override_updater.py
 │   ├── arena_event_schedule_updater.py
 │   └── ban_announcement_updater.py
@@ -88,10 +95,8 @@ ClepshydraBot/
 │   ├── tournament_service.py
 │   ├── pairing_engine.py
 │   ├── standings.py
-│   ├── rating.py            # Glicko-2
-│   └── results.py           # ServiceResult (structured service outcome)
+│   └── rating.py            # Glicko-2
 ├── repositories/            # Data access layer
-│   ├── base.py
 │   ├── user_repository.py
 │   ├── tournament_repository.py
 │   └── banlist_repository.py
@@ -105,9 +110,6 @@ ClepshydraBot/
 │   ├── event_calendar_image_generator.py
 │   ├── ban_announcement.py
 │   ├── sitemap_monitor.py
-│   ├── interaction_errors.py
-│   ├── console.py           # Timestamped console log()
-│   ├── permissions.py       # @is_admin() check
 │   ├── tournament_embeds.py
 │   ├── tournament_logic.py
 │   └── deck_image_generator.py

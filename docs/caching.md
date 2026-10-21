@@ -282,7 +282,7 @@ Discord. Without this log, a run that finds no change (the most common outcome, 
 changes every 6-9 weeks) is indistinguishable in the console from a task that never started — the source of
 real confusion in production, where it looked like the check didn't run while it actually ran and correctly
 found nothing new. Every line starts with a timestamp (`[2026-10-12 15:20:04] [EVENT SCHEDULE] ...`, the same
-format as `discord.py`'s logs) via `log()` in `utils/console.py` (re-exported by `utils/sitemap_monitor.py`),
+format as `discord.py`'s logs) via `log()` in `core/console.py`,
 shared with the Ban Announcement monitor and the rest of the bot — without it, `pm2 logs` gave no way to tell
 *when* a check ran relative to a page appearing in the sitemap.
 

@@ -1,13 +1,13 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
+from core.repository_base import BaseRepository
 from database.models import (
     Match,
     Tournament,
     TournamentPlayer,
     TournamentStatus,
 )
-from repositories.base import BaseRepository
 
 
 class TournamentRepository(BaseRepository[Tournament]):

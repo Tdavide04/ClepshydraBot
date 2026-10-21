@@ -129,6 +129,6 @@ The "Line" column points at each command's `async def`: recompute it whenever `c
 
 ### Permissions
 
-`is_admin()` check (`utils/permissions.py`):
+`is_admin()` check (`core/permissions.py`):
 - Checks that the user has the `ADMIN_ROLE` role (default: `Staff`)
 - Used as a decorator on admin commands: `@is_admin()`

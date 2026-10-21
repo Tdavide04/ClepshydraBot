@@ -1,5 +1,5 @@
+from core.repository_base import BaseRepository
 from repositories.banlist_repository import BanlistRepository
-from repositories.base import BaseRepository
 from repositories.tournament_repository import (
     MatchRepository,
     TournamentPlayerRepository,

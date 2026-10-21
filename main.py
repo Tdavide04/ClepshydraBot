@@ -14,8 +14,8 @@ from utils.card_cache import periodic_save_loop, save_cache
 # that "which features exist" doesn't depend on the folder layout; tests/core/test_extensions.py fails if an
 # extension module is missing from this list.
 EXTENSIONS = [
-    "cogs.logger",
-    "cogs.error_handler",
+    "core.logger",
+    "core.error_handler",
     "cogs.presentation",
     "cogs.deck_validation",
     "cogs.spg_override_updater",

@@ -43,15 +43,14 @@ from datetime import date
 import aiohttp
 import discord
 
+from core.console import log
+from core.json_state import load_json_state, save_json_state
 from utils.sitemap_monitor import (
     _CHECK_INTERVAL_SECONDS,
     _SITEMAP_NS,
     fetch_page_html,
     fetch_sitemap_xml,
-    load_json_state,
-    log,
     pick_latest_by_lastmod,
-    save_json_state,
 )
 
 STATE_PATH = "data/arena_event_schedule_state.json"
@@ -514,7 +513,7 @@ async def send_event_schedule_log(logger, result: dict, user, forced: bool) -> N
     the two posts. The two WARN cases (unparseable page or no dates) stay in
     the log channel only: they are operational noise for whoever maintains
     the bot, not content for the community. COMUNICATION_CHANNEL_ID is
-    imported lazily (as in ban_announcement.py, see utils/permissions.py for
+    imported lazily (as in ban_announcement.py, see core/permissions.py for
     the same pattern) to stay importable in tests without a full .env."""
 
     url = result["url"]

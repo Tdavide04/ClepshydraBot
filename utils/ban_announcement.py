@@ -44,16 +44,15 @@ from datetime import datetime
 
 import aiohttp
 
+from core.console import log
+from core.json_state import load_json_state, save_json_state
 from utils.arena_event_schedule import MONTHS_IT
 from utils.sitemap_monitor import (
     _CHECK_INTERVAL_SECONDS,
     _SITEMAP_NS,
     fetch_page_html,
     fetch_sitemap_xml,
-    load_json_state,
-    log,
     pick_latest_by_lastmod,
-    save_json_state,
 )
 
 STATE_PATH = "data/ban_announcement_state.json"
@@ -361,7 +360,7 @@ async def send_ban_announcement_log(logger, result: dict, user, forced: bool) ->
     this community's homebrew Artisan, so there is nothing to communicate
     about it). When the announcement has real changes, the embed is also
     posted to COMUNICATION_CHANNEL_ID (lazy import, like
-    utils/permissions.py, to stay importable in tests without a full .env)
+    core/permissions.py, to stay importable in tests without a full .env)
     besides the log channel - it concerns the whole community, not just
     staff. The community channel is public and @everyone gets pinged there:
     Logger.send_log()'s `community_title`/`community_info` build a

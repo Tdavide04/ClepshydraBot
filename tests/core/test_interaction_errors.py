@@ -3,8 +3,8 @@ import asyncio
 import discord
 from discord import app_commands
 
-from cogs.error_handler import ErrorHandler
-from utils.interaction_errors import (
+from core.error_handler import ErrorHandler
+from core.interaction_errors import (
     USER_MESSAGE,
     ReportingModal,
     ReportingView,

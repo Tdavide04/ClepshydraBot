@@ -1,7 +1,7 @@
 from sqlalchemy import delete, select
 
+from core.repository_base import BaseRepository
 from database.models import BannedCard
-from repositories.base import BaseRepository
 
 
 class BanlistRepository(BaseRepository[BannedCard]):

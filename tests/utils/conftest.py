@@ -2,7 +2,7 @@ import os
 
 # send_ban_announcement_log() (utils/ban_announcement.py) lazily imports
 # COMUNICATION_CHANNEL_ID from config.config when the announcement has real
-# changes - same reason as the lazy import in utils/permissions.py: running
+# changes - same reason as the lazy import in core/permissions.py: running
 # this test file alone (without going through tests/tournament or
 # tests/deck_validation first, whose conftest.py files populate these same
 # variables) would make config.config fail on first access. Duplicated on

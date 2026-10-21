@@ -172,7 +172,7 @@ chain of `tests/__init__.py` up to the root.
 
 ## Logging
 
-### Log System (`cogs/logger.py`)
+### Log System (`core/logger.py`)
 
 Events are logged to a dedicated Discord channel as embeds:
 
@@ -203,7 +203,7 @@ Log-channel text is in English; the community embed is in Italian (`docs/adr/000
 ### Console Logs
 
 Besides the Discord channel, the bot writes logs to stdout/stderr for debugging over SSH; lines written with
-`log()` (`utils/console.py`) carry a `[YYYY-MM-DD HH:MM:SS]` timestamp. Startup failures (invalid token,
+`log()` (`core/console.py`) carry a `[YYYY-MM-DD HH:MM:SS]` timestamp. Startup failures (invalid token,
 unhandled exceptions in `setup_hook`) are always written to stderr with the `FATAL:` prefix, even when the
 Discord log channel is unreachable.
 
@@ -222,7 +222,7 @@ so both were removed in October 2026: see `docs/adr/0005-unused-deploy-alternati
 
 `.github/workflows/ci.yml`, active on push/PR:
 - `pytest` on every push and PR — **blocking gate**, with a coverage report (`pytest-cov`,
-  `--cov-report=term-missing` on `services`, `utils`, `repositories`, `database`, `cogs`) since 3.6.7;
+  `--cov-report=term-missing` on `core`, `services`, `utils`, `repositories`, `database`, `cogs`) since 3.6.7;
   no minimum threshold yet
 - `ruff` lint (`ruff.toml`, rules `E4,E7,E9,F,I,B,ASYNC,UP`) — **blocking gate**: the pre-existing lint debt
   (~54 issues) was cleared in 1.7.1 (at the time partly by excluding `legacy/`, later

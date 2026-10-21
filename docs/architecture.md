@@ -8,8 +8,9 @@ ClepshydraBot uses a **three-tier** architecture with a clean separation of resp
 2. **Service Layer** — business logic, algorithms, orchestration
 3. **Repository Layer** — data access, CRUD, queries
 
-On top of these sit the **Database Layer** (SQLAlchemy ORM) and the **Utilities Layer** (cross-cutting
-functions).
+On top of these sit the **Database Layer** (SQLAlchemy ORM), **`core/`** (cross-cutting: the log channel,
+error handling, `ServiceResult`, JSON state files, permissions, the repository base class) and **`utils/`**
+(feature code that `docs/roadmap.md` phase 2 moves into `features/`).
 
 ---
 
@@ -197,10 +198,10 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 ## Error Handling
 
 - **Interaction catch-all** (since 3.5.6): an unhandled exception in a slash command, modal or view is caught
-  by `utils/interaction_errors.py` — the user gets an ephemeral message ("unexpected error, staff has been
+  by `core/interaction_errors.py` — the user gets an ephemeral message ("unexpected error, staff has been
   notified", via `followup` if the interaction had already answered with a `defer()`), the log channel gets
   an `ERROR` `INTERACTION_ERROR` with source, exception and traceback tail, the console the full traceback.
-  Three entry points, because discord.py routes errors differently: `cogs/error_handler.py` hooks
+  Three entry points, because discord.py routes errors differently: `core/error_handler.py` hooks
   `CommandTree.on_error` (slash commands; `CheckFailure`s such as those from `@is_admin()` are not logged,
   the check has already replied), and `ReportingModal`/`ReportingView` are the base class of every modal and
   view of the bot. Before 3.5.6 it didn't exist: an exception after a `defer()` left the user on
@@ -210,7 +211,7 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
 - **Scryfall outage ≠ illegal card**: `ScryfallUnavailable` leaves the deck unevaluated instead of marking
   cards illegal (see `docs/deck-validation.md`)
 - **Atomic writes**: the monitors' state files and the SPG override JSON are written to `.tmp` then
-  `os.replace()` (`save_json_state()` in `utils/sitemap_monitor.py`)
+  `os.replace()` (`save_json_state()` in `core/json_state.py`)
 - **Async lock**: `asyncio.Lock()` around concurrent card cache saves
 - **Bot startup**: `main.py` catches `discord.LoginFailure` (invalid/expired token) and any other startup
   exception, prints an explicit error to stderr and exits with a non-zero code, so a process supervisor
@@ -228,9 +229,9 @@ User  → /classifica → StandingsCalculator.compute() (3/1/0 + tiebreakers)
   results and corrections, next round, forced drop, standings, rating).
 - `tests/deck_validation/`: `ArtisanService.validate_deck()` (Scryfall mocked at the network edge), the
   SQLite card cache, SPG overrides.
-- `tests/utils/`: the Wizards monitors, the shared sitemap logic, interaction error handling.
-- `tests/core/`: every application module imports (`main.py` included), and every extension is listed in
-  `EXTENSIONS`.
+- `tests/utils/`: the Wizards monitors and the shared sitemap logic.
+- `tests/core/`: every application module imports (`main.py` included) and every extension is listed in
+  `EXTENSIONS`; interaction error handling, JSON state files, the timestamped console log.
 - `tests/onboarding/`: `PresentationService.publish()` outcomes (published, refused on validation, missing
   channel), with plain fakes for the Discord guild, member and channel.
 - Integration tests don't mock the DB: they run against a temporary SQLite per test (`tmp_path` + monkeypatch

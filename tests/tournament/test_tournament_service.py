@@ -7,9 +7,9 @@ import asyncio
 import pytest
 
 import database.engine as db_engine
+from core.results import ResultKind
 from database import close_db, init_db
 from database.models import MatchResult, TournamentStatus
-from services.results import ResultKind
 from services.tournament_service import TournamentService
 
 

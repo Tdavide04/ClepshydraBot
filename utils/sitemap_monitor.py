@@ -6,20 +6,16 @@ XML sitemap of magic.wizards.com (utils/arena_event_schedule.py and
 utils/ban_announcement.py): both fetch the same sitemap.xml every 2 hours,
 pick the newest page of interest by `lastmod` (Wizards never removes past
 pages from the sitemap, so several always coexist) and keep a "last page
-seen" state in a local JSON file with atomic writes. Extracted here after the
+seen" state in a local JSON file (core/json_state.py). Extracted here after the
 second monitor (ban_announcement.py) duplicated this part byte for byte from
 the first - URL filtering and page content parsing stay in each module, the
 only part that genuinely differs between the two (different URL patterns and
 HTML structure).
 """
 
-import json
-import os
-
 import aiohttp
 
-# Re-exported: both monitors import it from here (see utils/console.py).
-from utils.console import log  # noqa: F401
+from core.console import log
 
 SITEMAP_URL = "https://magic.wizards.com/en/sitemap.xml"
 
@@ -35,29 +31,6 @@ _SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 # published) at the time of the daily check, and the next run would have
 # come almost 24h later.
 _CHECK_INTERVAL_SECONDS = 2 * 60 * 60
-
-
-def load_json_state(path: str, default: dict) -> dict:
-    """Loads a JSON dict from disk, or a copy of `default` if the file
-    doesn't exist yet (first run on a new machine)."""
-
-    if not os.path.exists(path):
-        return dict(default)
-
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_json_state(path: str, data: dict) -> None:
-    """Atomic write (`.tmp` file + `os.replace`): a crash mid-save leaves
-    the previous state intact instead of a corrupted/truncated JSON."""
-
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-    os.replace(tmp_path, path)
 
 
 def pick_latest_by_lastmod(entries: dict[str, str]) -> tuple[str, str] | None:

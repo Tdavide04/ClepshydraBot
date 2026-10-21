@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from config.config import GUILD_ID
+from core.results import ResultKind, ServiceResult
 from database import get_session
 from database.models import (
     Match,
@@ -22,7 +23,6 @@ from repositories.tournament_repository import (
 from repositories.user_repository import UserRepository
 from services.pairing_engine import PairingEngine
 from services.rating import Rating, rate_1vs1, rate_draw
-from services.results import ResultKind, ServiceResult
 from services.standings import StandingsCalculator, StandingsEntry
 
 

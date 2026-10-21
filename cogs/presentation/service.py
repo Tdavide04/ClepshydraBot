@@ -4,7 +4,7 @@ from cogs.presentation.embeds import build_published_embed
 from cogs.presentation.models import PRESENTATION_DATA_STORE, PresentationData
 from cogs.presentation.validators import valida_presentazione
 from config.config import FINAL_ROLE, INITIAL_ROLE, PRESENTATION_CHANNEL_ID
-from services.results import ServiceResult
+from core.results import ServiceResult
 
 
 class PresentationService:

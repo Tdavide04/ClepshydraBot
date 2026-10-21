@@ -8,7 +8,7 @@ log channel - that is how the /classifica crash fixed in 3.5.5 showed up.
 
 Used by three entry points, because discord.py routes errors differently
 for each:
-- slash command: CommandTree.on_error, agganciato da cogs/error_handler.py
+- slash command: CommandTree.on_error, hooked by core/error_handler.py
 - modal: Modal.on_error, via ReportingModal
 - view (bottoni/select): View.on_error, via ReportingView
 """
@@ -17,7 +17,7 @@ import traceback
 
 import discord
 
-from utils.console import log
+from core.console import log
 
 USER_MESSAGE = "❌ Si è verificato un errore inatteso. Lo staff è stato avvisato."
 

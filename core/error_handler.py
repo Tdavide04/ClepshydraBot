@@ -1,7 +1,7 @@
 from discord import app_commands
 from discord.ext import commands
 
-from utils.interaction_errors import report_interaction_error
+from core.interaction_errors import report_interaction_error
 
 
 class ErrorHandler(commands.Cog):

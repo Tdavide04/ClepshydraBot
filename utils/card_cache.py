@@ -3,7 +3,7 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 
-from utils.console import log
+from core.console import log
 
 # Path of the legacy JSON: used only for the one-off migration to SQLite
 # (see load_cache()). Once migrated, the bot never reads or writes it again.

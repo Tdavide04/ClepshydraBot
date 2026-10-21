@@ -38,7 +38,7 @@ from urllib.parse import quote
 
 import aiohttp
 
-from utils.sitemap_monitor import save_json_state
+from core.json_state import save_json_state
 
 DATA_PATH = "data/arena_rarity_data.json"
 SEED_PATH = "seeds/arena_rarity.json"

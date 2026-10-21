@@ -148,7 +148,7 @@ class MatchResult(enum.StrEnum):
 
 ## Repository Pattern
 
-### BaseRepository (`repositories/base.py`)
+### BaseRepository (`core/repository_base.py`)
 
 Generic repository with basic CRUD:
 

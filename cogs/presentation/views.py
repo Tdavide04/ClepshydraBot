@@ -4,7 +4,7 @@ from cogs.presentation.embeds import build_preview_embed
 from cogs.presentation.modals import OptionalPresentationModal
 from cogs.presentation.models import PresentationData, discard_presentation_data
 from cogs.presentation.service import PresentationService
-from utils.interaction_errors import ReportingView
+from core.interaction_errors import ReportingView
 
 COLORI_OPTIONS = [
     discord.SelectOption(label="Bianco", value="bianco", emoji="⬜"),

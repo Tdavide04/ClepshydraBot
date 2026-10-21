@@ -112,7 +112,7 @@ An empty selection is valid for colors, guilds and formats.
 
 ## Publication (`service.py`)
 
-`PresentationService.publish()` returns a `ServiceResult` (`services/results.py`) and never replies to the
+`PresentationService.publish()` returns a `ServiceResult` (`core/results.py`) and never replies to the
 member itself: the caller sends `message`. `ok=False` means nothing was posted and no role changed.
 1. Validates the data (`valida_presentazione()`): on invalid fields it logs WARN
    `PRESENTATION_VALIDATION_FAILED` and returns `ok=False` with the list of fields to fix

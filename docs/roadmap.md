@@ -168,10 +168,15 @@ production). `DISABLED_COGS` now holds full module paths (`"cogs.tournament_syst
 
 ## Step 4 — `core/`
 
-**Status:** todo · `refactor`
+**Status:** done (2026-10-21) · `refactor` · bump with step 9
 
 Move the cross-cutting modules listed in the target layout. Split `load_json_state` / `save_json_state` out
 of `sitemap_monitor`, because `arena_overrides` uses them and isn't a sitemap monitor.
+
+Done with `git mv` and import rewrites only. `sitemap_monitor` no longer re-exports `log`: the monitors
+import it from `core.console`. The JSON state and console log tests moved to `tests/core/` with
+`test_interaction_errors.py`. CI coverage now includes `core`. A stubbed `setup_hook()` loads the same 7 cogs
+and 9 commands, the logger and error handler now as `core.logger` and `core.error_handler`.
 
 ## Step 5 — `features/monitors/`
 

@@ -19,8 +19,8 @@ services/
 ├── tournament_service.py   # Orchestrator: coordinates every operation
 ├── pairing_engine.py       # Swiss pairing algorithm
 ├── standings.py            # Standings with tiebreakers
-├── rating.py               # Glicko-2 rating system
-└── results.py              # ServiceResult(ok, message, kind) + ResultKind
+└── rating.py               # Glicko-2 rating system
+                            # ServiceResult/ResultKind live in core/results.py
 
 cogs/tournament_system/
 └── cog.py                  # 15 slash commands + modals + views
@@ -183,7 +183,7 @@ interval).
 ## TournamentService (`services/tournament_service.py`)
 
 Main orchestrator, coordinating every tournament operation. The methods the cog acts on return a
-`ServiceResult(ok, message, kind=None)` (`services/results.py`): `ok` tells success from failure, `message`
+`ServiceResult(ok, message, kind=None)` (`core/results.py`): `ok` tells success from failure, `message`
 is the Italian text shown to the user, and `kind` (a `ResultKind`) is set only where `ok` isn't enough —
 today `generate_next_round()`. The cog branches on these fields, never on the message text (until 3.6.7 it
 matched phrases such as `"non trovato" in msg`, and `/iscriviti` didn't check the outcome at all).
@@ -195,7 +195,7 @@ matched phrases such as `"non trovato" in msg`, and `/iscriviti` didn't check th
 | `submit_deck(tournament_id, discord_id, deck_name)` | Updates the deck of an existing registration; fails if not registered or if the tournament is no longer in `registration` |
 | `unregister_player(tournament_id, discord_id)` | Voluntary leave (`/left_torneo`), `registration` only; a second attempt answers "Non sei iscritto" instead of repeating the leave |
 | `start_tournament(tournament_id)` | Starts, computes the rounds, generates round 1 — **refuses** if an active registered player has `deck_name is None` |
-| `submit_result(match_id, winner_tp_id, result, p1_game_wins, p2_game_wins)` | Records a result; returns `ServiceResult(ok, message)` (`services/results.py`), refuses if the match already has a result |
+| `submit_result(match_id, winner_tp_id, result, p1_game_wins, p2_game_wins)` | Records a result; returns `ServiceResult(ok, message)` (`core/results.py`), refuses if the match already has a result |
 | `correct_result(tournament_id, round_number, table_number, winner_discord_id, winner_games, loser_games)` | Staff correction: overwrites or enters a table's result (`winner_discord_id=None` = draw, `round_number=None` = current round); `active` tournaments only; `ServiceResult` with the before → after |
 | `generate_next_round(tournament_id)` | Next round or conclusion: `ok=True` for a generated round, `ok=True, kind=TOURNAMENT_COMPLETED` after the last round, `ok=False, kind=PENDING_RESULTS` while current-round results are missing, `ok=False` otherwise |
 | `force_drop_player(tournament_id, discord_id)` | Removal decided by staff: in `registration` it only marks the registration as dropped (unblocks a `start_tournament()` stuck on a missing deck); in `active` it also gives the win to the opponent in the current round's pending match |
@@ -276,7 +276,7 @@ the service returned `"Risultato registrato!"`.
 
 ---
 
-## Discord Logs (`cogs/logger.py`, `LOG_CHANNEL_ID` channel)
+## Discord Logs (`core/logger.py`, `LOG_CHANNEL_ID` channel)
 
 | Event | Level | When |
 |---|---|---|

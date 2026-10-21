@@ -6,7 +6,7 @@ from cogs.presentation.models import (
     PresentationData,
     get_or_create_presentation_data,
 )
-from utils.interaction_errors import ReportingModal
+from core.interaction_errors import ReportingModal
 
 
 class BasicPresentationModal(ReportingModal, title="Presentazione Clepshydra"):
