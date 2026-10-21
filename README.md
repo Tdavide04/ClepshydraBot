@@ -14,7 +14,7 @@ documentation are in English (see `docs/adr/0003-project-language.md`).
 - **Artisan Deck Check** — Validate decks against banlist + Scryfall rarity check (`/artisan_check_deck`)
 - **Deck Image Generator** — Dynamic PNG showcase with color-identity backgrounds
 - **Rarity Override System** — Automatic SPG card rarity correction via Scryfall
-- **Arena Event Schedule Monitor** — Detects when the current MTG Arena "Event Schedule" page (Quick Draft rotation, Arena Direct, etc.) is new or updated and posts a monthly calendar image to Discord (one row per category, color-coded by family: Draft, Flashback, Sealed & Cube, Metagame, Community), to both the staff log channel and a public community channel
+- **Arena Event Schedule Monitor** — Detects when the current MTG Arena "Event Schedule" page (Quick Draft rotation, Arena Direct, etc.) is new or updated and posts a monthly calendar image to Discord (an agenda with one row per event, grouped into Limited, Constructed, Metagame and Eventi vari), to both the staff log channel and a public community channel
 - **Ban Announcement Monitor** — Detects new official "Banned and Restricted Announcement" posts and notifies both the staff log channel and a public community channel with per-format changes (notification only — the bot's own Artisan banlist stays manually curated)
 - **Centralized Logging** — All events logged to a Discord channel with colored embeds
 
@@ -99,6 +99,7 @@ ClepshydraBot/
 │   ├── monitors/            # Wizards monitors: Event Schedule, Banned and Restricted
 │   │   ├── sitemap.py       # Shared sitemap fetch and newest-page selection
 │   │   ├── event_schedule.py
+│   │   ├── calendar_model.py  # Event grouping and agenda rows (no drawing)
 │   │   ├── calendar_image.py  # Monthly event calendar images
 │   │   ├── ban_announcement.py
 │   │   ├── event_schedule_cog.py

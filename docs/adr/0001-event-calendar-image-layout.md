@@ -1,6 +1,7 @@
 # ADR-0001 — Event Schedule calendar image layout
 
-**Status:** accepted (3.2.0) — moved here from `CLAUDE.md` on 2026-10-20
+**Status:** superseded by [ADR-0006](0006-event-calendar-agenda-layout.md) (4.1.0). Accepted in 3.2.0 and moved
+here from `CLAUDE.md` on 2026-10-20; kept for the history of the rejected layouts.
 
 ## Context
 

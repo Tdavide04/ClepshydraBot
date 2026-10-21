@@ -14,11 +14,43 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
-## Unreleased
-
-Nothing changes for the running bot (`build`, no `VERSION` bump).
+## 4.1.0 (2026-10-21)
 
 ### Changed
+- **The Event Schedule calendar image is now an agenda** (`features/monitors/calendar_image.py`, design in
+  `docs/adr/0006-event-calendar-agenda-layout.md`, which supersedes ADR-0001). One image per month, 900 px wide
+  and as tall as needed, with one row per event under four groups: Limited, Constructed, Metagame, Eventi
+  vari. Each row shows the exact dates and weekdays ("10 – 30", "mar → lun"), the full event name (wrapped, up
+  to 3 lines, never moved out of place), its Wizards categories, and a strip of day ticks marking the days
+  covered. The detailed list below the chart is gone: every date and name is already in the rows.
+  Why: names were cut in the narrow bars and row labels, the same "Star Trek" took four rows, and the 12 px text
+  on a 1230 px image was unreadable on a phone.
+- The same event with the same dates under several categories is one row with all its categories.
+- Warm neutral background instead of navy; group colors keep at least 4.5:1 contrast.
+- `"Magic: The Gathering | "` is now dropped anywhere in a name or category, not only as a prefix.
+
+### Added
+- `features/monitors/calendar_model.py`: the grouping, cleaning, merging and ordering, with no Pillow and no
+  `config`, covered by `tests/monitors/test_calendar_model.py`. The group is a keyword heuristic on the
+  Wizards category and the event name (`classify_event()`). An event no keyword recognizes goes under Eventi
+  vari and is listed in a console `WARN` (`[EVENT SCHEDULE] WARN events without a known format ...`).
+- `tests/monitors/test_calendar_image.py`: valid PNG, fixed width, height grows with the events, very long
+  names, and the `WARN` for unclassified events.
+
+### Removed
+- `create_month_panel()`, `create_multi_month_calendar()` and the family classification of the old image: nothing
+  called them.
+
+Verified: `python -m pytest`, `ruff check` and `ruff format --check` pass. The real November and December 2026
+schedules (from the posted images) were rendered with the new code and checked by eye: no name truncated, the
+merge and the weekdays are right, and the two events no keyword knows ("Momir", "On the Edge with Magic: The
+Gathering Foundations") appear under Eventi vari with the `WARN`. A dense month such as December is about 2100 px
+high. Under `TEST_MODE=True` the forced check (`check_event_schedule_updates(force=True)` +
+`send_event_schedule_log()`, the path of `/forced_event_schedule_check`) ran against the live Star Trek page: 16
+categories parsed, the monthly images were posted to the log channel and to the test community channel with no
+error. The maintainer checked the posted images on Discord, on a phone and on a PC: both read well.
+
+### Build
 - One `pyproject.toml` for the tool configuration: `[tool.ruff]` (was `ruff.toml`) and
   `[tool.pytest.ini_options]` (was `pytest.ini`). No `[project]` table: the bot isn't an installable package,
   and dependencies stay pinned in `requirements*.txt`.
@@ -31,6 +63,9 @@ target version, Markdown excluded from the formatter); a bare `pytest tests/` wi
 
 ### Docs
 - `CLAUDE.md`, `docs/infrastructure.md`, ADR-0002, ADR-0003, `README.md` structure, `docs/roadmap.md`.
+- New ADR-0006 (agenda layout); ADR-0001 marked superseded; `README.md` (feature line, structure),
+  `docs/caching.md` (`send_event_schedule_log()` row), and the calendar redesign is off `docs/roadmap.md`'s
+  backlog.
 
 ## 4.0.4 (2026-10-21)
 
