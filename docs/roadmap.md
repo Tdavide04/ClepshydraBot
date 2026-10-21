@@ -290,7 +290,6 @@ table); the entry waits under Unreleased.
 # Backlog (not scheduled)
 
 - **English slash command names** (ADR-0003). To be decided in a dedicated session.
-- **Event calendar image redesign**, on `feature/event-calendar` after this roadmap.
 - **Onboarding state is in memory** (`PRESENTATION_DATA_STORE`): a restart mid-presentation loses it.
   Acceptable for now, documented in `docs/onboarding.md`.
 - **Coverage threshold in CI.** None yet; reconsider once the cogs are thinner.
