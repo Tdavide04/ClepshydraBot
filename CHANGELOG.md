@@ -14,6 +14,20 @@ Entries up to 3.6.3 stay in Italian as an archive, including the old doc file na
 Changes that don't bump `VERSION` (`style`, `ci`, `chore` that leave the running bot unchanged) collect under
 **Unreleased** and move into the next numbered version.
 
+## 4.1.1 (2026-10-21)
+
+### Fixed
+- The calendar image cut the categories under an event name with "…" when they didn't fit on one line. On the
+  VM's font (DejaVu, wider than Arial) the "Star Trek" row of December 2026, listed under four categories,
+  ended with "Traditional…". The caption now wraps onto more lines, one whole category at a time (so
+  "Pick-Two Draft" is never split), and the row grows to fit. A category wider than the column on its own is
+  still cut with an ellipsis, and a caption never takes more than 4 lines.
+
+Verified: regression test `test_a_row_with_many_categories_grows_to_show_them_all` (red before the fix: the two
+images were the same height), full suite, `ruff check`, `ruff format --check`. December 2026 rendered locally
+with the VM's DejaVu fonts: the row wraps as "Premier Draft · Contender Draft · Pick-Two Draft" / "Traditional
+Draft", and the image grows by one caption line (20 px).
+
 ## 4.1.0 (2026-10-21)
 
 ### Changed
