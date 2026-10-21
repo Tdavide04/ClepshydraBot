@@ -29,7 +29,7 @@ COMUNICATION_CHANNEL_ID = int(
 # Not read from .env: bumped by hand in code on every release (MINOR for a
 # feature, PATCH for a bug fix - see "Versioning" in CHANGELOG.md), so it is
 # tracked in git instead of silently drifting with a stale .env on one machine.
-VERSION = "4.1.1"
+VERSION = "4.1.2"
 if TEST_MODE:
     VERSION = VERSION + "-test"
 

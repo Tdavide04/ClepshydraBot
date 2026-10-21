@@ -291,6 +291,17 @@ def _infer_start_year(start_month: int, reference: date) -> int:
     return reference.year
 
 
+def _has_valid_days(parsed: dict, start_year: int, end_year: int) -> bool:
+    """True if the start and end days exist in their months, and a range that
+    stays inside one month doesn't end before it starts."""
+
+    start_ok = 1 <= parsed["start_day"] <= calendar.monthrange(start_year, parsed["start_month"])[1]
+    end_ok = 1 <= parsed["end_day"] <= calendar.monthrange(end_year, parsed["end_month"])[1]
+    same_month = (start_year, parsed["start_month"]) == (end_year, parsed["end_month"])
+    in_order = not same_month or parsed["start_day"] <= parsed["end_day"]
+    return start_ok and end_ok and in_order
+
+
 def build_month_calendar(
     categories: dict[str, list[str]],
     reference_date: date | None = None,
@@ -298,9 +309,12 @@ def build_month_calendar(
     """Turns {category: [text entries]} into
     {(year, month): {category: [(start_day, end_day, name), ...]}},
     splitting every range spanning several months into one segment per
-    month it touches (days are clipped to the month's bounds). Unparseable
-    entries (unexpected date format) are silently left out - they stay
-    visible only in text embeds, which don't go through here."""
+    month it touches (the days in the middle segments are the month's
+    bounds). Unparseable entries (unexpected date format) are silently left
+    out. An entry whose date cannot exist (a "November 31", day 0, a range
+    ending before it starts) is left out with a console WARN that quotes it:
+    the days come from hand-written text, and a day outside the month used to
+    reach the image, raise there and lose the whole update."""
 
     if reference_date is None:
         reference_date = date.today()
@@ -317,6 +331,10 @@ def build_month_calendar(
             end_year = start_year
             if parsed["end_month"] < parsed["start_month"]:
                 end_year = start_year + 1
+
+            if not _has_valid_days(parsed, start_year, end_year):
+                log(f"[EVENT SCHEDULE] WARN entry with an impossible date left out: {entry_text!r}")
+                continue
 
             cur_year, cur_month = start_year, parsed["start_month"]
             while (cur_year, cur_month) <= (end_year, parsed["end_month"]):

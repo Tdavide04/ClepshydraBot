@@ -194,6 +194,44 @@ class TestBuildMonthCalendar:
 
         assert result[(2026, 8)]["Quick Draft"] == [(11, 19, "Duskmourn")]
 
+    @pytest.mark.parametrize(
+        "bad_entry",
+        [
+            "November 25-31: Ends On A Day That Does Not Exist",
+            "November 31-December 2: Starts On A Day That Does Not Exist",
+            "November 0-5: Day Zero",
+            "November 20-10: Ends Before It Starts",
+        ],
+    )
+    def test_entry_with_an_impossible_date_is_left_out_and_the_rest_survives(self, bad_entry):
+        """Regression: a day outside the month used to reach the image and
+        raise there, which lost the whole update (the state was already saved)."""
+        categories = {"Quick Draft": [bad_entry, "November 11-19: Duskmourn"]}
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 11, 1))
+
+        assert result == {(2026, 11): {"Quick Draft": [(11, 19, "Duskmourn")]}}
+
+    def test_a_february_29_in_a_non_leap_year_is_left_out(self):
+        categories = {"Quick Draft": ["February 29-March 3: Not A Leap Year"]}
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 11, 1))
+
+        assert result == {}
+
+    def test_entry_with_an_impossible_date_logs_a_warning_with_its_text(self, capsys):
+        categories = {"Quick Draft": ["November 25-31: Ends On A Day That Does Not Exist"]}
+        event_schedule.build_month_calendar(categories, reference_date=date(2026, 11, 1))
+
+        out = capsys.readouterr().out
+        assert "WARN" in out
+        assert "November 25-31: Ends On A Day That Does Not Exist" in out
+
+    def test_a_range_ending_in_a_later_month_may_start_late_in_its_month(self):
+        categories = {"Quick Draft": ["August 31-September 2: Edge Case"]}
+        result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 9, 15))
+
+        assert result[(2026, 8)]["Quick Draft"] == [(31, 31, "Edge Case")]
+        assert result[(2026, 9)]["Quick Draft"] == [(1, 2, "Edge Case")]
+
     def test_range_crossing_december_into_january_bumps_the_year(self):
         categories = {"Quick Draft": ["December 28–January 4: New Year Set"]}
         result = event_schedule.build_month_calendar(categories, reference_date=date(2026, 12, 1))
